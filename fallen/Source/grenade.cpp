@@ -424,10 +424,16 @@ void CreateGrenadeExplosion(SLONG x, SLONG y, SLONG z, Thing* owner)
 	DIRT_new_sparks(sx,sy,sz,2|64);
 	DIRT_new_sparks(sx,sy,sz,2|128); // lots of sparks
 
-	DIRT_gust(0, sx, sz, sx + 200, sz);
-	DIRT_gust(0, sx, sz, sx - 200, sz);
-	DIRT_gust(0, sx, sz, sx, sz + 200);
-	DIRT_gust(0, sx, sz, sx, sz - 200);
+	//DIRT_gust(0, sx, sz, sx + 200, sz);
+	//DIRT_gust(0, sx, sz, sx - 200, sz);
+	//DIRT_gust(0, sx, sz, sx, sz + 200);
+	//DIRT_gust(0, sx, sz, sx, sz - 200);
+
+	//THING_INDEX p_index = BAT_create(
+	//	BAT_TYPE_BALROG,
+	//	sx,
+	//	sz,
+	//	8000);
 
 	create_shockwave(sx, sy, sz, 0x300, 500, owner);
 }

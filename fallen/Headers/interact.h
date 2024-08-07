@@ -13,7 +13,7 @@
 #define MAX_GAME_CHUNKS 5 //256
 #else
 #define MAX_ANIM_CHUNKS 16 //256
-#define MAX_GAME_CHUNKS 5 //256
+#define MAX_GAME_CHUNKS 6 //256
 #endif
 
 //

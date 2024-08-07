@@ -404,6 +404,7 @@ SLONG FC_get_person_body_part_target(Thing *p_thing)
 		case ACTION_DEAD:
 		case ACTION_DYING:
 		case ACTION_ENTER_VEHICLE:
+		case ACTION_HANDSHAKE:
 
 			return(CAM_AT_HEAD);
 
@@ -1053,7 +1054,7 @@ void FC_rotate_left(SLONG cam)
 
 	if (FC_allowed_to_rotate(fc, FC_ROTATE_DIR_LEFT))
 	{
-		fc->rotate = -0x600;
+		fc->rotate = -0x900;
 	}
 }
 
@@ -1163,7 +1164,7 @@ void FC_process()
 	
 	FC_Cam *fc;
 
-	for (cam = 0; cam < FC_MAX_CAMS; cam++)
+ 	for (cam = 0; cam < FC_MAX_CAMS; cam++)
 	{
 		fc = &FC_cam[cam];
 

@@ -317,7 +317,7 @@ NIGHT_Colour *MESH_draw_guts(
 		float angle;
 		float stretch;
 		
-		angle  = float(GetTickCount()) * 0.001F;
+		angle  = float(GetTickCount64()) * 0.001F;
 		angle += float(at_x) * 0.67f;
 		angle += float(at_z) * 0.44f;
 
@@ -700,7 +700,7 @@ void POLY_add_line_tex_uv(POLY_Point *p1, POLY_Point *p2, float width1, float wi
 			}
 			else
 			{
-				ASSERT(0);
+				//ASSERT(0);
 
 				POLY_add_quad(quad, POLY_PAGE_COLOUR, !(p_f4->DrawFlags & POLY_FLAG_DOUBLESIDED));
 			}

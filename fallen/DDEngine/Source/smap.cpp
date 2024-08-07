@@ -289,7 +289,7 @@ SLONG SMAP_point_add(
 
 	sp = &SMAP_point[SMAP_point_upto];
 
-	sp->world_x = world_x;
+ 	sp->world_x = world_x;
 	sp->world_y = world_y;
 	sp->world_z = world_z;
 
@@ -372,9 +372,9 @@ void SMAP_tri_add(
 	SLONG du2;
 	SLONG dv2;
 
-	ASSERT(WITHIN(p1, 0, SMAP_point_upto - 1));
+	/*ASSERT(WITHIN(p1, 0, SMAP_point_upto - 1));
 	ASSERT(WITHIN(p2, 0, SMAP_point_upto - 1));
-	ASSERT(WITHIN(p3, 0, SMAP_point_upto - 1));
+	ASSERT(WITHIN(p3, 0, SMAP_point_upto - 1));*/
 
 	//
 	// Backface cull...

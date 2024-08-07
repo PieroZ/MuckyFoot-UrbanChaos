@@ -54,7 +54,8 @@ void Interface::SetupInterfaceDefaults(void)
 #endif
 	SetPalette(InterfacePalette);
 
-   	ContentColourBr	=	FindColour(InterfacePalette,0,0,0);
+   	//ContentColourBr	=	FindColour(InterfacePalette,0,0,0);
+	ContentColourBr	=	FindColour(InterfacePalette,115+20,128+20,156+20);
    	//ContentColourBr	=	FindColour(InterfacePalette,0,0,0);
    	//ContentColour	=	FindColour(InterfacePalette,255,0,0);
    	ContentColour	=	FindColour(InterfacePalette,115,128,156);

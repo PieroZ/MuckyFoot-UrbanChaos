@@ -286,6 +286,8 @@ void BARREL_convert_stationary_to_moving(Thing *p_barrel)
 	}
 }
 
+#include "PersonPZI.h"
+
 void BARREL_convert_moving_to_stationary(Thing *p_barrel)
 {
 	ASSERT(p_barrel->Class == CLASS_BARREL);
@@ -294,6 +296,8 @@ void BARREL_convert_moving_to_stationary(Thing *p_barrel)
 	BARREL_Sphere *bs;
 
 	BARREL_spheres_give(bb->bs);
+	
+	//lighting_strike_person(p_barrel);
 
 	bb->bs    = 0;
 	bb->on    = 0;
@@ -1502,7 +1506,7 @@ UWORD BARREL_alloc(
 	}
 }
 
-/*
+
 
 void BARREL_position_on_hands(Thing *p_barrel, Thing *p_person)
 {
@@ -1683,11 +1687,17 @@ void BARREL_throw(Thing *p_barrel)
 	BARREL_Sphere *bs1 = &BARREL_sphere[p_barrel->Genus.Barrel->bs + 0];
 	BARREL_Sphere *bs2 = &BARREL_sphere[p_barrel->Genus.Barrel->bs + 1];
 
-	bs1->dy += 0x1000;
-	bs2->dy += 0x1000;
+	bs1->dx += 0x4000;
+	bs1->dy -= 0x4000;
+	bs1->dz -= 0x4000;
+
+	//bs1->dx = 0;
+	//bs1->dy = (Random() & 0xff)*5;
+	//bs1->dz = 0;
+	//bs2->dy += 0x1000;
 }
 
-*/
+
 
 #ifndef PSX
 GameCoord BARREL_fire_pos(Thing *p_barrel)

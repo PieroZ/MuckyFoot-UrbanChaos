@@ -891,6 +891,7 @@
     <ClCompile Include="sedit\Source\sedit.cpp" />
     <ClCompile Include="Source\DebugVars.cpp" />
     <ClCompile Include="Source\AllToAnmConverter.cpp" />
+    <ClCompile Include="Source\PersonPZI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\america.h">
@@ -1751,6 +1752,7 @@
     <ClInclude Include="sedit\Headers\es.h" />
     <ClInclude Include="Source\DebugVars.h" />
     <ClInclude Include="Headers\AllToAnmConverter.h" />
+    <ClInclude Include="Source\PersonPZI.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="DDLibrary\bitmap1.bmp">

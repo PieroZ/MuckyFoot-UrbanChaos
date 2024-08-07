@@ -1534,7 +1534,8 @@ void	load_keyframes_from_all(struct	KeyFrameChunk* the_chunk, Anim*& AnimList, i
 
 	load_frame_numbers(the_chunk->VUEName, frame_id, 4500);
 
-	load_anim_system(&game_chunk[0], "darci1.all");
+	load_anim_system(&game_chunk[0], the_chunk->VUEName);
+	the_chunk->ElementCount = game_chunk[0].ElementCount;
 
 	TRACE("So far so good?\n");
 
@@ -1862,6 +1863,134 @@ extern	SLONG read_multi_asc(CBYTE *asc_name,UBYTE flag,float scale);
 
 }
 
+
+void	load_key_frame_chunks_pzi_ver(KeyFrameChunk* the_chunk_reborn, CBYTE* all_name, float scale, Anim*& AnimList, int& animCount)
+{
+	SLONG		c0 =0;
+	SLONG		ele_count = 0;
+
+
+	x_centre = 0;
+	y_centre = 0;
+	z_centre = 0;
+
+	the_chunk_reborn->KeyFrameCount = 0;
+	//strcpy(the_chunk_reborn->ALLName, "Data\\");
+	//strcat(the_chunk_reborn->ALLName, all_name);
+
+	//strcpy(the_chunk_reborn->ALLName, "Data\\");
+	strcat(the_chunk_reborn->ALLName, all_name);
+	//strcpy(the_chunk_reborn->ASCName, "Data\\roper.sex");
+	strcpy(the_chunk_reborn->ASCName, all_name);
+	strcpy(the_chunk_reborn->ANMName, the_chunk_reborn->ALLName);
+	strcpy(the_chunk_reborn->VUEName, the_chunk_reborn->ALLName);
+
+
+	//ele_count = load_anim_mesh(the_chunk_reborn->ASCName, scale);
+
+	//while (the_chunk_reborn->ASCName[c0] != '.' && the_chunk_reborn->ASCName[c0] != 0)c0++;
+	//if (the_chunk_reborn->ASCName[c0] == '.')
+	//{
+	//	the_chunk_reborn->ASCName[c0 + 1] = 'A';
+	//	the_chunk_reborn->ASCName[c0 + 2] = 'S';
+	//	the_chunk_reborn->ASCName[c0 + 3] = 'C';
+	//	the_chunk_reborn->ASCName[c0 + 4] = 0;
+	//}
+	//ele_count = load_anim_mesh(the_chunk_reborn->ASCName, scale);
+	//load_keyframes_from_all(the_chunk_reborn, AnimList, animCount);
+
+	if (1)
+	{
+		c0 = 0;
+		while (the_chunk_reborn->ASCName[c0] != '.' && the_chunk_reborn->ASCName[c0] != 0)c0++;
+		if (the_chunk_reborn->ASCName[c0] == '.')
+		{
+			the_chunk_reborn->ASCName[c0 + 1] = 'A';
+			the_chunk_reborn->ASCName[c0 + 2] = 'S';
+			the_chunk_reborn->ASCName[c0 + 3] = 'C';
+			the_chunk_reborn->ASCName[c0 + 4] = 0;
+
+			the_chunk_reborn->ANMName[c0 + 1] = 'A';
+			the_chunk_reborn->ANMName[c0 + 2] = 'N';
+			the_chunk_reborn->ANMName[c0 + 3] = 'M';
+			the_chunk_reborn->ANMName[c0 + 4] = 0;
+
+			the_chunk_reborn->VUEName[c0 + 1] = 'V';
+			the_chunk_reborn->VUEName[c0 + 2] = 'U';
+			the_chunk_reborn->VUEName[c0 + 3] = 'E';
+			the_chunk_reborn->VUEName[c0 + 4] = 0;
+		}
+		the_chunk_reborn->MultiObject = next_prim_multi_object;
+		//ele_count = load_anim_mesh(the_chunk_reborn->ASCName, scale);
+		//if (ele_count)
+		//{
+		//	SLONG	ret = 1, count = 0;
+
+		//	while (ret)
+		//	{
+		//		SLONG	in;
+
+		//		in = '1' + count;
+		//		the_chunk_reborn->ASCName[5] = in;
+		//		ret = load_anim_mesh(the_chunk_reborn->ASCName, scale);
+		//		count++;
+		//	}
+		//}
+
+
+		if (1)
+		{
+			//		if(ele_count>15)
+			//			ele_count=15;
+			//md change
+			//		the_chunk_reborn->ElementCount	=	prim_multi_objects[the_chunk_reborn->MultiObject].EndObject-prim_multi_objects[the_chunk_reborn->MultiObject].StartObject;
+			//the_chunk_reborn->ElementCount = ele_count; //prim_multi_objects[the_chunk_reborn->MultiObject].EndObject-prim_multi_objects[the_chunk_reborn->MultiObject].StartObject;
+			//LogText(" element count %d \n", the_chunk_reborn->ElementCount);
+
+			// Fudgy bit for centering.
+			//{
+			//	SLONG	multi;
+			//	extern SLONG		x_centre,
+			//		y_centre,
+			//		z_centre;
+			//	SLONG				c1,
+			//		sp, ep;
+			//	struct PrimObject* p_obj;
+
+			//	LogText("SIZE edutils   center %d %d %d \n", x_centre, y_centre, z_centre);
+
+
+			//	for (multi = the_chunk_reborn->MultiObjectStart; multi <= the_chunk_reborn->MultiObjectEnd; multi++)
+			//		for (c0 = prim_multi_objects[multi].StartObject; c0 < prim_multi_objects[multi].EndObject; c0++)
+			//		{
+			//			p_obj = &prim_objects[c0];
+			//			sp = p_obj->StartPoint;
+			//			ep = p_obj->EndPoint;
+
+			//			for (c1 = sp; c1 < ep; c1++)
+			//			{
+			//				prim_points[c1].X -= x_centre;
+			//				prim_points[c1].Y -= y_centre;
+			//				prim_points[c1].Z -= z_centre;
+			//			}
+			//		}
+			//}
+
+			load_keyframes_from_all(the_chunk_reborn, AnimList, animCount);
+
+			the_chunk_reborn->MultiObjectEnd = next_prim_multi_object;
+			the_chunk_reborn->MultiObjectStart = the_chunk_reborn->MultiObject;
+			//load_multi_vue(the_chunk_reborn, scale);
+#ifdef	EDITOR
+			/*extern	void	load_chunk_texture_info(KeyFrameChunk * the_chunk_reborn);
+			load_chunk_texture_info(the_chunk_reborn);*/
+#endif
+		}
+	}
+}
+
+
+
 void	load_key_frame_chunks(KeyFrameChunk *the_chunk,CBYTE *vue_name,float scale, Anim*& AnimList, int& animCount)
 {
 	SLONG		c0;
@@ -1947,8 +2076,8 @@ struct PrimObject	*p_obj;
 			}
 		}				
 
-		load_keyframes_from_all(the_chunk, AnimList, animCount);
-		//load_multi_vue(the_chunk,scale);
+		//load_keyframes_from_all(the_chunk, AnimList, animCount);
+		load_multi_vue(the_chunk,scale);
 #ifdef	EDITOR
 extern	void	load_chunk_texture_info(KeyFrameChunk *the_chunk);
 		load_chunk_texture_info(the_chunk);

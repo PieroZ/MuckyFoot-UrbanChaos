@@ -656,6 +656,8 @@
 #define	ANIM_WALK_STOP_CARRY_V			(ANIM_END+35)
 #define ANIM_HANDS_UP_LIE				(ANIM_END+36)
 
+#define ANIM_PZI_TEST					299
+
 
 /* old
 #define	ANIM_RUN					(1)
@@ -738,6 +740,7 @@
 #define ACTION_HUG_LEFT				(49)
 #define ACTION_HUG_RIGHT			(50)
 #define ACTION_UNSIT				(51)
+#define ACTION_HANDSHAKE			(52)
 
 
 #define SUB_OBJECT_PELVIS			(0)

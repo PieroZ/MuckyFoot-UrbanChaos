@@ -1594,9 +1594,9 @@ SLONG read_sex(CBYTE *fname, SLONG scale /* Ignored */, SLONG offset)
 			
 			SWAP_FL(y,z);
 
-			pivot_x = (x * GAME_SCALE) / GAME_SCALE_DIV;
-			pivot_y = (y * GAME_SCALE) / GAME_SCALE_DIV;
-			pivot_z = (z * GAME_SCALE) / GAME_SCALE_DIV;
+			//pivot_x = (x * GAME_SCALE) / GAME_SCALE_DIV;
+			//pivot_y = (y * GAME_SCALE) / GAME_SCALE_DIV;
+			//pivot_z = (z * GAME_SCALE) / GAME_SCALE_DIV;
 
 			num_pivots += 1;
 
@@ -2446,6 +2446,27 @@ SLONG read_multi_sex(CBYTE *fname,float shrink)
 			prim_faces3[next_prim_face3].Points[0] = base_v + p3;	// 3 2 1... backwards!
 			prim_faces3[next_prim_face3].Points[1] = base_v + p2;
 			prim_faces3[next_prim_face3].Points[2] = base_v + p1;
+
+
+			//prim_faces3[next_prim_face3].Points[0] = base_v + p3;	// 3 2 1... backwards!
+			//prim_faces3[next_prim_face3].Points[1] = base_v + p1;
+			//prim_faces3[next_prim_face3].Points[2] = base_v + p2;
+
+			//prim_faces3[next_prim_face3].Points[0] = base_v + p2;	// 3 2 1... backwards!
+			//prim_faces3[next_prim_face3].Points[1] = base_v + p3;
+			//prim_faces3[next_prim_face3].Points[2] = base_v + p1;
+
+			//prim_faces3[next_prim_face3].Points[0] = base_v + p2;	// 3 2 1... backwards!
+			//prim_faces3[next_prim_face3].Points[1] = base_v + p1;
+			//prim_faces3[next_prim_face3].Points[2] = base_v + p3;
+
+			//prim_faces3[next_prim_face3].Points[0] = base_v + p1;	// 3 2 1... backwards!
+			//prim_faces3[next_prim_face3].Points[1] = base_v + p3;
+			//prim_faces3[next_prim_face3].Points[2] = base_v + p2;
+
+			//prim_faces3[next_prim_face3].Points[0] = base_v + p1;	// 3 2 1... backwards!
+			//prim_faces3[next_prim_face3].Points[1] = base_v + p2;
+			//prim_faces3[next_prim_face3].Points[2] = base_v + p3;
 
 			prim_faces3[next_prim_face3].TexturePage = mat[m].texture_page;
 			prim_faces3[next_prim_face3].DrawFlags   = POLY_GT;

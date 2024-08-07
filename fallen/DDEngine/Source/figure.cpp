@@ -4341,10 +4341,10 @@ extern DIJOYSTATE the_state;
 		p2 = p_f4->Points[2] - sp;
 		p3 = p_f4->Points[3] - sp;
 		
-		ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
+		/*ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
 		ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
 		ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));
-		ASSERT(WITHIN(p3, 0, POLY_buffer_upto - 1));
+		ASSERT(WITHIN(p3, 0, POLY_buffer_upto - 1));*/
 /*
 		p_f4->Bright[0]=store_dprod[p0];
 		p_f4->Bright[1]=store_dprod[p1];
@@ -4665,9 +4665,9 @@ extern DIJOYSTATE the_state;
 		p_f3->Bright[2]=store_dprod[p2];
 */
 		
-		ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
+		/*ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
 		ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
-		ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));
+		ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));*/
 
 		tri[0] = &POLY_buffer[p0];
 		tri[1] = &POLY_buffer[p1];

@@ -14,6 +14,7 @@
 #define	ANIM_TYPE_ROPER		1
 #define	ANIM_TYPE_ROPER2	2
 #define	ANIM_TYPE_CIV		3
+#define	ANIM_TYPE_PZI		4
 //#define	ANIM_TYPE_VAN		5
 
 /*
@@ -331,6 +332,7 @@ void	set_person_draw_gun(Thing *p_person);
 void	set_person_shoot(Thing *p_person,UWORD shoot_target);
 void	set_person_gun_away(Thing *p_person);
 void	set_person_flip(Thing *p_person,SLONG dir);
+void	set_person_liukang_kick(Thing *p_person);
 void	set_person_idle(Thing *p_person);
 SLONG	set_person_punch(Thing *p_person);	// Automatically slashes if you have a knife out
 SLONG	set_person_kick(Thing *p_person);
@@ -360,6 +362,7 @@ void	set_person_circle(Thing *p_person, Thing *p_target);	// Makes the person ci
 void	general_process_person(Thing *p_person);
 void	set_person_dead_normal(Thing *p_thing,Thing *p_aggressor,SLONG death_type,SLONG anim);
 SLONG   set_person_land_on_fence(Thing *p_person,SLONG wall,SLONG set_pos,SLONG while_walking=0);
+SLONG	set_person_kick_off_wall(Thing* p_person, SLONG col, SLONG set_pos);
 
 //
 // Makes a person start/stop floating...

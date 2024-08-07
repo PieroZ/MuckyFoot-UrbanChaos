@@ -112,6 +112,8 @@ extern	SLONG person_has_gun_out(Thing *p_person);
 extern	void	set_person_hug_wall_dir(Thing *p_person,SLONG dir);
 extern	void	set_person_arrest(Thing *p_person,SLONG index);
 extern	void	set_person_draw_special(Thing *p_person);
+extern	void	set_person_liukang_kick(Thing *p_person);
+extern	SLONG	set_person_kick_off_wall(Thing* p_person, SLONG col, SLONG set_pos);
 extern	SLONG set_person_kick_dir(Thing *p_person,SLONG dir);
 extern	void	set_person_fight_idle(Thing *p_person);
 extern	void	set_person_fight_anim(Thing *p_person,SLONG anim);
@@ -177,7 +179,7 @@ void	player_apply_move_analgue(Thing *p_thing,ULONG input);
 #ifndef PSX
 UBYTE	joypad_button_use[16];
 #ifndef TARGET_DC
-UBYTE	keybrd_button_use[17];
+UBYTE	keybrd_button_use[18];
 #endif
 
 
@@ -356,6 +358,7 @@ void	init_joypad_config(void)
 	keybrd_button_use[JOYPAD_BUTTON_1STPERSON]	= ENV_get_value_number("keyboard_1stperson", 30, "Keyboard");
 	// ADDED BY PZI
 	keybrd_button_use[KEYBRD_BUTTON_TEST]	= ENV_get_value_number("keyboard_test", 25, "Keyboard");
+	keybrd_button_use[KEYBRD_HANDSHAKE]	= ENV_get_value_number("handshake", 49, "Keyboard"); // n
 #endif
 
 }
@@ -400,6 +403,7 @@ struct	ActionInfo	action_idle[]=
 	{ACTION_STANDING_JUMP,0,INPUT_MASK_JUMP},
 	{ACTION_FIGHT_PUNCH,0,INPUT_MASK_PUNCH},
 	{ACTION_FIGHT_KICK,0,INPUT_MASK_KICK},	
+	{ACTION_HANDSHAKE,0,INPUT_MASK_HANDSHAKE},
 //	{ACTION_DRAW_SPECIAL,0,INPUT_MASK_SELECT},
 
 //	{ACTION_STEP_LEFT,INPUT_MASK_STEP_LEFT},
@@ -510,6 +514,7 @@ struct ActionInfo	action_run_jump[]=
 
 struct ActionInfo	action_fight[]=
 {
+	{ACTION_HANDSHAKE,0,INPUT_MASK_HANDSHAKE},
 	{ACTION_KICK_FLAG,0,INPUT_MASK_KICK},
 	{ACTION_PUNCH_FLAG,0,INPUT_MASK_PUNCH},
 	{ACTION_BLOCK_FLAG,0,INPUT_MASK_ACTION},
@@ -1215,6 +1220,16 @@ ULONG do_the_thing(Thing* p_thing, ULONG input)
 {
 	//set_anim(p_thing, 140);
 	BAT_set_anim_test(p_thing, 3);
+	return INPUT_MASK_TEST;
+}
+
+ULONG do_the_handshake_anim(Thing* p_thing, ULONG input)
+{
+	set_anim(p_thing, 299);
+//	p_thing->Genus.Person->Flags |= (FLAG_PERSON_NON_INT_M | FLAG_PERSON_NON_INT_C);
+
+
+	//BAT_set_anim_test(p_thing, 3);
 	return INPUT_MASK_TEST;
 }
 
@@ -2056,7 +2071,7 @@ extern	UBYTE	is_semtex;
 
 		SLONG	angle;
 
-		/*
+		
 		if (THING_find_nearest(
 				p_thing->WorldPos.X >> 8,
 				p_thing->WorldPos.Y >> 8,
@@ -2068,7 +2083,7 @@ extern	UBYTE	is_semtex;
 
 			return INPUT_MASK_ACTION;
 		}
-		*/
+		
 		if(p_thing->SubState!=SUB_STATE_IDLE_CROUTCH &&p_thing->SubState!=SUB_STATE_IDLE_CROUTCHING)
 		if(angle=can_i_hug_wall(p_thing))
 		{
@@ -3330,7 +3345,7 @@ SLONG	player_turn_left_right(Thing *p_thing,SLONG input)
 
 #ifdef DEBUG
 	// Sanity checks.
-	if (input & INPUT_MASK_LEFT)
+	/*if (input & INPUT_MASK_LEFT)
 	{
 		ASSERT ( wTurn <= 0 );
 	}
@@ -3341,7 +3356,7 @@ SLONG	player_turn_left_right(Thing *p_thing,SLONG input)
 	else
 	{
 		ASSERT ( wTurn == 0 );
-	}
+	}*/
 #endif
 
 	// Scale by frame rate.
@@ -4056,7 +4071,7 @@ void	locked_anim_change(Thing *p_person,UWORD locked_object,UWORD anim,SLONG	dan
 			{
 
 				case	STATE_MOVEING:	
-					switch(p_thing->SubState)
+ 					switch(p_thing->SubState)
 					{
 						case	SUB_STATE_CRAWLING:
 							set_person_idle_croutch(p_thing);
@@ -4293,10 +4308,10 @@ void person_enter_fight_mode(Thing *p_person)
 //
 
 //persumably this will be aplied to a darci or a roper
-ULONG	apply_button_input(struct Thing *p_player,struct Thing *p_person,ULONG input)
+ULONG	old_apply_button_input(struct Thing* p_player, struct Thing* p_person, ULONG input)
 {
-	ULONG	input_used=0;
-	ULONG	processed=0;
+	ULONG	input_used = 0;
+	ULONG	processed = 0;
 
 
 	/*
@@ -4310,6 +4325,533 @@ ULONG	apply_button_input(struct Thing *p_player,struct Thing *p_person,ULONG inp
 	}
 
 	*/
+#ifndef PSX
+#ifndef TARGET_DC
+
+	if (p_person->Genus.Person->Mode == PERSON_MODE_FIGHT)
+	{
+		//
+		// Tell the player he is in fight mode.
+		//
+
+		CONSOLE_text_at(400, 400, 50, "Fight mode");
+	}
+#endif
+#endif
+	/*
+		if(input&INPUT_MASK_MODE_CHANGE)
+		{
+			person_change_mode(p_person);
+
+			processed |= INPUT_MASK_MODE_CHANGE;
+		}
+	*/
+
+	if (input & INPUT_MASK_HANDSHAKE)
+	{
+		processed |= do_the_handshake_anim(p_person, input);
+		input &= ~processed;
+	}
+
+	if (input & INPUT_MASK_TEST)
+	{
+		processed |= do_the_thing(p_person, input);
+		input &= ~processed;
+	}
+
+	if (input & INPUT_MASK_ACTION)
+	{
+		//
+		// Do an action!
+		//
+
+		//
+		// Mark you don't understand, you should go through the action tree
+		// idle should have an action button reference to do_an_action
+		// so should lots of things, but should everything, if everything should then this is
+		// the right way to do it.
+		//
+
+		//
+		// You wrote this code, Mike. I only added to it.
+		//
+
+		processed |= do_an_action(p_person, input);
+		input &= ~processed;
+
+	}
+	else
+	{
+		//
+		// no action
+		//
+
+		//
+		// only sprint while you hold the action button 
+		//
+//		if(p_person->Genus.Person->Mode==PERSON_MODE_SPRINT)
+
+		// skanky roper always-run bodge:
+
+/*
+		if (p_person->Genus.Person->AnimType==ANIM_TYPE_ROPER)
+		{
+			if (p_person->Genus.Person->Mode==PERSON_MODE_RUN)
+				p_person->Genus.Person->Mode=PERSON_MODE_SPRINT;
+		}
+		else
+*/
+		{
+			if (p_person->Genus.Person->Mode == PERSON_MODE_SPRINT)
+				p_person->Genus.Person->Mode = PERSON_MODE_RUN;
+		}
+		/*
+				if(p_person->Genus.Person->InsideIndex)
+				{
+					//
+					// your inside so walk unless actioning
+					//
+					if(p_person->Genus.Person->Mode==PERSON_MODE_RUN)
+						p_person->Genus.Person->Mode=PERSON_MODE_WALK;
+				}
+		*/
+		if (p_person->SubState == SUB_STATE_IDLE_CROUTCHING)
+		{
+			MSG_add("no action so stand up");
+			//			set_person_idle(p_person);
+			set_person_idle_uncroutch(p_person); //locked to left foot, like the idle to croutch anim
+
+		}
+	}
+
+
+	if (p_person->State == STATE_CARRY)
+	{
+		if (p_person->SubState == SUB_STATE_PICKUP_CARRY ||
+			p_person->SubState == SUB_STATE_DROP_CARRY)
+		{
+			//
+			// Don't do anything while picking somebody up or down...
+			//
+
+			return processed | input_used;
+		}
+	}
+
+	//record last five inputs and times, so we can 
+	if (input && (p_person->State != STATE_CARRY)) //&INPUT_ACTION_MASK)
+	{
+		SLONG	new_action;
+
+		new_action = find_best_action_from_tree(p_person->Genus.Person->Action, input, &input_used);
+		//		if(new_action)
+		//			MSG_add(" new action %d old action %d input\n",new_action,p_person->Genus.Person->Action);
+
+		switch (new_action)
+		{
+			case	ACTION_KICK_FLAG:
+				p_person->Genus.Person->Flags |= FLAG_PERSON_REQUEST_KICK;
+				break;
+			case	ACTION_PUNCH_FLAG:
+				p_person->Genus.Person->Flags |= FLAG_PERSON_REQUEST_PUNCH;
+				break;
+			case	ACTION_BLOCK_FLAG:
+				p_person->Genus.Person->Flags |= FLAG_PERSON_REQUEST_BLOCK;
+				break;
+			case	ACTION_JUMP_FLAG:
+				p_person->Genus.Person->Flags |= FLAG_PERSON_REQUEST_JUMP;
+				break;
+			case	ACTION_HUG_LEFT:
+				if (p_person->SubState != SUB_STATE_HUG_WALL_STEP_RIGHT && p_person->SubState != SUB_STATE_HUG_WALL_LOOK_L && p_person->SubState != SUB_STATE_HUG_WALL_TURN && p_person->SubState != SUB_STATE_HUG_WALL_LEAP_OUT)
+					set_person_hug_wall_dir(p_person, 0);
+				input_used = 0;
+				break;
+			case	ACTION_HUG_RIGHT:
+				if (p_person->SubState != SUB_STATE_HUG_WALL_STEP_LEFT && p_person->SubState != SUB_STATE_HUG_WALL_LOOK_R && p_person->SubState != SUB_STATE_HUG_WALL_TURN && p_person->SubState != SUB_STATE_HUG_WALL_LEAP_OUT)
+					set_person_hug_wall_dir(p_person, 1);
+				input_used = 0;
+				break;
+			case	ACTION_UNSIT:
+				void set_person_unsit(Thing * p_person);
+				set_person_unsit(p_person);
+				break;
+
+
+			case	ACTION_FLIP_LEFT:
+				if (p_person->Genus.Person->Action == ACTION_STANDING_JUMP)
+				{
+					if (p_person->Draw.Tweened->FrameIndex < 3)
+						set_person_flip(p_person, 0);
+				}
+				else
+					set_person_flip(p_person, 0);
+				input_used = 0;
+				break;
+			case	ACTION_FLIP_RIGHT:
+				//				if(p_person->Action==ACTION_STANDING_JUMP)
+				if (p_person->Genus.Person->Action == ACTION_STANDING_JUMP)
+				{
+					if (p_person->Draw.Tweened->FrameIndex < 3)
+						set_person_flip(p_person, 1);
+				}
+				else
+					set_person_flip(p_person, 1);
+				input_used = 0;
+				break;
+			case	ACTION_SHOOT:
+				if (p_person->Genus.Person->Action == ACTION_SHOOT)
+				{
+					/*
+
+					//
+					// Only the pistol animation can be interrupted so you
+					// can shoot again.
+					//
+
+					if (p_person->Genus.Person->Flags & FLAG_PERSON_GUN_OUT)
+					{
+						set_player_shoot(p_person,0);
+						processed|=input_used; //needs a clear click
+					}
+
+					*/
+				}
+				else
+				{
+					//					if(person_has_gun_out(p_person))
+					{
+						set_player_shoot(p_person, 0);
+
+						processed |= input_used; //needs a clear click
+					}
+				}
+				break;
+			case	ACTION_GUN_AWAY:
+				set_person_gun_away(p_person);
+				processed |= input_used; //nedds a clear click 
+				break;
+			case	ACTION_RESPAWN:
+				//				set_person_alive_alive_o(p_person);
+				processed |= input_used;
+				break;
+			case	ACTION_DROP_DOWN:
+				if (p_person->Genus.Person->Action == ACTION_DEATH_SLIDE)
+				{
+					MFX_stop(THING_NUMBER(p_person), S_ZIPWIRE);
+					set_person_drop_down(p_person, PERSON_DROP_DOWN_OFF_FACE);
+					p_person->Velocity = 0;
+				}
+				else
+				{
+					set_person_drop_down(p_person, PERSON_DROP_DOWN_OFF_FACE);
+				}
+				break;
+		}
+
+		if (!(p_person->Genus.Person->Flags & (FLAG_PERSON_NON_INT_M | FLAG_PERSON_NON_INT_C)))
+		{
+			switch (new_action)
+			{
+
+				case	ACTION_SKID:
+					if (p_person->SubState != SUB_STATE_RUNNING_SKID_STOP)
+						if (p_person->SubState != SUB_STATE_RUNNING_JUMP_LAND_FAST)
+							if (p_person->Velocity > 25)
+							{
+								set_anim(p_person, ANIM_SLIDER_START);
+								p_person->SubState = SUB_STATE_RUNNING_SKID_STOP;
+								if (!(p_person->Genus.Person->Flags & FLAG_PERSON_SLIDING))
+								{
+#ifndef PSX
+									MFX_play_thing(THING_NUMBER(p_person), S_SLIDE_START, MFX_LOOPED, p_person);
+#else
+									MFX_play_thing(THING_NUMBER(p_person), S_SLIDE_START, MFX_LOOPED | MFX_FLAG_SLIDER, p_person);
+#endif
+									p_person->Genus.Person->Flags |= FLAG_PERSON_SLIDING;
+								}
+							}
+
+
+					break;
+				case	ACTION_STANDING_JUMP:
+
+					if (should_i_jump(p_person))
+					{
+						if (input & INPUT_MASK_FORWARDS)
+							set_person_standing_jump_forwards(p_person);
+						else
+							if ((input & INPUT_MASK_BACKWARDS) && should_person_backflip(p_person))
+								set_person_standing_jump_backwards(p_person);
+							else
+								if (input & INPUT_MASK_LEFT)
+									set_person_flip(p_person, 0);
+								else
+									if (input & INPUT_MASK_RIGHT)
+										set_person_flip(p_person, 1);
+									else
+										set_person_standing_jump(p_person);
+					}
+					else
+					{
+						//
+						// Only flipping allowed?
+						//
+
+						if (input & INPUT_MASK_LEFT)
+							set_person_flip(p_person, 0);
+						else
+							if (input & INPUT_MASK_RIGHT)
+								set_person_flip(p_person, 1);
+					}
+
+					break;
+				case	ACTION_RUNNING_JUMP:
+					//				LogText(" start running jump \n");
+					if (p_person->SubState == SUB_STATE_RUNNING_SKID_STOP)
+					{
+						p_person->Genus.Person->Flags &= ~FLAG_PERSON_SLIDING;
+						MFX_stop(THING_NUMBER(p_person), S_SLIDE_START);
+					}
+					if (should_i_jump(p_person))
+					{
+						set_person_running_jump(p_person);
+					}
+					break;
+				case	ACTION_TRAVERSE_LEFT:
+					set_person_traverse(p_person, 0);
+					break;
+				case	ACTION_TRAVERSE_RIGHT:
+					set_person_traverse(p_person, 1);
+					break;
+				case	ACTION_PULL_UP:
+					//				LogText(" set person pulling up \n");
+					set_person_pulling_up(p_person);
+					input_used = 0;
+					break;
+				case	ACTION_FIGHT_KICK:
+					//				MSG_add(" ACTION TREE KICK");
+					//				set_person_kick(p_person);
+					if (input & INPUT_MASK_BACKWARDS)
+					{
+						if (p_person->State != STATE_JUMPING)
+						{
+							//
+							// Kick Backwards
+							//
+							turn_to_target(
+								p_person,
+								FIND_DIR_BACK | FIND_DIR_DONT_TURN);
+
+							p_person->Genus.Person->Timer1 = 6;
+
+
+							set_person_kick_dir(p_person, 2);
+
+							person_enter_fight_mode(p_person);
+
+							processed |= INPUT_MASK_KICK | INPUT_MASK_BACKWARDS;
+						}
+					}
+					else
+					{
+						if (p_person->State != STATE_JUMPING)
+						{
+							if (turn_to_target_and_kick(p_person))
+							{
+								//
+								// Enter fight mode.
+								// 
+
+								person_enter_fight_mode(p_person);
+							}
+						}
+					}
+
+					//play_quick_wave(
+					//	p_person,
+					//	S_HIYAR,
+					//	WAVE_PLAY_INTERUPT);
+
+
+					break;
+				case	ACTION_FIGHT_PUNCH:
+					//				MSG_add(" ACTION TREE PUNCH");
+					//				set_player_punch(p_person);
+
+					if (person_has_gun_out(p_person))
+					{
+						//						set_person_idle(p_person);
+						set_person_shoot(p_person, 0);
+					}
+					else
+						if (!player_activate_in_hand(p_person))
+							if (turn_to_target_and_punch(p_person))
+								//					if (p_person->Genus.Person->UnderAttack)
+							{
+								//
+								// Enter fight mode.
+								// 
+
+								person_enter_fight_mode(p_person);
+							}
+
+					//play_quick_wave(
+					//	p_person,
+					//	S_HIYAR,
+					//	WAVE_PLAY_INTERUPT);
+
+
+					break;
+				case	ACTION_DRAW_SPECIAL:
+					set_person_draw_special(p_person);
+					processed |= input_used; //needs a clear click 
+					break;
+			}
+		}
+
+		//		LogText(" apply button input %d \n",input);
+
+				// for the action currently being performed
+				// does the action have any meaning
+
+				// if it does choose the best meaning and initiate it
+				// else ignore it.
+
+	}
+#ifndef PSX	
+	if ((input & INPUT_MOVEMENT_MASK) || (mouse_input && MouseDX))
+#else
+	if ((input & INPUT_MOVEMENT_MASK))
+#endif
+	{
+		//		LogText(" apply button input %d  state %d\n",input,p_person->State);
+		if (!(p_person->Genus.Person->Flags & FLAG_PERSON_NON_INT_M))
+		{
+			switch (p_person->State)
+			{
+				case	STATE_HIT_RECOIL:
+				case	STATE_CARRY:
+				case	STATE_HUG_WALL:
+				case	STATE_IDLE:
+				case	STATE_MOVEING:
+				case	STATE_GUN:
+				case	STATE_CLIMB_LADDER:
+				case	STATE_CLIMBING:
+				case	STATE_DANGLING:
+				case	STATE_JUMPING:
+					player_interface_move(p_person, input);
+					break;
+
+				case	STATE_GRAPPLING:
+
+					if (p_person->SubState == SUB_STATE_GRAPPLING_WINDUP)
+					{
+						//
+						// Only move while spinning the hook, not when throwing
+						// or picking it up.
+						//
+
+						player_interface_move(p_person, input);
+					}
+
+					break;
+				default:
+					break;
+			}
+		}
+		else
+		{
+			if (p_person->Genus.Person->Action == ACTION_SIT_BENCH)
+			{
+				if (input & (INPUT_MASK_FORWARDS | INPUT_MASK_MOVE))
+				{
+					input_used |= INPUT_MASK_FORWARDS | INPUT_MASK_MOVE;
+
+					set_person_idle(p_person);
+				}
+			}
+		}
+
+		//movement requested
+
+		// person may be in middle of kick, or falling, or jumping or standing still
+		//
+	}
+	else
+	{
+		if (!(p_person->Genus.Person->Flags & FLAG_PERSON_NON_INT_M))
+			switch (p_person->State)
+			{
+				case	STATE_IDLE:
+					player_turn_left_right(p_person, 0);
+					break;
+				case	STATE_MOVEING:
+					switch (p_person->SubState)
+					{
+						case	SUB_STATE_CRAWLING:
+							set_person_idle_croutch(p_person);
+							break;
+							//					case	SUB_STATE_HOP_BACK:
+							//						break;
+						default:
+							player_stop_move(p_person, input);
+					}
+
+					break;
+					/*
+								case	STATE_CLIMB_LADDER:
+									switch(p_person->SubState)
+									{
+										case	SUB_STATE_MOUNT_LADDER:
+											break;
+										case	SUB_STATE_STOPPING:
+										case	SUB_STATE_ON_LADDER:
+										case	SUB_STATE_CLIMB_UP_LADDER:
+										case	SUB_STATE_CLIMB_DOWN_LADDER:
+											player_stop_move(p_person,input);
+											break;
+									}
+					*/
+					/*
+									case	STATE_CLIMBING:
+									switch(p_person->SubState)
+									{
+										case	SUB_STATE_STOPPING:
+										case	SUB_STATE_CLIMB_UP_WALL:
+										case	SUB_STATE_CLIMB_AROUND_WALL:
+										case	SUB_STATE_CLIMB_DOWN_WALL:
+											player_stop_move(p_person,input);
+											break;
+									}
+									break;
+					*/
+				case	STATE_DANGLING:
+					switch (p_person->SubState)
+					{
+						case	SUB_STATE_STOPPING:
+						case	SUB_STATE_DANGLING_CABLE_FORWARD:
+						case	SUB_STATE_DANGLING_CABLE_BACKWARD:
+						case	SUB_STATE_DANGLING_CABLE:
+							player_stop_move(p_person, input);
+							break;
+					}
+					break;
+				default:
+					p_player->Genus.Player->Input = input;
+					break;
+			}
+	}
+	return(processed | input_used);
+}
+
+
+
+//persumably this will be aplied to a darci or a roper
+ULONG	apply_button_input(struct Thing *p_player,struct Thing *p_person,ULONG input)
+{
+	ULONG	input_used=0;
+	ULONG	processed=0;
+
 #ifndef PSX
 #ifndef TARGET_DC
 
@@ -4332,11 +4874,17 @@ ULONG	apply_button_input(struct Thing *p_player,struct Thing *p_person,ULONG inp
 	}
 */
 
-	if (input & INPUT_MASK_TEST)
-	{
-		processed |= do_the_thing(p_person, input);
-		input &= ~processed;
-	}
+	//if (input & INPUT_MASK_HANDSHAKE)
+	//{
+	//	processed |= do_the_handshake_anim(p_person, input);
+	//	input &= ~processed;
+	//}
+
+	//if (input & INPUT_MASK_TEST)
+	//{
+	//	processed |= do_the_thing(p_person, input);
+	//	input &= ~processed;
+	//}
 
 	if (input & INPUT_MASK_ACTION)
 	{
@@ -4422,7 +4970,7 @@ ULONG	apply_button_input(struct Thing *p_player,struct Thing *p_person,ULONG inp
 	{
 		SLONG	new_action;
 
- 		new_action=find_best_action_from_tree(p_person->Genus.Person->Action,input,&input_used);
+    		new_action=find_best_action_from_tree(p_person->Genus.Person->Action,input,&input_used);
 //		if(new_action)
 //			MSG_add(" new action %d old action %d input\n",new_action,p_person->Genus.Person->Action);
 
@@ -4684,6 +5232,13 @@ void set_person_unsit(Thing *p_person);
 				case	ACTION_DRAW_SPECIAL:
 					set_person_draw_special(p_person);
 					processed|=input_used; //needs a clear click 
+					break;
+				case	ACTION_HANDSHAKE:
+					set_person_liukang_kick(p_person);
+					//set_person_cut_fence(p_person);
+					//set_person_kick_off_wall(p_person,0,0);
+
+					//processed |= input_used; //needs a clear click 
 					break;
 			}
 		}
@@ -5122,7 +5677,11 @@ ULONG apply_button_input_fight(Thing *p_player, Thing *p_person, ULONG input)
 			else
 			{
 						//PANEL_new_text(NULL,4000,"ACTION jump kick");
-				set_person_fight_anim(p_person,ANIM_KICK_NS);
+				//set_generic_person_state_function(p_person, STATE_FIGHTING);
+				set_person_liukang_kick(p_person);
+ 				//set_person_fight_anim(p_person, ANIM_PZI_TEST);
+ 				//set_person_fight_anim(p_person,ANIM_KICK_NS);
+ 				//set_person_fight_anim(p_person, ANIM_PZI_TEST);
 			}
 
 			return(0);
@@ -7337,6 +7896,9 @@ extern SLONG Wadmenu_MuckyTime;
 		if(Keys[keybrd_button_use[JOYPAD_BUTTON_JUMP]])
 			input|=INPUT_MASK_JUMP;
 
+		if (Keys[keybrd_button_use[KEYBRD_HANDSHAKE]])
+			input |= INPUT_MASK_HANDSHAKE;
+
 		if(Keys[keybrd_button_use[JOYPAD_BUTTON_PUNCH]])
 		{
 			input|=INPUT_MASK_PUNCH;
@@ -7768,6 +8330,7 @@ void	process_hardware_level_input_for_player(Thing *p_player)
 
 
 	input = PACKET_DATA(p_player->Genus.Player->PlayerID);
+	TRACE("input = %lu\n", input);
 
 
 
@@ -8207,7 +8770,7 @@ void	process_hardware_level_input_for_player(Thing *p_player)
 	//
 	// Nice friendly bit of debug code...
 	//
-#ifndef	FINAL
+#ifdef	FINAL
 #ifndef TARGET_DC
 	if(Keys[KB_0])
 	{

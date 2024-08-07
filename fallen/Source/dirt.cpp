@@ -25,6 +25,7 @@
 #include "mfx.h"
 #include "pow.h"
 #include "mav.h"
+#include "grenade.h"
 
 #ifndef PSX
 #include    "..\DDLibrary\headers\D3DTexture.h"
@@ -136,6 +137,7 @@ SLONG DIRT_focus_first;
 
 SLONG DIRT_get_new_type(SLONG x, SLONG z)
 {
+	return DIRT_TYPE_CAN;
 	SLONG choice;
 
 	SLONG mx = x >> PAP_SHIFT_HI;
@@ -1894,6 +1896,8 @@ void DIRT_process(void)
 							// Make a can sound.
 							//
 
+
+							//CreateGrenadeExplosion(dd->x << 8, dd->y << 8, dd->z << 8, NULL);
 							MFX_play_xyz(i,S_KICK_CAN,MFX_REPLACE,dd->x<<8,dd->y<<8,dd->z<<8);
 
 							//
@@ -2184,6 +2188,7 @@ void DIRT_gust(
 
 						if (dd->type != DIRT_TYPE_BRASS)
 						{
+							CreateGrenadeExplosion(dd->x << 8, dd->y << 8, dd->z << 8, NULL);
 							MFX_play_xyz(i,S_KICK_CAN,MFX_REPLACE,dd->x<<8,dd->y<<8,dd->z<<8);
 //							MFX_play_xyz(i,S_DARCI_ARREST,MFX_REPLACE,dd->x<<8,dd->y<<8,dd->z<<8);
 
@@ -2907,7 +2912,8 @@ void DIRT_behead_person(Thing *p_person, Thing *p_attacker)
 	// This person doesn't have a head anymore.
 	//
 
-	//p_person->Genus.Person->Flags |= FLAG_PERSON_BEHEADED;
+	//p_person->Genus.Person->Flags |= FLAG_PERSON_
+	// BEHEADED;
 
 	#endif
 }

@@ -157,6 +157,8 @@ static	UWORD	local_object_flags=0;
 #define	CTRL_RE_CENTER_XZ_START		17
 
 #define	CTRL_MOVE_SEPARATELY		18
+// PZI
+#define	CTRL_LOAD_ALL		19
 
 
 #define	CTRL_ANIM_FRAME_SLIDER		1
@@ -227,7 +229,7 @@ ControlDef	kframe_def[]	=
 	{	BUTTON,			0,	"Re-Cen X&Z",	130,	305,	0,		0			},
 	{	BUTTON,			0,	"Re-Cen X&Z(Start)",	130,	290,	0,		0			},
 	{	CHECK_BOX,		0,	"Move Separately",		100,	265,		0,		0			},
-
+	{	BUTTON,			0,	"Load All File",	2,	CONTROLS_HEIGHT - (20 + KEY_FRAME_IMAGE_SIZE + 60),	0,						10			},
 	{	0															   				}
 };
 
@@ -934,6 +936,7 @@ void	KeyFrameEditor::HandleContentClick(UBYTE flags,MFPoint *clicked_point)
 		case	LEFT_CLICK:
 			if(AnimFrameRect.PointInRect(&local_point) && CurrentAnim[Bank]) 
 			{
+
 				//
 				// Left click on keyframe (on current playing animation) to drag and drop it somewhere
 				//
@@ -943,12 +946,14 @@ void	KeyFrameEditor::HandleContentClick(UBYTE flags,MFPoint *clicked_point)
 				if((first_frame+max_frames)>CurrentAnim[Bank]->GetFrameCount())
 					max_frames	=	(CurrentAnim[Bank]->GetFrameCount()-first_frame);
 				current_frame	=	CurrentAnim[Bank]->GetFrameList();
+
 				if(current_frame)
 				{
 					for(c0=0;c0<first_frame;c0++)
 					{
 						current_frame	=	current_frame->NextFrame;
 					}
+
 					for(c0=0;c0<max_frames&&current_frame;c0++)
 					{
 						WindowControls.SetControlDrawArea();
@@ -967,6 +972,7 @@ void	KeyFrameEditor::HandleContentClick(UBYTE flags,MFPoint *clicked_point)
 					}
 					if(selected_frame>=0)
 					{
+
 						SLONG	drop;
 						//
 						// drag frame out of actual editor window
@@ -974,6 +980,7 @@ void	KeyFrameEditor::HandleContentClick(UBYTE flags,MFPoint *clicked_point)
 
 						clicked_point->X-=300;
 						drop=DragAndDropFrame(selected_frame,frame_rect.GetLeft(),frame_rect.GetTop(),frame_rect.GetWidth(),frame_rect.GetHeight(),clicked_point,0);
+
 						if(drop==0||drop==1)
 						{
 							// drop =1 is back on itself
@@ -1751,12 +1758,12 @@ SLONG	KeyFrameEditor::HandleModuleKeys(void)
 			if(Keys[KB_MINUS])
 			{
 				update	=	1;
-				edit_fcol->Dist1-=4;
+				edit_fcol->Dist1-=1;
 			}
 			if(Keys[KB_PLUS])
 			{
 				update	=	1;
-				edit_fcol->Dist1+=4;
+				edit_fcol->Dist1+=1;
 			}
 			if(Keys[KB_LBRACE])
 			{
@@ -1781,22 +1788,22 @@ SLONG	KeyFrameEditor::HandleModuleKeys(void)
 			if(Keys[KB_LBRACE])
 			{
 				update	=	1;
-				edit_fcol->Angle-=4;
+				edit_fcol->Angle-=1;
 			}
 			if(Keys[KB_RBRACE])
 			{
 				update	=	1;
-				edit_fcol->Angle+=4;
+				edit_fcol->Angle+=1;
 			}
 			if(Keys[KB_MINUS])
 			{
 				update	=	1;
-				edit_fcol->Dist2-=4;
+				edit_fcol->Dist2-=1;
 			}
 			if(Keys[KB_PLUS])
 			{
 				update	=	1;
-				edit_fcol->Dist2+=4;
+				edit_fcol->Dist2+=1;
 			}
 		}
 		if(edit_fcol->Dist2<edit_fcol->Dist1+10)
@@ -2254,6 +2261,117 @@ void	KeyFrameEditor::HandleControl(ULONG control_id)
 	{
 		case	0:
 			break;
+		case	CTRL_LOAD_ALL:
+			fr = new FileRequester("DATA\\", "*.ALL", "Load a ALL file", ".ALL");
+			if (fr->Draw())
+			{
+				PersonID = 0;
+				set_default_people_types(test_chunk);
+
+				//	void	setup_anim_stuff(void);
+				//				setup_anim_stuff();
+
+				ClearAll(); //problem function because it should go after loading the sex file, so you know it exists
+
+				//	void	load_key_frame_chunks(KeyFrameChunk *the_chunk,CBYTE *vue_name);
+				{
+					float	shrink = 1.0;
+					//
+					// bodge ahoy
+					//
+					extern	SLONG	save_psx;
+					if (save_psx)
+					{
+						if (strcmp(fr->FileName, "balrog.VUE") == 0)
+							shrink = 4.0;
+						if (strcmp(fr->FileName, "gargoyle1.VUE") == 0)
+							shrink = 4.0;
+						if (strcmp(fr->FileName, "bane.VUE") == 0)
+							shrink = 4.0;
+					}
+
+
+	/*				TRACE("BEFORE MultiObjectStart: %hu\n", test_chunk->MultiObjectStart);
+					TRACE("MultiObjectEnd: %hu\n", test_chunk->MultiObjectEnd);*/
+					load_key_frame_chunks_pzi_ver(test_chunk, fr->FileName, shrink, AnimList[0], animCount);
+
+					/*TRACE("AFTER MultiObjectStart: %hu\n", test_chunk->MultiObjectStart);
+					TRACE("MultiObjectEnd: %hu\n", test_chunk->MultiObjectEnd);*/
+
+
+					load_recenter_flags(test_chunk->ANMName);
+				}
+
+				delete	fr;
+				RequestUpdate();
+
+				((CHSlider*)WindowControls.GetControlPtr(CTRL_FRAME_SLIDER))->SetValueRange(0, test_chunk->KeyFrameCount - 2);
+				LoadAllAnimsFromAllFile(test_chunk, animCount);
+				//LoadAllAnims(test_chunk);
+				LogText(" keyframe edit load \n");
+				LoadChunkTextureInfo(test_chunk);
+				if (the_key_list[0])
+				{
+					the_key_list[0]->TheAnim = AnimList[Bank];
+					if (AnimList[Bank])
+						((CHSlider*)the_key_list[0]->KeyControls.GetControlPtr(CTRL_KEY_SLIDER))->SetValueRange(0, the_key_list[0]->TheAnim->GetFrameCount() + 20);
+				}
+				SetPersonBits();
+				AnimTween[Bank] = 0;
+				CurrentFrame[Bank] = 0;
+				if (CurrentAnim[Bank])
+					((CHSlider*)AnimControls.GetControlPtr(CTRL_ANIM_TWEAK_SLIDER))->SetCurrentValue(CurrentAnim[Bank]->GetTweakSpeed());
+			}
+
+			//
+			// use re_center_flags
+			//
+			{
+
+				SLONG	dx, dy, dz, c0;
+				struct  KeyFrame* current_frame;
+				Anim* current_anim;
+				SLONG	index = 0;
+
+
+				if (AnimList[Bank])
+				{
+					current_anim = AnimList[Bank];
+					while (current_anim)
+					{
+						current_frame = current_anim->GetFrameListStart();
+						if (current_frame)
+						{
+							switch (re_center_flags[index])
+							{
+								case	RE_CENTER_NONE:
+									break;
+								case	RE_CENTER_ALL:
+									re_center_anim(current_frame, 1, 1);
+									break;
+
+								case	RE_CENTER_START:
+									re_center_anim(current_frame, 1, 0);
+									break;
+								case	RE_CENTER_END:
+									break;
+								case	RE_CENTER_XZ:
+									re_center_anim(current_frame, 0, 1);
+									break;
+								case	RE_CENTER_XZ_START:
+									re_center_anim(current_frame, 0, 0);
+									break;
+							}
+						}
+
+
+						index++;
+						current_anim = current_anim->GetNextAnim();
+					}
+				}
+			}
+			break;
+
 		case	CTRL_DRAW_BOTH:
 			if(DontDrawBoth)
 			{
@@ -2518,8 +2636,8 @@ extern	SLONG	save_psx;
 				RequestUpdate();
 
 				((CHSlider*)WindowControls.GetControlPtr(CTRL_FRAME_SLIDER))->SetValueRange(0,test_chunk->KeyFrameCount-2);
-				LoadAllAnimsFromAllFile(test_chunk, animCount);
-				//LoadAllAnims(test_chunk);
+				//LoadAllAnimsFromAllFile(test_chunk, animCount);
+				LoadAllAnims(test_chunk);
 				LogText(" keyframe edit load \n");
 				LoadChunkTextureInfo(test_chunk);
 				if(the_key_list[0])
@@ -3546,6 +3664,7 @@ void	KeyFrameEditor::DrawCombatEditor(void)
 			create_bucket_3d_line_whole(res2.X,res2.Y,res2.Z,res.X,res.Y,res.Z,col);
 		}
 		angle=fcol->Angle<<3;
+		// Draw lines pointing dmg direction?
 		for(angle=-10;angle<(10);angle+=3)
 		{
 			SLONG	dx,dz;
@@ -6156,6 +6275,9 @@ void	KeyFrameEditor::SaveChunkTextureInfo(KeyFrameChunk *the_chunk)
 		file_name[c0+3]	=	'X';
 		file_name[c0+4]	=	0;
 	}
+
+	unsigned short startShit = the_chunk->MultiObjectStart;
+	unsigned short endShit = the_chunk->MultiObjectEnd;
 
 	for(multi=the_chunk->MultiObjectStart;multi<=the_chunk->MultiObjectEnd;multi++)
 	{

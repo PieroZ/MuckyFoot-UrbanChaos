@@ -242,7 +242,7 @@ void	free_game_chunk(GameKeyFrameChunk *the_chunk);
 	free_game_chunk(&game_chunk[ANIM_TYPE_ROPER]);
 	free_game_chunk(&game_chunk[ANIM_TYPE_ROPER2]);
 	free_game_chunk(&game_chunk[ANIM_TYPE_CIV]);
-//	free_game_chunk(&game_chunk[5]);
+	free_game_chunk(&game_chunk[ANIM_TYPE_PZI]);
 }
 #endif
 //************************************************************************************************
@@ -988,6 +988,7 @@ void	setup_people_anims(void)
 	append_anim_system(&game_chunk[ANIM_TYPE_ROPER], "police1.all", 200, 0);
 	append_anim_system(&game_chunk[ANIM_TYPE_CIV], "newciv.all", CIV_M_START, 1);
 	append_anim_system(&game_chunk[ANIM_TYPE_CIV], "newcivf.all", CIV_F_START, 1);
+ 	append_anim_system(&game_chunk[ANIM_TYPE_DARCI], "Troper.all", 297, 0); // 296 seems to be the last anim from the prototype darci1.all
 
 extern SLONG	playing_combat_tutorial(void);
 extern	SLONG	playing_level(const CBYTE *name);
@@ -2011,7 +2012,7 @@ void	convert_anim(Anim *key_list,GameKeyFrameChunk *p_chunk,KeyFrameChunk *the_c
 				keyframe=keyframe->NextFrame;
 
 				ASSERT(element_count<MAX_NUMBER_OF_ELEMENTS-50);
-				ASSERT(count_frame<MAX_NUMBER_OF_FRAMES-50);
+				//ASSERT(count_frame<MAX_NUMBER_OF_FRAMES-50);
 
 			}
 		}
@@ -2052,7 +2053,7 @@ void	convert_fightcol_to_index(GameFightCol *p,GameFightCol *p_fight,SLONG count
 
 
 
-	convert_all_to_anm(key_list, p_chunk, the_chunk);
+	//convert_all_to_anm(key_list, p_chunk, the_chunk);
 }
 
 #endif

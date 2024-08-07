@@ -56,6 +56,7 @@
 #include "aeng.h"
 #include "panel.h"
 #endif
+#include "PersonPZI.h"
 
 #ifndef PSX
 UBYTE	player_visited[16][128];
@@ -273,6 +274,7 @@ extern	SLONG	find_best_grapple(Thing *p_person);
 
 SLONG	set_person_pos_for_half_step(Thing *p_person,SLONG col);
 void	set_person_sneaking(Thing *p_person);
+void	set_person_as_bodyguard(Thing *p_person, SLONG waypoint);
 void	set_person_mav_to_xz(Thing *p_person,SLONG x,SLONG z);
 SLONG	turn_to_face_thing(Thing *p_person,Thing *p_target,SLONG slow);
 SLONG	set_face_thing(Thing *p_person,Thing *p_target);
@@ -6921,7 +6923,21 @@ void	set_person_shoot(Thing *p_person,UWORD shoot_target)
 					{
 //						PANEL_new_text(p_person,8000,"Get Down.");
 						PANEL_new_text(p_person,8000,XLAT_str(X_GET_DOWN));
-						set_person_dead(p_target,p_person,PERSON_DEATH_TYPE_GET_DOWN,0,0);
+						//set_person_dead(p_target,p_person,PERSON_DEATH_TYPE_GET_DOWN,0,0);
+						Thing* darci = NET_PERSON(0);
+						SLONG darci_wp = EWAY_find_or_create_waypoint_that_created_person(darci);
+						SLONG target = EWAY_find_or_create_waypoint_that_created_person(p_target);
+						extern void BAT_emit_fireball_at_target(Thing * p_thing, Thing* target);
+						//darci->Genus.Person->Balloon = BALLOON_create(THING_NUMBER(darci), BALLOON_TYPE_YELLOW);
+						DIRT_behead_person(p_target, darci);
+
+						//extern	void	set_slow_motion(UWORD motion);
+						//set_slow_motion(500);
+						FC_force_camera_behind(0);
+						lighting_strike_person(p_target);
+						//BAT_emit_fireball_at_target(darci, p_target);
+						//set_person_as_bodyguard(p_target, darci_wp);
+
 
 						//
 						// Look for a new target now...
@@ -7073,7 +7089,8 @@ void	set_person_shoot(Thing *p_person,UWORD shoot_target)
 						{
 							PANEL_new_text(p_person,8000,XLAT_str(X_GET_DOWN));
 	//						PANEL_new_text(p_person,8000,"Get Down.");
-							set_person_dead(p_target,p_person,PERSON_DEATH_TYPE_GET_DOWN,0,0);
+							//set_person_dead(p_target,p_person,PERSON_DEATH_TYPE_GET_DOWN,0,0);
+							set_person_float_up(p_target);
 						//	set_person_get_down(p_target);
 							return; //leave this here its good for you.
 						}
@@ -7988,6 +8005,17 @@ void	set_person_flip(Thing *p_person,SLONG dir)
 	set_generic_person_state_function(p_person,STATE_MOVEING);
 	p_person->SubState = SUB_STATE_FLIPING;
 	p_person->Genus.Person->Flags|=(FLAG_PERSON_NON_INT_M|FLAG_PERSON_NON_INT_C);
+}
+void	set_person_liukang_kick(Thing *p_person)
+{
+	MSG_add(" start flykicking ");
+
+	set_anim(p_person, ANIM_PZI_TEST);
+	//p_person->Genus.Person->Action = ACTION_HANDSHAKE;
+
+	//set_generic_person_state_function(p_person,STATE_MOVEING);
+	//p_person->SubState = SUB_STATE_FLIPING;
+	//p_person->Genus.Person->Flags|=(FLAG_PERSON_NON_INT_M|FLAG_PERSON_NON_INT_C);
 }
 
 void	set_person_running(Thing *p_person)
@@ -8979,6 +9007,80 @@ void	set_person_sneaking(Thing *p_person)
 	p_person->Genus.Person->Flags&=~(FLAG_PERSON_NON_INT_M|FLAG_PERSON_NON_INT_C);
 }
 
+void	set_person_as_bodyguard(Thing* p_person, SLONG waypoint)
+{
+	p_person->Genus.Person->pcom_ai = PCOM_AI_BODYGUARD;
+	p_person->Genus.Person->pcom_ai_other = waypoint;
+	p_person->Genus.Person->pcom_move = PCOM_MOVE_FOLLOW;
+	p_person->Genus.Person->pcom_move_follow = waypoint;
+
+	/*PCOM_create_person(
+		PERSON_MIB1,
+		0,
+		0,
+		PCOM_AI_BODYGUARD,
+		waypoint,
+		Random() % 16,
+		PCOM_MOVE_FOLLOW,
+		waypoint,
+		0,
+		1,
+		0,
+		0,
+		darci->WorldPos.X + 0x4000,
+		darci->WorldPos.Y,
+		darci->WorldPos.Z,
+		0,
+		0, 0, 0);
+
+	THING_INDEX PCOM_create_person(
+		SLONG  type,
+		SLONG  colour,
+		SLONG  group,
+		SLONG  ai,
+		SLONG  ai_other,
+		SLONG  ai_skill,
+		SLONG  move,
+		SLONG  move_follow,
+		SLONG  bent,
+		SLONG  pcom_has,
+		SLONG  drop,
+		SLONG  pcom_zone,
+		SLONG  world_x,
+		SLONG  world_y,
+		SLONG  world_z,
+		SLONG  yaw,
+		SLONG  random,
+		ULONG	flag1,
+		ULONG	flag2)*/
+
+
+	/*p_person->Draw.Tweened->Angle = yaw;
+	p_person->Genus.Person->HomeYaw = yaw >> 3;
+
+	p_person->Genus.Person->pcom_colour = colour;
+	p_person->Genus.Person->pcom_group = group;
+	p_person->Genus.Person->pcom_ai = ai;
+	p_person->Genus.Person->pcom_move = move;
+	p_person->Genus.Person->pcom_bent = bent;
+	p_person->Genus.Person->drop = drop;
+	p_person->Genus.Person->pcom_zone = pcom_zone & 0xf;
+
+	p_person->Genus.Person->pcom_ai_state = PCOM_AI_STATE_NORMAL;
+	p_person->Genus.Person->pcom_ai_substate = PCOM_AI_SUBSTATE_NONE;
+	p_person->Genus.Person->pcom_ai_arg = NULL;
+	p_person->Genus.Person->pcom_ai_other = ai_other;
+
+	p_person->Genus.Person->pcom_move_state = PCOM_MOVE_STATE_STILL;
+	p_person->Genus.Person->pcom_move_counter = 0;
+	p_person->Genus.Person->pcom_move_arg = 0;
+	p_person->Genus.Person->pcom_move_follow = move_follow;
+
+	p_person->Genus.Person->FightRating = 0;
+	p_person->Genus.Person->Flags |= flag1;
+	p_person->Genus.Person->Flags2 |= flag2;*/
+}
+
 void	set_person_hop_back(Thing *p_person)
 {
 //	p_person->Draw.Tweened->QueuedFrame	=	global_anim_array[p_person->Genus.Person->AnimType][ANIM_WALK];
@@ -9877,7 +9979,7 @@ void	set_person_fight_anim(Thing *p_person,SLONG anim)
 	if (anim)
 	{
 		p_person->Draw.Tweened->Locked = 0;
-
+		//set_anim(p_person, ANIM_PZI_TEST);
 		locked_anim_change(p_person,SUB_OBJECT_LEFT_FOOT,anim); //was pelvis, but pelvis is bobbing in fight idle
 
 		p_person->Genus.Person->CombatNode = 1;
@@ -9886,8 +9988,18 @@ void	set_person_fight_anim(Thing *p_person,SLONG anim)
 		p_person->SubState                 = SUB_STATE_KICK;
 
 		p_person->Draw.Tweened->Locked = 0; //-SUB_OBJECT_LEFT_FOOT;
-		p_person->Genus.Person->Flags |= FLAG_PERSON_NON_INT_M; //|FLAG_PERSON_NON_INT_C;
+		//p_person->Genus.Person->Flags |= FLAG_PERSON_NON_INT_M; //|FLAG_PERSON_NON_INT_C;
+		p_person->Genus.Person->Flags |= (FLAG_PERSON_NON_INT_M | FLAG_PERSON_NON_INT_C); //|FLAG_PERSON_NON_INT_C;
 	}
+
+	//MSG_add(" start flykicking ");
+
+	//set_anim(p_person, ANIM_PZI_TEST);
+	//p_person->Genus.Person->Action = ACTION_HANDSHAKE;
+
+	//set_generic_person_state_function(p_person, STATE_MOVEING);
+	//p_person->SubState = SUB_STATE_FLIPING;
+	//p_person->Genus.Person->Flags |= (FLAG_PERSON_NON_INT_M | FLAG_PERSON_NON_INT_C);
 
 }
 /*
@@ -11461,8 +11573,8 @@ SLONG	set_person_kick_off_wall(Thing	*p_person,SLONG col,SLONG set_pos)
 	if(p_person->Genus.Person->PersonType==PERSON_ROPER)
 		dist=110;
 	
-	if(set_person_pos_for_fence(p_person,col,set_pos,dist)==-1)
-		return(0);
+	//if(set_person_pos_for_fence(p_person,col,set_pos,dist)==-1)
+	//	return(0);
 	set_generic_person_state_function(p_person,STATE_FIGHTING);
 	p_person->SubState=SUB_STATE_WALL_KICK;
 	queue_anim(p_person,ANIM_WALL_KICK);
@@ -20744,7 +20856,7 @@ void set_person_can_release(Thing *p_person, SLONG power)
 	p_person->SubState = SUB_STATE_CANNING_RELEASE;
 }
 
-/*
+
 void set_person_barrel_pickup(Thing *p_person)
 {
 	//
@@ -20761,7 +20873,7 @@ void set_person_barrel_pickup(Thing *p_person)
 
 	p_person->SubState = SUB_STATE_CANNING_GET_BARREL;
 }
-*/
+
 
 void set_person_special_pickup(Thing *p_person)
 {
@@ -20916,9 +21028,9 @@ void fn_person_can(Thing *p_person)
 
 		case SUB_STATE_CANNING_GET_BARREL:
 
-			ASSERT(0);
+			//ASSERT(0);
 
-			/*
+			
 
 			end = person_normal_animate(p_person);
 
@@ -20987,7 +21099,7 @@ void fn_person_can(Thing *p_person)
 				}
 			}
 
-			*/
+			
 
 			break;
 

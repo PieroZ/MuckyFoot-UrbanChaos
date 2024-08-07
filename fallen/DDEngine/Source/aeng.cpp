@@ -103,6 +103,8 @@
 #define AENG_BBOX_PUSH_IN	16
 #define AENG_BBOX_PUSH_OUT	4
 
+#define TEX_EMBED 1
+
 
 
 
@@ -244,6 +246,7 @@ void	calc_global_cloud(SLONG x,SLONG y,SLONG z)
 	global_b=in;
 
 }
+
 
 //
 // use pre-calced shadow value
@@ -2694,6 +2697,8 @@ void AENG_draw_bangs()
 #endif
 }
 
+
+
 //
 // Draws the cloth.
 //
@@ -3028,9 +3033,154 @@ SLONG AENG_dirt_uvlookup_valid;
 SWORD AENG_dirt_uvlookup_world_type;
 
 
+void AENG_draw_dirt_PZI()
+{
+	if (the_game.GameFlags & GF_NO_FLOOR)
+	{
+		//
+		// No dirt if there is no floor!
+		//
+
+		return;
+	}
+	SLONG i = 0;
+
+	#define LEAF_PAGE		(POLY_PAGE_LEAF)
+	#define LEAF_CENTRE_U	(0.5F)
+	#define LEAF_CENTRE_V	(0.5F)
+	#define LEAF_RADIUS		(0.5F)
+	#define LEAF_U(a)		(LEAF_CENTRE_U + LEAF_RADIUS * (float)sin(a))
+	#define LEAF_V(a)		(LEAF_CENTRE_V + LEAF_RADIUS * (float)cos(a))
+	#define SNOW_CENTRE_U	(0.5F)
+	#define SNOW_CENTRE_V	(0.5F)
+	#define SNOW_RADIUS		(1.0F)
+	#define LEAF_UP			8
+	#define LEAF_SIZE       (20.0F+(float)(i&15))
+
+	SLONG j = 0;
+
+	float fyaw;
+	float fpitch;
+	float froll;
+	float ubase;
+	float vbase;
+
+	float       matrix[9];
+	float       angle;
+	SVector_F   temp[4];
+	PolyPage* pp;
+	D3DLVERTEX* lv;
+	ULONG       rubbish_colour;
+
+	ULONG leaf_colour_choice_rgb[4] =
+	{
+		0x332d1d,
+		0x243224,
+		0x123320,
+		0x332f07
+	};
+
+	ULONG leaf_colour_choice_grey[4] =
+	{
+		0x333333,
+		0x444444,
+		0x222222,
+		0x383838
+	};
+
+	if (AENG_dirt_uvlookup_valid && AENG_dirt_uvlookup_world_type == world_type)
+	{
+		//
+		// Valid lookup table.
+		//
+	}
+	else
+	{
+		//
+		// Calclate the uvlookup table.
+		//
+
+		for (i = 0; i < AENG_MAX_DIRT_UVLOOKUP; i++)
+		{
+			float angle = float(i) * (2.0F * PI / AENG_MAX_DIRT_UVLOOKUP);
+
+			float cangle;
+			float sangle;
+
+
+			sangle = sinf(angle);
+			cangle = cosf(angle);
+
+			//
+			// Fix the uv's for texture paging.
+			//
+
+			if (world_type == WORLD_TYPE_SNOW)
+			{
+				pp = &POLY_Page[POLY_PAGE_SNOWFLAKE];
+				// And the snowflake texture is bigger and needs a bit of squishing.
+				AENG_dirt_uvlookup[i].u = SNOW_CENTRE_U + sangle * SNOW_RADIUS;
+				AENG_dirt_uvlookup[i].v = SNOW_CENTRE_V + cangle * SNOW_RADIUS;
+			}
+			else
+			{
+				pp = &POLY_Page[POLY_PAGE_LEAF];
+				AENG_dirt_uvlookup[i].u = LEAF_CENTRE_U + sangle * LEAF_RADIUS;
+				AENG_dirt_uvlookup[i].v = LEAF_CENTRE_V + cangle * LEAF_RADIUS;
+			}
+
+			AENG_dirt_uvlookup[i].u = AENG_dirt_uvlookup[i].u * pp->m_UScale + pp->m_UOffset;
+			AENG_dirt_uvlookup[i].v = AENG_dirt_uvlookup[i].v * pp->m_VScale + pp->m_VOffset;
+
+		}
+
+		AENG_dirt_uvlookup_valid = TRUE;
+		AENG_dirt_uvlookup_world_type = world_type;
+	}
+}
+
+void AENG_draw_dirt2()
+{
+	if (AENG_dirt_lvert_upto)
+	{
+		// Cope with some wacky internals.
+		POLY_set_local_rotation_none();
+
+		// Set the appropriate texture for leaves or snowflakes
+		if (world_type == WORLD_TYPE_SNOW)
+		{
+			POLY_Page[POLY_PAGE_SNOWFLAKE].RS.SetChanged();
+		}
+		else
+		{
+			POLY_Page[POLY_PAGE_LEAF].RS.SetChanged();
+		}
+
+		// Set render states for drawing leaves
+		REALLY_SET_RENDER_STATE(D3DRENDERSTATE_ZENABLE, TRUE); // Enable Z-buffer
+		REALLY_SET_RENDER_STATE(D3DRENDERSTATE_ALPHABLENDENABLE, TRUE); // Enable alpha blending
+		REALLY_SET_RENDER_STATE(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
+		REALLY_SET_RENDER_STATE(D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA);
+
+		// Draw the leaves or snowflakes
+		the_display.lp_D3D_Device->DrawIndexedPrimitive(
+			D3DPT_TRIANGLELIST,
+			D3DFVF_LVERTEX,
+			AENG_dirt_lvert,
+			AENG_dirt_lvert_upto,
+			AENG_dirt_index,
+			AENG_dirt_index_upto,
+			0
+		);
+
+	}
+
+	// TRACE ( "Drew %i bits of dirt\n", iDrawnDirtCount );
+}
+
 void AENG_draw_dirt()
 {
-	if (GAME_FLAGS & GF_NO_FLOOR)
+ 	if (GAME_FLAGS & GF_NO_FLOOR)
 	{
 		//
 		// No dirt if there is no floor!
@@ -3234,16 +3384,16 @@ void AENG_draw_dirt()
 				dy * AENG_cam_matrix[7] + 
 				dz * AENG_cam_matrix[8];
 
-			if (dprod < 64.0F)
-			{
-				//
-				// Offscreen...
-				//
+			//if (dprod < 64.0F)
+			//{
+			//	//
+			//	// Offscreen...
+			//	//
 
-				DIRT_MARK_AS_OFFSCREEN_QUICK(i);
+			//	DIRT_MARK_AS_OFFSCREEN_QUICK(i);
 
-				goto do_next_dirt;
-			}
+			//	goto do_next_dirt;
+			//}
 		}
 
 #ifdef DEBUG
@@ -3661,7 +3811,7 @@ void AENG_draw_dirt()
 				//
 				// FALLTHROUGH!
 				//
-
+				[[fallthrough]];
 			case DIRT_TYPE_CAN:
 			case DIRT_TYPE_THROWCAN:
 
@@ -3762,6 +3912,23 @@ void AENG_draw_dirt()
 					0x9fFFFFFF,
 					POLY_PAGE_BLOODSPLAT);
 				break;
+
+			//case DIRT_INFO_TYPE_MORPH:
+
+			//	MESH_draw_morph(
+			//		232,
+			//		dd->UU.Pidgeon.morph1,
+			//		dd->UU.Pidgeon.morph2,
+			//		dd->UU.Pidgeon.tween,
+			//		dd->x,
+			//		dd->y,
+			//		dd->z,
+			//		dd->yaw,
+			//		dd->pitch,
+			//		dd->roll,
+			//		NULL);
+
+			//	break;
 
 			default:
 				ASSERT(0);
@@ -4215,7 +4382,8 @@ void AENG_draw_dirt()
 			POLY_Page[POLY_PAGE_LEAF].RS.SetChanged();
 		}
 
-		the_display.lp_D3D_Device->DrawIndexedPrimitive(
+
+		HRESULT result = the_display.lp_D3D_Device->DrawIndexedPrimitive(
 										D3DPT_TRIANGLELIST,
 										D3DFVF_LVERTEX,
 										AENG_dirt_lvert,
@@ -4223,6 +4391,13 @@ void AENG_draw_dirt()
 										AENG_dirt_index,
 										AENG_dirt_index_upto,
 										0);
+
+		if (FAILED(result))
+		{
+			// Log or handle the error
+			TRACE("DrawIndexedPrimitive failed: %lx\n", result);
+			printf("lx \n", result);
+		}
 	}
 
 	//TRACE ( "Drew %i bits of dirt\n", iDrawnDirtCount );
@@ -9141,7 +9316,7 @@ extern	void SKY_draw_poly_sky_old(float world_camera_x,float world_camera_y,floa
 	// Create all the squares.
 	//
 
-	//
+	
 	// draw floor draw_floor  //things to search for
 	//
 
@@ -9835,6 +10010,9 @@ extern HWND GEDIT_edit_wnd;
 				}
 			}
 		}
+
+
+
 
 		LOG_EXIT ( AENG_Draw_Prims )
 
@@ -10723,6 +10901,13 @@ extern	void	ANIMAL_draw(Thing *p_thing);
 	ANNOYINGSCRIBBLECHECK;
 
 
+
+
+
+	//// Cope with some wacky internals.
+	//POLY_set_local_rotation_none();
+	//POLY_flush_local_rot();
+
 	// Grenades should be drawn here.
 	DrawGrenades();
 
@@ -11259,11 +11444,26 @@ extern	void	ANIMAL_draw(Thing *p_thing);
 
 
 
+	LOG_ENTER(AENG_Draw_Dirt)
+
+		if (!INDOORS_INDEX || outside)
+		{
+			if (AENG_detail_dirt)
+			{
+				AENG_draw_dirt();
+			}
+		}
+
+	LOG_EXIT(AENG_Draw_Dirt)
+
 	LOG_ENTER ( AENG_Poly_Flush )
 
 #ifndef TARGET_DC
-	POLY_frame_draw(TRUE,TRUE);
+ 	POLY_frame_draw(TRUE,TRUE);
 #endif
+
+
+
 
 	LOG_EXIT ( AENG_Poly_Flush )
 
@@ -11275,18 +11475,18 @@ extern	void	ANIMAL_draw(Thing *p_thing);
 	// The dirt.
 	// 
 
-	LOG_ENTER(AENG_Draw_Dirt)
+	//LOG_ENTER(AENG_Draw_Dirt)
 
-		if (!INDOORS_INDEX || outside)
-			if (AENG_detail_dirt)
-				AENG_draw_dirt();
+	//	if (!INDOORS_INDEX || outside)
+	//		if (AENG_detail_dirt)
+	//			AENG_draw_dirt();
 
-	LOG_EXIT(AENG_Draw_Dirt)
+	//LOG_EXIT(AENG_Draw_Dirt)
 
 
-	// Cope with some wacky internals.
-	POLY_set_local_rotation_none();
-	POLY_flush_local_rot();
+	//// Cope with some wacky internals.
+	//POLY_set_local_rotation_none();
+	//POLY_flush_local_rot();
 
 
 	ANNOYINGSCRIBBLECHECK;
@@ -11321,6 +11521,8 @@ extern	void	ANIMAL_draw(Thing *p_thing);
 	//LOG_EXIT ( AENG_Draw_City )
 
 	LOG_EVENT ( AENG_Draw_End )
+
+
 
 
 	//TRACE ( "AengOut" );
@@ -13776,7 +13978,7 @@ void AENG_draw_ns()
 	// The dirt.
 	// 
 
-	AENG_draw_dirt();
+	//AENG_draw_dirt();
 
 	//
 	// Draw the drips.

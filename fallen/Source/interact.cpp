@@ -41,6 +41,7 @@ struct KeyFrame			*anim_array[300],
 						*van_array[20],
 						*thug_array[300];
 */
+//struct GameKeyFrame		*global_anim_array[4][450];
 struct GameKeyFrame		*global_anim_array[4][450];
 
 struct KeyFrameChunk 	*test_chunk;

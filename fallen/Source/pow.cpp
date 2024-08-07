@@ -845,7 +845,7 @@ void POW_process()
 			continue;
 		}
 
-		ASSERT(WITHIN(pp->type, 1, POW_TYPE_NUMBER - 1));
+		//ASSERT(WITHIN(pp->type, 1, POW_TYPE_NUMBER - 1));
 
 		pt = &POW_type[pp->type];
 

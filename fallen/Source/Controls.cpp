@@ -174,7 +174,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "bangunsnotgames", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "bangunsnotgames", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -642,7 +642,7 @@ extern int AENG_detail_crinkles;
 			case 39: //headless
 				if (allow_debug_keys)
 				{
-					DIRT_behead_person(darci, NULL);
+					DIRT_behead_person(darci, darci);
 				}
 				break;
 			case 40: //madworld
@@ -717,6 +717,27 @@ extern int AENG_detail_crinkles;
 
 				/*	darci->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
 					darci->Genus.Person->Action = ACTION_SIT_BENCH;*/
+				}
+				break;
+			case 45: // camtest
+				if (allow_debug_keys)
+				{
+					//FC_look_at(0, 1);
+					extern FC_Cam FC_cam[FC_MAX_CAMS];
+				/*	FC_cam->cam_height = 900;*/
+
+
+					extern FC_Cam FC_cam[FC_MAX_CAMS];
+					extern SLONG FC_focus_above(FC_Cam* fc);
+					FC_focus_above(FC_cam);
+				}
+				break;
+			case 46: // camdist
+				if (allow_debug_keys)
+				{
+					i = atoi(ptr);
+					//FC_look_at(0, 1);
+					FC_cam->cam_dist = i;
 				}
 				break;
 		  }

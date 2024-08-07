@@ -68,7 +68,7 @@
       <WarningLevel>Level3</WarningLevel>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <AdditionalIncludeDirectories>Headers;..\fallen\ledit\headers;..\fallen\sedit\headers;..\fallen\DDLibrary\Headers;..\fallen\gedit\headers;..\fallen\ddengine\headers;C:\dev\workspaces\repo clones\MuckyFoot-UrbanChaos\jordandavidson-fork\MuckyFoot-UrbanChaos\fallen\Editor\Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SEWERS;EDITOR;_RELEASE;WIN32;_WINDOWS;VERSION_D3D;TEX_EMBED;FINAL;_CRT_SECURE_NO_WARNINGS;HIGH_REZ_PEOPLE_PLEASE_BOB;NO_MORE_BALLOONS;NO_MORE_BALLOONS_NOW;NDEBUG;BEHEAD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>SEWERS;EDITOR;_RELEASE;WIN32;_WINDOWS;VERSION_D3D;TEX_EMBED;FINAL;_CRT_SECURE_NO_WARNINGS;HIGH_REZ_PEOPLE_PLEASE_BOB;NO_MORE_BALLOONS;NO_MORE_BALLOONS_NOW;NDEBUG;BEHEAD;UNUSED_WIRECUTTERS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AssemblerListingLocation>.\Release\</AssemblerListingLocation>
       <BrowseInformation>true</BrowseInformation>
       <PrecompiledHeaderOutputFile>.\Release\Fallen.pch</PrecompiledHeaderOutputFile>
@@ -620,6 +620,7 @@
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /D /NODEFAULTLIB:libcmtd.lib" "  /D /NODEFAULTLIB:libcmtd.lib" "</AdditionalOptions>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /D /NODEFAULTLIB:libcmtd.lib" "  /D /NODEFAULTLIB:libcmtd.lib" "</AdditionalOptions>
     </ClCompile>
+    <ClCompile Include="Source\PersonPZI.cpp" />
     <ClCompile Include="Source\Pjectile.cpp">
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /D /NODEFAULTLIB:libcmtd.lib" "  /D /NODEFAULTLIB:libcmtd.lib" "</AdditionalOptions>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /D /NODEFAULTLIB:libcmtd.lib" "  /D /NODEFAULTLIB:libcmtd.lib" "</AdditionalOptions>
@@ -1066,6 +1067,7 @@
     <ClInclude Include="outro\Tga.h" />
     <ClInclude Include="outro\wire.h" />
     <ClInclude Include="sedit\Headers\es.h" />
+    <ClInclude Include="Source\PersonPZI.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="DDLibrary\arrowcop.cur" />

@@ -1598,7 +1598,7 @@ static POLY_Point*	s_PtrBuffer[128];
 
 
 // POLY_add_poly no longer works - system's been changed.
-#if 0
+#if 1
 
 // POLY_add_poly
 //
@@ -2322,7 +2322,7 @@ void POLY_add_quad_fast(POLY_Point *pt[4], SLONG page, SLONG backface_cull, SLON
 
 
 
-#if 0
+#if 1
 //
 // add a triangle to the poly list
 //
@@ -2456,7 +2456,7 @@ void POLY_add_quad_slow(POLY_Point *pp[4], SLONG page, SLONG backface_cull, SLON
 
 void POLY_add_quad(POLY_Point *pp[4], SLONG page, SLONG backface_cull, SLONG generate_clip_flags)
 {
-#if 0
+#if 1
 	if (!Keys[KB_F8])
 	{
 		POLY_add_quad_slow(pp, page, backface_cull, generate_clip_flags);
@@ -2470,7 +2470,7 @@ void POLY_add_quad(POLY_Point *pp[4], SLONG page, SLONG backface_cull, SLONG gen
 
 void POLY_add_triangle(POLY_Point *pp[4], SLONG page, SLONG backface_cull, SLONG generate_clip_flags)
 {
-#if 0
+#if 1
 	if (!Keys[KB_F8])
 	{
 		POLY_add_triangle_slow(pp, page, backface_cull, generate_clip_flags);

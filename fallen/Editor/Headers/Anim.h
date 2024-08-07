@@ -307,7 +307,8 @@ struct	KeyFrameChunk
 {
 	CBYTE				ANMName[64],
 						ASCName[64],
-						VUEName[64];
+						VUEName[64],
+						ALLName[64];
 	UWORD				MultiObject;
 	UWORD				MultiObjectStart;
 	UWORD				MultiObjectEnd;

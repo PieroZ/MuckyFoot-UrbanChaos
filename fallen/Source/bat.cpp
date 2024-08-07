@@ -116,7 +116,7 @@ CBYTE *BAT_state_name[BAT_STATE_NUMBER] =
 // The people bane is summoning.
 //
 
-#define BAT_SUMMON_NUM_BODIES 4
+#define BAT_SUMMON_NUM_BODIES 8
 
 UWORD BAT_summon[BAT_SUMMON_NUM_BODIES];
 
@@ -572,6 +572,58 @@ SLONG BAT_turn_to_place(Thing *p_thing, SLONG world_x, SLONG world_z)
 //
 // Makes the bat emit a fireball.
 //
+
+void BAT_emit_fireball_at_target(Thing* p_thing, Thing* p_target)
+{
+	//ASSERT(p_thing->Class == CLASS_BAT);
+
+	Bat* p_bat = p_thing->Genus.Bat;
+	//p_bat->target = target;
+
+	//ASSERT(p_bat->target);
+
+	//Thing* p_target = TO_THING(p_bat->target);
+
+	SLONG dx;
+	SLONG dy;
+	SLONG dz;
+
+	dx = p_target->WorldPos.X - p_thing->WorldPos.X;
+	dy = p_target->WorldPos.Y + 0x3000 - p_thing->WorldPos.Y;
+	dz = p_target->WorldPos.Z - p_thing->WorldPos.Z;
+
+	SLONG dist = (QDIST3(abs(dx), abs(dy), abs(dz)) >> 8) + 1;
+
+	dx = 0x40 * dx / dist;
+	dy = 0x40 * dy / dist;
+	dz = 0x40 * dz / dist;
+
+	dy += Random() & 0x3ff;
+
+	//
+	// Fire a fireball!
+	//
+
+	PARTICLE_Add(
+		p_thing->WorldPos.X,
+		p_thing->WorldPos.Y + 0x5000,
+		p_thing->WorldPos.Z,
+		dx,
+		dy,
+		dz,
+		POLY_PAGE_METEOR,
+		2 + ((Random() & 0x3) << 2),
+		0xffffffff,
+		PFLAG_SPRITEANI | PFLAG_SPRITELOOP | PFLAG_EXPLODE_ON_IMPACT | PFLAG_GRAVITY | PFLAG_LEAVE_TRAIL,
+		100,
+		160,
+		1,
+		1,
+		1);
+
+	MFX_play_thing(THING_NUMBER(p_thing), S_BALROG_FIREBALL, 0, p_thing);
+	p_target->Flags |= FLAGS_BURNING;
+}
 
 void BAT_emit_fireball(Thing *p_thing)
 {

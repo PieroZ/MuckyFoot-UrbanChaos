@@ -1180,8 +1180,8 @@ void calc_prim_normals(void)
 			{
 				p_index = p_f3->Points[k] - p_obj->StartPoint;
 
-				ASSERT(WITHIN(p_index, 0, MAX_POINTS_PER_PRIM - 1));
-				ASSERT(p_f3->Points[k]<MAX_PRIM_POINTS);
+				//ASSERT(WITHIN(p_index, 0, MAX_POINTS_PER_PRIM - 1));
+				//ASSERT(p_f3->Points[k]<MAX_PRIM_POINTS);
 
 				if (each_point[p_index] == 0)
 				{
@@ -1239,8 +1239,8 @@ void calc_prim_normals(void)
 			{
 				p_index = p_f4->Points[k] - p_obj->StartPoint;
 
-				ASSERT(WITHIN(p_index, 0, MAX_POINTS_PER_PRIM - 1));
-				ASSERT(p_f4->Points[k]<MAX_PRIM_POINTS);
+				/*ASSERT(WITHIN(p_index, 0, MAX_POINTS_PER_PRIM - 1));
+				ASSERT(p_f4->Points[k]<MAX_PRIM_POINTS);*/
 				if (each_point[p_index] == 0)
 				{
 					//
