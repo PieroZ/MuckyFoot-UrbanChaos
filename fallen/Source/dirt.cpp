@@ -2188,7 +2188,7 @@ void DIRT_gust(
 
 						if (dd->type != DIRT_TYPE_BRASS)
 						{
-							CreateGrenadeExplosion(dd->x << 8, dd->y << 8, dd->z << 8, NULL);
+							//CreateGrenadeExplosion(dd->x << 8, dd->y << 8, dd->z << 8, NULL);
 							MFX_play_xyz(i,S_KICK_CAN,MFX_REPLACE,dd->x<<8,dd->y<<8,dd->z<<8);
 //							MFX_play_xyz(i,S_DARCI_ARREST,MFX_REPLACE,dd->x<<8,dd->y<<8,dd->z<<8);
 

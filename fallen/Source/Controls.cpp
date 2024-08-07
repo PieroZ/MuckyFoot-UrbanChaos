@@ -67,7 +67,9 @@
 #include	"night.h"
 #include	"grenade.h"
 #include	"demo.h"
+
 #include	"DebugVars.h"
+#include	"PersonPZI.h"
 
 #include "NGamut.h"
 
@@ -174,7 +176,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "bangunsnotgames", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -677,7 +679,14 @@ extern int AENG_detail_crinkles;
 								if (p_thing->Class == CLASS_PERSON && (p_thing->Flags & FLAGS_IN_VIEW))
 								{
 									//p_thing->WorldPos.Y = p_thing->WorldPos.Y >> 12;
-									p_thing->WorldPos.Y = 600000;
+									//p_thing->WorldPos.Y = 600000;
+									if (p_thing != darci)
+									{
+										//p_thing->WorldPos.Y = 600000;
+										lighting_strike_person(p_thing);
+
+
+									}
 								}
 
 								t_index = p_thing->Child;

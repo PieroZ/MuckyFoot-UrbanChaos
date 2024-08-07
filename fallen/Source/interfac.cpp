@@ -4880,11 +4880,11 @@ ULONG	apply_button_input(struct Thing *p_player,struct Thing *p_person,ULONG inp
 	//	input &= ~processed;
 	//}
 
-	//if (input & INPUT_MASK_TEST)
-	//{
-	//	processed |= do_the_thing(p_person, input);
-	//	input &= ~processed;
-	//}
+	if (input & INPUT_MASK_TEST)
+	{
+		processed |= do_the_thing(p_person, input);
+		input &= ~processed;
+	}
 
 	if (input & INPUT_MASK_ACTION)
 	{
@@ -6667,8 +6667,11 @@ extern DIJOYSTATE			the_state;
 			DIJOYSTATE my_copy_of_the_state;
 //			if (CAM_get_mode() != CAM_MODE_FIRST_PERSON)
 			{
-				ULONG ulAxisMax = AXIS_MAX;
-				ULONG ulAxisMin = AXIS_MIN;
+				LONG ulAxisMax = 333;
+				LONG ulAxisMin = -333;
+				
+				/*ULONG ulAxisMax = AXIS_MAX;
+				ULONG ulAxisMin = AXIS_MIN;*/
 #ifdef TARGET_DC
 				if ( type & INPUT_TYPE_REMAP_DPAD )
 				{
@@ -6676,7 +6679,6 @@ extern DIJOYSTATE			the_state;
 					ulAxisMin = AXIS_MIN_REMAP;		
 				}
 #endif
-
 				if(the_state.lX > ulAxisMax)
 				{
 					g_dwLastInputChangeTime = dwCurrentTime;
@@ -9041,3 +9043,4 @@ void	remove_action_used(Thing *p_person)
 		p_player->Genus.Player->InputDone&=~INPUT_MASK_ACTION;
 	}
 }
+

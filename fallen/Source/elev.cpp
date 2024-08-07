@@ -2047,7 +2047,7 @@ extern SLONG WAND_find_good_start_point_for_car(SLONG* posx, SLONG* posz, SLONG*
 
 	if (!load_ok)
 	{
-		if(NO_PLAYERS==0)
+		if (NO_PLAYERS == 0)
 			NO_PLAYERS = 1;
 
 

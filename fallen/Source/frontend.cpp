@@ -3565,8 +3565,14 @@ UBYTE	FRONTEND_input() {
 
 #define	AXIS_CENTRE			32768
 #define	NOISE_TOLERANCE		4096
-#define	AXIS_MIN			(AXIS_CENTRE-NOISE_TOLERANCE)
-#define	AXIS_MAX			(AXIS_CENTRE+NOISE_TOLERANCE)
+//#define	AXIS_MIN			(AXIS_CENTRE-NOISE_TOLERANCE)
+//#define	AXIS_MAX			(AXIS_CENTRE+NOISE_TOLERANCE)
+
+#define	AXIS_MIN			-333
+#define	AXIS_MAX			333
+
+		//ULONG ulAxisMax = 333;
+		//ULONG ulAxisMin = -333;
 
 		input = get_hardware_input(INPUT_TYPE_JOY);
 

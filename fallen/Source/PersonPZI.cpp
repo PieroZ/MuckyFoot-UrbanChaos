@@ -85,25 +85,24 @@ void lighting_strike_person(Thing* p_person)
 	// Make this person blow up!
 	//
 
-				POW_create(
-					POW_CREATE_LARGE_SEMI,
-					px,
-					py,
-					pz,0,0,0);
-
 				//POW_create(
 				//	POW_CREATE_LARGE_SEMI,
-				//	p_mine->WorldPos.X,
-				//	p_mine->WorldPos.Y,
-				//	p_mine->WorldPos.Z,
-				//	0, 0, 0);
-				PYRO_create(p_person->WorldPos, PYRO_DUSTWAVE);
+				//	px,
+				//	py,
+				//	pz,0,0,0);
 
-					//
-					// Massive lightning strike
-					//
+				////POW_create(
+				////	POW_CREATE_LARGE_SEMI,
+				////	p_mine->WorldPos.X,
+				////	p_mine->WorldPos.Y,
+				////	p_mine->WorldPos.Z,
+				////	0, 0, 0);
+				//PYRO_create(p_person->WorldPos, PYRO_DUSTWAVE);
 
-				return;
+				//	//
+				//	// Massive lightning strike
+				//	//
+
 	SPARK_Pinfo p1;
 	SPARK_Pinfo p2;
 	UBYTE i;

@@ -1,5 +1,6 @@
 // DIManager.cpp
 // Guy Simmons, 19th February 1998
+#define DIRECTINPUT_VERSION 0x0800
 
 #include	"DDLib.h"
 #ifndef TARGET_DC
@@ -2558,11 +2559,11 @@ void OS_joy_init(void)
 	// Find a joystick.
 	//
 	
-    hr = OS_joy_direct_input->EnumDevices(
-								DIDEVTYPE_JOYSTICK,
-								OS_joy_enum,
-								NULL,
-								DIEDFL_ATTACHEDONLY);
+    //hr = OS_joy_direct_input->EnumDevices(
+				//				DIDEVTYPE_JOYSTICK,
+				//				OS_joy_enum,
+				//				NULL,
+				//				DIEDFL_ATTACHEDONLY);
 
 	if (OS_joy_input_device  == NULL ||
 		OS_joy_input_device2 == NULL)
@@ -2712,13 +2713,152 @@ SLONG OS_joy_poll(void)
 
 
 
+#endif
+
+
+
+
+static LPDIRECTINPUT8        OS_gamepad_direct_input = NULL;
+static LPDIRECTINPUTDEVICE8  OS_gamepad_device = NULL;
+static LPDIRECTINPUTDEVICE8  OS_gamepad_device2 = NULL;
+
+
+
+
+BOOL CALLBACK OS_gamepad_enum(const DIDEVICEINSTANCE* pdidInstance, VOID* pContext)
+{
+	HRESULT hr;
+
+	// Obtain an interface to the enumerated gamepad.
+	hr = OS_gamepad_direct_input->CreateDevice(pdidInstance->guidInstance, &OS_gamepad_device, NULL);
+	if (FAILED(hr))
+		return DIENUM_CONTINUE;
+
+	// Additional checks and initializations if needed.
+
+	return DIENUM_STOP;
+}
+
+void SetGamepadAxisProperties(DWORD axis)
+{
+	DIPROPRANGE diprg;
+	HRESULT hr;
+
+	diprg.diph.dwSize = sizeof(DIPROPRANGE);
+	diprg.diph.dwHeaderSize = sizeof(DIPROPHEADER);
+	diprg.diph.dwHow = DIPH_BYOFFSET;
+	diprg.diph.dwObj = axis;
+	diprg.lMin = -1000;
+	diprg.lMax = 1000;
+
+	hr = OS_gamepad_device->SetProperty(DIPROP_RANGE, &diprg.diph);
+	if (FAILED(hr))
+	{
+		// Handle error
+	}
+}
+
+
+
+void OS_gamepad_init(void)
+{
+	HRESULT hr;
+
+	// Initialize everything.
+	OS_gamepad_direct_input = NULL;
+	OS_gamepad_device = NULL;
+
+	// Create the DirectInput object.
+	CoInitialize(NULL);
+
+	hr = DirectInput8Create(
+		GetModuleHandle(NULL),
+		DIRECTINPUT_VERSION,
+		IID_IDirectInput8,
+		(void**)&OS_gamepad_direct_input,
+		NULL);
+
+	if (FAILED(hr))
+	{
+		// Handle error
+		return;
+	}
+
+	// Enumerate gamepad devices.
+	hr = OS_gamepad_direct_input->EnumDevices(
+		DI8DEVCLASS_GAMECTRL,
+		OS_gamepad_enum,
+		NULL,
+		DIEDFL_ATTACHEDONLY);
+
+	if (OS_gamepad_device == NULL)
+	{
+		// The gamepad wasn't properly found.
+		return;
+	}
+
+	// Set the data format to "simple gamepad".
+	hr = OS_gamepad_device->SetDataFormat(&c_dfDIJoystick);
+	if (FAILED(hr))
+	{
+		// Handle error
+		return;
+	}
+
+	// Set the cooperative level to let DirectInput know how this device should interact with the system and other DirectInput applications.
+	hr = OS_gamepad_device->SetCooperativeLevel(
+		hDDLibWindow, // You need to replace hWnd with your actual window handle
+		DISCL_EXCLUSIVE | DISCL_FOREGROUND);
+	if (FAILED(hr))
+	{
+		// Handle error
+		return;
+	}
+
+	// Set properties for gamepad axes if needed.
+	SetGamepadAxisProperties(DIJOFS_X);
+	SetGamepadAxisProperties(DIJOFS_Y);
+}
+
+BOOL GetGamepadDevice(UBYTE type, UBYTE sub_type, bool bActuallyGetOne)
+{
+	if (type == DI8DEVCLASS_GAMECTRL && bActuallyGetOne)
+	{
+		if (!OS_gamepad_direct_input)
+		{
+			OS_gamepad_init();
+		}
+	}
+
+	if (OS_gamepad_device && OS_gamepad_device2)
+	{
+		return TRUE;
+	}
+	else
+	{
+		return FALSE;
+	}
+}
+
+
+
+
+
 BOOL GetInputDevice(UBYTE type, UBYTE sub_type, bool bActuallyGetOne)
 {
-	if (type == JOYSTICK && bActuallyGetOne)
+	//if (type == JOYSTICK && bActuallyGetOne)
+	//{
+	//	if (!OS_joy_direct_input)
+	//	{
+	//		OS_joy_init();
+	//	}
+	//}
+
+	if (type == DI8DEVCLASS_GAMECTRL && bActuallyGetOne)
 	{
-		if (!OS_joy_direct_input)
+		if (!OS_gamepad_direct_input)
 		{
-			OS_joy_init();
+			OS_gamepad_init();
 		}
 	}
 
@@ -2733,22 +2873,45 @@ BOOL GetInputDevice(UBYTE type, UBYTE sub_type, bool bActuallyGetOne)
 	}
 }
 
-BOOL ReadInputDevice()
+
+
+BOOL PollGamepadInput()
 {
-	return OS_joy_poll();
+	if (OS_gamepad_device)
+	{
+		HRESULT hr;
+		DIJOYSTATE js; // Use DIJOYSTATE instead of DIJOYSTATE2
+
+		// Poll the device to read the current state
+		hr = OS_gamepad_device->Poll();
+		if (FAILED(hr))
+		{
+			// If the gamepad is lost or not acquired, try to reacquire it
+			hr = OS_gamepad_device->Acquire();
+			while (hr == DIERR_INPUTLOST)
+				hr = OS_gamepad_device->Acquire();
+
+			// If still failed, exit the function
+			if (FAILED(hr))
+				return FALSE;
+		}
+
+		// Get the state of the gamepad
+		hr = OS_gamepad_device->GetDeviceState(sizeof(DIJOYSTATE), &js);
+		if (FAILED(hr))
+			return FALSE; // The gamepad state could not be retrieved
+
+		// Assign the state to the global state variable
+		the_state = js; // Assuming the_state is a global or properly scoped variable of type DIJOYSTATE
+
+		return TRUE;
+	}
+	return FALSE;
 }
 
-
-
-#endif
-
-
-
-
-
-
-
-
-
+BOOL ReadInputDevice()
+{
+	return PollGamepadInput();
+}
 
 

@@ -6929,7 +6929,7 @@ void	set_person_shoot(Thing *p_person,UWORD shoot_target)
 						SLONG target = EWAY_find_or_create_waypoint_that_created_person(p_target);
 						extern void BAT_emit_fireball_at_target(Thing * p_thing, Thing* target);
 						//darci->Genus.Person->Balloon = BALLOON_create(THING_NUMBER(darci), BALLOON_TYPE_YELLOW);
-						DIRT_behead_person(p_target, darci);
+						//DIRT_behead_person(p_target, darci);
 
 						//extern	void	set_slow_motion(UWORD motion);
 						//set_slow_motion(500);

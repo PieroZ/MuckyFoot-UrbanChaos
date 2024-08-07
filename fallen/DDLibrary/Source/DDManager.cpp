@@ -1815,6 +1815,8 @@ HRESULT	DDDriverInfo::LoadDevices(LPDIRECT3D3 lpD3D3)
 			return	result;
 		}
 
+
+
 		// Mark Devices as loaded
 		TurnDevicesLoadedOn();
 	}
