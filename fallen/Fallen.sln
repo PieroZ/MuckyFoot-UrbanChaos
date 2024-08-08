@@ -9,8 +9,6 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		BIKE|x64 = BIKE|x64
 		BIKE|x86 = BIKE|x86
-		Debug|x64 = Debug|x64
-		Debug|x86 = Debug|x86
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
@@ -18,9 +16,6 @@ Global
 		{66A37855-71A1-40B6-BA26-2F4C69C4FFA8}.BIKE|x64.ActiveCfg = BIKE|Win32
 		{66A37855-71A1-40B6-BA26-2F4C69C4FFA8}.BIKE|x64.Build.0 = BIKE|Win32
 		{66A37855-71A1-40B6-BA26-2F4C69C4FFA8}.BIKE|x86.ActiveCfg = BIKE|Win32
-		{66A37855-71A1-40B6-BA26-2F4C69C4FFA8}.Debug|x64.ActiveCfg = Debug|Win32
-		{66A37855-71A1-40B6-BA26-2F4C69C4FFA8}.Debug|x86.ActiveCfg = Debug|Win32
-		{66A37855-71A1-40B6-BA26-2F4C69C4FFA8}.Debug|x86.Build.0 = Debug|Win32
 		{66A37855-71A1-40B6-BA26-2F4C69C4FFA8}.Release|x64.ActiveCfg = Release|Win32
 		{66A37855-71A1-40B6-BA26-2F4C69C4FFA8}.Release|x86.ActiveCfg = Release|Win32
 		{66A37855-71A1-40B6-BA26-2F4C69C4FFA8}.Release|x86.Build.0 = Release|Win32
