@@ -620,7 +620,12 @@ extern int AENG_detail_crinkles;
 				if (allow_debug_keys)
 				{
 					//darci->Genus.Player->Strength = 240;
-					the_game.net_players[0]->Genus.Player->Skill = 240;
+					//the_game.net_players[0]->Genus.Player->Skill = 240;
+					SLONG  world_x = darci->WorldPos.X;
+					SLONG  world_y = darci->WorldPos.Y;
+					SLONG  world_z = darci->WorldPos.Z;
+
+					BANG_create(0, world_x, world_y, world_z);
 				}
 				break; 
 			case 38: //nanana

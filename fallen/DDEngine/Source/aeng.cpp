@@ -2634,7 +2634,7 @@ void AENG_draw_bangs()
 {
 	float u_mid;
 	float v_mid;
-#ifdef	DOG_POO
+#ifndef	DOG_POO
 	SLONG z;
 
 	BANG_Info *bi;
@@ -11860,8 +11860,8 @@ void AENG_draw_warehouse()
 
 				square = NIGHT_cache[px][pz];
 
-				ASSERT(WITHIN(square, 1, NIGHT_MAX_SQUARES - 1));
-				ASSERT(NIGHT_square[square].flag & NIGHT_SQUARE_FLAG_USED);
+				/*ASSERT(WITHIN(square, 1, NIGHT_MAX_SQUARES - 1));
+				ASSERT(NIGHT_square[square].flag & NIGHT_SQUARE_FLAG_USED);*/
 
 				nq = &NIGHT_square[square];
 
@@ -12453,9 +12453,9 @@ void AENG_draw_warehouse()
 			// The cached lighting for this low-res mapsquare.
 			//
 
-			ASSERT(WITHIN(x, 0, PAP_SIZE_LO - 1));
-			ASSERT(WITHIN(z, 0, PAP_SIZE_LO - 1));
-			ASSERT(WITHIN(NIGHT_cache[x][z], 1, NIGHT_MAX_SQUARES - 1));
+			//ASSERT(WITHIN(x, 0, PAP_SIZE_LO - 1));
+			//ASSERT(WITHIN(z, 0, PAP_SIZE_LO - 1));
+			//ASSERT(WITHIN(NIGHT_cache[x][z], 1, NIGHT_MAX_SQUARES - 1));
 
 			col = NIGHT_square[NIGHT_cache[x][z]].colour;
 

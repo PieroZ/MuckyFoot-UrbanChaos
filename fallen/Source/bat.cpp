@@ -32,7 +32,7 @@
 // The timer used by the bats
 //
 
-#define BAT_TICKS_PER_SECOND 160
+static const int BAT_TICKS_PER_SECOND = 160;
 
 //
 // The flags.
@@ -47,26 +47,28 @@
 // The different states a bat can be in.
 //
 
-#define BAT_STATE_IDLE			  0
-#define BAT_STATE_GOTO			  1
-#define BAT_STATE_CIRCLE		  2
-#define BAT_STATE_ATTACK		  3
-#define BAT_STATE_DYING			  4
-#define BAT_STATE_DEAD			  5
-#define BAT_STATE_GROUND		  6
-#define BAT_STATE_RECOIL		  7
-#define BAT_STATE_BALROG_WANDER   8
-#define BAT_STATE_BALROG_ROAR     9
-#define BAT_STATE_BALROG_FOLLOW	  10
-#define BAT_STATE_BALROG_CHARGE   11
-#define BAT_STATE_BALROG_SWIPE    12
-#define BAT_STATE_BALROG_STOMP    13
-#define BAT_STATE_BALROG_FIREBALL 14
-#define BAT_STATE_BALROG_IDLE	  15
-#define BAT_STATE_BANE_IDLE		  16
-#define BAT_STATE_BANE_ATTACK     17
-#define BAT_STATE_BANE_START      18
-#define BAT_STATE_NUMBER          19
+static const int BAT_STATE_IDLE = 0;
+static const int BAT_STATE_GOTO = 1;
+static const int BAT_STATE_CIRCLE = 2;
+static const int BAT_STATE_ATTACK = 3;
+static const int BAT_STATE_DYING = 4;
+static const int BAT_STATE_DEAD = 5;
+static const int BAT_STATE_GROUND = 6;
+static const int BAT_STATE_RECOIL = 7;
+static const int BAT_STATE_BALROG_WANDER = 8;
+static const int BAT_STATE_BALROG_ROAR = 9;
+static const int BAT_STATE_BALROG_FOLLOW = 10;
+static const int BAT_STATE_BALROG_CHARGE = 11;
+static const int BAT_STATE_BALROG_SWIPE = 12;
+static const int BAT_STATE_BALROG_STOMP = 13;
+static const int BAT_STATE_BALROG_FIREBALL = 14;
+static const int BAT_STATE_BALROG_IDLE = 15;
+static const int BAT_STATE_BANE_IDLE = 16;
+static const int BAT_STATE_BANE_ATTACK = 17;
+static const int BAT_STATE_BANE_START = 18;
+static const int BAT_STATE_TURRET_IDLE = 19;
+static const int BAT_STATE_NUMBER = 20;
+
 
 #ifndef PSX
 
@@ -90,26 +92,27 @@ CBYTE *BAT_state_name[BAT_STATE_NUMBER] =
 	"Balrog idle",
 	"Bane idle",
 	"Bane attack",
-	"Bane start"
+	"Bane start",
+	"Turret idle"
 };
 
 #endif
 
-#define BAT_SUBSTATE_NONE			0
-#define BAT_SUBSTATE_CIRCLE_HOME	1
-#define BAT_SUBSTATE_CIRCLE_TARGET	2
-#define BAT_SUBSTATE_CIRCLE_WANT	3
-#define BAT_SUBSTATE_GROUND_WAIT	4
-#define BAT_SUBSTATE_GROUND_WAKE_UP	5
-#define BAT_SUBSTATE_GROUND_FLY_UP	6
-#define BAT_SUBSTATE_DEAD_INITIAL	7
-#define BAT_SUBSTATE_DEAD_LOOP		8
-#define BAT_SUBSTATE_DEAD_FINAL		9
-#define BAT_SUBSTATE_YOMP_START		10
-#define BAT_SUBSTATE_YOMP_MIDDLE	11
-#define BAT_SUBSTATE_YOMP_END		12
-#define BAT_SUBSTATE_FIREBALL_TURN	13
-#define BAT_SUBSTATE_FIREBALL_FIRE	14
+static const int BAT_SUBSTATE_NONE = 0;
+static const int BAT_SUBSTATE_CIRCLE_HOME = 1;
+static const int BAT_SUBSTATE_CIRCLE_TARGET = 2;
+static const int BAT_SUBSTATE_CIRCLE_WANT = 3;
+static const int BAT_SUBSTATE_GROUND_WAIT = 4;
+static const int BAT_SUBSTATE_GROUND_WAKE_UP = 5;
+static const int BAT_SUBSTATE_GROUND_FLY_UP = 6;
+static const int BAT_SUBSTATE_DEAD_INITIAL = 7;
+static const int BAT_SUBSTATE_DEAD_LOOP = 8;
+static const int BAT_SUBSTATE_DEAD_FINAL = 9;
+static const int BAT_SUBSTATE_YOMP_START = 10;
+static const int BAT_SUBSTATE_YOMP_MIDDLE = 11;
+static const int BAT_SUBSTATE_YOMP_END = 12;
+static const int BAT_SUBSTATE_FIREBALL_TURN = 13;
+static const int BAT_SUBSTATE_FIREBALL_FIRE = 14;
 
 
 //
@@ -243,33 +246,33 @@ void BAT_init()
 // Sets a BAT anim...
 //
 
-#define BAT_ANIM_BAT_FLY				1
-#define BAT_ANIM_BAT_DIE				2
-#define BAT_ANIM_GARGOYLE_WAIT			1
-#define BAT_ANIM_GARGOYLE_WAKE_UP		15
-#define BAT_ANIM_GARGOYLE_FLY_UP		3
-#define BAT_ANIM_GARGOYLE_FLY			2
-#define BAT_ANIM_GARGOYLE_FLY_FORWARDS	12
-#define BAT_ANIM_GARGOYLE_ATTACK		4
-#define BAT_ANIM_GARGOYLE_TAKE_HIT		14
-#define BAT_ANIM_GARGOYLE_START_FALL	16
-#define BAT_ANIM_GARGOYLE_FALL_LOOP		17
-#define BAT_ANIM_GARGOYLE_HIT_GROUND	18
-#define BAT_ANIM_BALROG_YOMP			2
-#define BAT_ANIM_BALROG_IDLE			3
-#define BAT_ANIM_BALROG_SWIPE			4
-#define BAT_ANIM_BALROG_YOMP_START		5
-#define BAT_ANIM_BALROG_YOMP_END		6
-#define BAT_ANIM_BALROG_TURN			8
-#define BAT_ANIM_BALROG_ROAR			9
-#define BAT_ANIM_BALROG_STOMP			10
-#define BAT_ANIM_BALROG_TAKE_HIT		11
-#define BAT_ANIM_BALROG_DIE				12
+static const int BAT_ANIM_BAT_FLY = 1;
+static const int BAT_ANIM_BAT_DIE = 2;
+static const int BAT_ANIM_GARGOYLE_WAIT = 1;
+static const int BAT_ANIM_GARGOYLE_WAKE_UP = 15;
+static const int BAT_ANIM_GARGOYLE_FLY_UP = 3;
+static const int BAT_ANIM_GARGOYLE_FLY = 2;
+static const int BAT_ANIM_GARGOYLE_FLY_FORWARDS = 12;
+static const int BAT_ANIM_GARGOYLE_ATTACK = 4;
+static const int BAT_ANIM_GARGOYLE_TAKE_HIT = 14;
+static const int BAT_ANIM_GARGOYLE_START_FALL = 16;
+static const int BAT_ANIM_GARGOYLE_FALL_LOOP = 17;
+static const int BAT_ANIM_GARGOYLE_HIT_GROUND = 18;
+static const int BAT_ANIM_BALROG_YOMP = 2;
+static const int BAT_ANIM_BALROG_IDLE = 3;
+static const int BAT_ANIM_BALROG_SWIPE = 4;
+static const int BAT_ANIM_BALROG_YOMP_START = 5;
+static const int BAT_ANIM_BALROG_YOMP_END = 6;
+static const int BAT_ANIM_BALROG_TURN = 8;
+static const int BAT_ANIM_BALROG_ROAR = 9;
+static const int BAT_ANIM_BALROG_STOMP = 10;
+static const int BAT_ANIM_BALROG_TAKE_HIT = 11;
+static const int BAT_ANIM_BALROG_DIE = 12;
 
 
 
-#define BAT_ANIM_BANE_IDLE				2
-#define BAT_ANIM_BANE_ATTACK			3
+static const int BAT_ANIM_BANE_IDLE = 2;
+static const int BAT_ANIM_BANE_ATTACK = 3;
 
 #define BAT_ANIM_GENERIC_FLY			(-1)	// An anim that changes depending on the type of bat!
 #define BAT_ANIM_GENERIC_TAKE_HIT		(-2)
@@ -2352,6 +2355,13 @@ void BAT_normal(Thing *p_thing)
 
 			break;
 
+		case BAT_STATE_TURRET_IDLE:
+
+			/*end = BAT_animate(p_thing);
+			p_bat->timer = 0;*/
+
+			break;
+
 		default:
 			ASSERT(0);
 			break;
@@ -2639,6 +2649,14 @@ extern	SLONG load_anim_prim_object(SLONG prim);
 			break;
 
 		case BAT_TYPE_BANE:
+			p_bat->state         = BAT_STATE_BANE_IDLE;
+			p_bat->substate      = BAT_SUBSTATE_NONE;
+			p_bat->glow          = 0x7f00;
+			p_thing->WorldPos.Y += 0x60 << 8;
+			BAT_set_anim(p_thing, BAT_ANIM_BANE_IDLE);
+			break;
+
+		case BAT_TYPE_TURRET:
 			p_bat->state         = BAT_STATE_BANE_IDLE;
 			p_bat->substate      = BAT_SUBSTATE_NONE;
 			p_bat->glow          = 0x7f00;

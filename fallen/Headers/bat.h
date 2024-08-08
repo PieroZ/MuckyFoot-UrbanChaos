@@ -11,11 +11,13 @@
 // The bat structures.
 //
 
-#define BAT_TYPE_UNUSED		0
-#define BAT_TYPE_BAT		1
-#define BAT_TYPE_GARGOYLE	2
-#define BAT_TYPE_BALROG		3
-#define BAT_TYPE_BANE		4
+static const int BAT_TYPE_UNUSED = 0;
+static const int BAT_TYPE_BAT = 1;
+static const int BAT_TYPE_GARGOYLE = 2;
+static const int BAT_TYPE_BALROG = 3;
+static const int BAT_TYPE_BANE = 4;
+static const int BAT_TYPE_TURRET = 5;
+
 
 typedef struct
 {

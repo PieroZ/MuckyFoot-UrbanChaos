@@ -892,6 +892,7 @@
     <ClCompile Include="Source\DebugVars.cpp" />
     <ClCompile Include="Source\AllToAnmConverter.cpp" />
     <ClCompile Include="Source\PersonPZI.cpp" />
+    <ClCompile Include="Source\bang.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\america.h">

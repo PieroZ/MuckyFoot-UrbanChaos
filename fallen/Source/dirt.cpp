@@ -137,7 +137,7 @@ SLONG DIRT_focus_first;
 
 SLONG DIRT_get_new_type(SLONG x, SLONG z)
 {
-	return DIRT_TYPE_CAN;
+	//return DIRT_TYPE_CAN;
 	SLONG choice;
 
 	SLONG mx = x >> PAP_SHIFT_HI;
@@ -1897,7 +1897,7 @@ void DIRT_process(void)
 							//
 
 
-							//CreateGrenadeExplosion(dd->x << 8, dd->y << 8, dd->z << 8, NULL);
+							CreateGrenadeExplosion(dd->x << 8, dd->y << 8, dd->z << 8, NULL);
 							MFX_play_xyz(i,S_KICK_CAN,MFX_REPLACE,dd->x<<8,dd->y<<8,dd->z<<8);
 
 							//

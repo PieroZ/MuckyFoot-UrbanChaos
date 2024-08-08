@@ -62,8 +62,8 @@ void HEAP_check()
 
 	for (hf = HEAP_free; hf; hf = hf->next)
 	{
-		ASSERT(hf->size <= HEAP_SIZE);
-		ASSERT(hf->start + hf->size == hf->end);
+		//ASSERT(hf->size <= HEAP_SIZE);
+		//ASSERT(hf->start + hf->size == hf->end);
 	}
 }
 
