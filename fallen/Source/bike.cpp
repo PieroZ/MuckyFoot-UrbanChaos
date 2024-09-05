@@ -1858,8 +1858,8 @@ void BIKE_set_dismounting(Thing *p_bike)
 	dt->QueuedFrame  =  0;
 	dt->TheChunk     = &anim_chunk[9];
 	dt->CurrentAnim  =  3;
-	dt->CurrentFrame =  anim_chunk[9].AnimList[5];
-	dt->NextFrame    =  anim_chunk[9].AnimList[5]->NextFrame;
+	dt->CurrentFrame =  anim_chunk[9].AnimList[4];
+	dt->NextFrame    =  anim_chunk[9].AnimList[4]->NextFrame;
 	dt->FrameIndex	 =  0;
 }
 

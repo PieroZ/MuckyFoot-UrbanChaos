@@ -437,8 +437,8 @@ HRESULT D3DTexture::Reload_TGA(void)
 		mi = current_device->AlphaTexFmt;
 	}
 	else
-	{
-		mi = current_device->OpaqueTexFmt;
+	{ 
+ 		mi = current_device->OpaqueTexFmt;
 	}
 
 	//

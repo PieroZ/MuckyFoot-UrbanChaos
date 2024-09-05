@@ -4980,12 +4980,30 @@ extern	SLONG	FC_cam_height;
 			SLONG world_y;
 			SLONG world_z;
 
-			AENG_raytraced_position(
+	/*		AENG_raytraced_position(
 				MouseX,
 				MouseY,
 			   &world_x,
 			   &world_y,
-			   &world_z);
+			   &world_z);*/
+
+
+			RECT	client;
+
+
+			GetClientRect(hDDLibWindow, &client);
+
+			float	hitx = float(MouseX) * float(DisplayWidth) / float(client.right - client.left);
+			float	hity = float(MouseY) * float(DisplayHeight) / float(client.bottom - client.top);
+
+			AENG_raytraced_position(
+				SLONG(hitx + 0.5f),
+				SLONG(hity + 0.5f),
+				//				MouseX,
+				//				MouseY,
+				&world_x,
+				&world_y,
+				&world_z);
 
 			if (WITHIN(world_x, 0, (PAP_SIZE_HI << PAP_SHIFT_HI) - 1) &&
 				WITHIN(world_z, 0, (PAP_SIZE_HI << PAP_SHIFT_HI) - 1))

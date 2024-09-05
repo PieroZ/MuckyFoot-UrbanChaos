@@ -3568,8 +3568,8 @@ UBYTE	FRONTEND_input() {
 //#define	AXIS_MIN			(AXIS_CENTRE-NOISE_TOLERANCE)
 //#define	AXIS_MAX			(AXIS_CENTRE+NOISE_TOLERANCE)
 
-#define	AXIS_MIN			-333
-#define	AXIS_MAX			333
+#define	AXIS_MIN			-500
+#define	AXIS_MAX			500
 
 		//ULONG ulAxisMax = 333;
 		//ULONG ulAxisMin = -333;
@@ -3594,7 +3594,7 @@ UBYTE	FRONTEND_input() {
 			input|=INPUT_MASK_BACKWARDS;
 		}
 		else if(the_state.lY<AXIS_MIN)
-		{
+		{  
 			input&=~(INPUT_MASK_LEFT|INPUT_MASK_RIGHT);
 			input|=INPUT_MASK_FORWARDS;
 		}

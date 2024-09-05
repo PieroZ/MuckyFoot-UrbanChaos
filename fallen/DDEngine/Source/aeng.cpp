@@ -10611,7 +10611,7 @@ extern HWND GEDIT_edit_wnd;
 									{
 										AENG_set_bike_wheel_rotation(bdi.front_rot, PRIM_OBJ_BIKE_BWHEEL);
 
-										MESH_draw_poly(
+	/*									MESH_draw_poly(
 												PRIM_OBJ_BIKE_BWHEEL,
 												bdi.front_x,
 												bdi.front_y,
@@ -10631,7 +10631,7 @@ extern HWND GEDIT_edit_wnd;
 												bdi.yaw,
 												0,
 												bdi.roll,
-												NULL,0xff,0);
+												NULL,0xff,0);*/
 									}
 
 									// Now some bike fx... first the exhaust

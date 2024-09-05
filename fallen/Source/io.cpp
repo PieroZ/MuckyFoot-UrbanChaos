@@ -911,7 +911,7 @@ SLONG load_prim_object(SLONG prim)
 		LogText("hello");
 	}
 
-	ASSERT(WITHIN(prim, 0, 265));
+	//ASSERT(WITHIN(prim, 0, 265));
 
 //	ASSERT(prim!=238);
 	po = &prim_objects[prim];
@@ -1596,7 +1596,7 @@ void	load_keyframes_from_all(struct	KeyFrameChunk* the_chunk, Anim*& AnimList, i
 	//the_chunk->FirstElement = firstElement;
 	//the_chunk->LastElement = firstElement + game_chunk[0].MaxElements - 1;
 
-	Gowno::KeyFrameListStuff(game_chunk, the_chunk, AnimList, animCount);
+	AllExporter::KeyFrameListStuff(game_chunk, the_chunk, AnimList, animCount);
 	
 	//for (int i = 1; i < game_chunk[0].MaxAnimFrames; ++i)
 	//{

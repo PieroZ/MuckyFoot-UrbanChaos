@@ -988,7 +988,7 @@ void	setup_people_anims(void)
 	append_anim_system(&game_chunk[ANIM_TYPE_ROPER], "police1.all", 200, 0);
 	append_anim_system(&game_chunk[ANIM_TYPE_CIV], "newciv.all", CIV_M_START, 1);
 	append_anim_system(&game_chunk[ANIM_TYPE_CIV], "newcivf.all", CIV_F_START, 1);
- 	//append_anim_system(&game_chunk[ANIM_TYPE_DARCI], "Troper.all", 297, 0); // 296 seems to be the last anim from the prototype darci1.all
+ 	append_anim_system(&game_chunk[ANIM_TYPE_DARCI], "Troper.all", 297, 0); // <=== Custom animations
 
 extern SLONG	playing_combat_tutorial(void);
 extern	SLONG	playing_level(const CBYTE *name);
@@ -1807,7 +1807,7 @@ void	convert_all_to_anm(Anim* key_list, GameKeyFrameChunk* p_chunk, KeyFrameChun
 	//UBYTE			TweakSpeed;
 
 	// Figure out how many elements in the array 
-	Gowno::DoStuff(key_list, p_chunk, the_chunk);
+	AllExporter::DoStuff(key_list, p_chunk, the_chunk);
 
 	signed short animCount = p_chunk->MaxAnimFrames; // -1 ?
 	signed short framesCount = p_chunk->MaxKeyFrames; // -1 ?

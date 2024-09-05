@@ -34,6 +34,7 @@
 #include	"poly.h"
 #include "bat.h"
 #endif
+#include "PersonPZI.h"
 
 
 #ifdef TARGET_DC
@@ -1219,13 +1220,14 @@ SLONG person_get_in_car(Thing *p_thing, SLONG *door)
 ULONG do_the_thing(Thing* p_thing, ULONG input)
 {
 	//set_anim(p_thing, 140);
+	//set_anim(p_thing, 302);
 	BAT_set_anim_test(p_thing, 3);
 	return INPUT_MASK_TEST;
 }
 
 ULONG do_the_handshake_anim(Thing* p_thing, ULONG input)
 {
-	set_anim(p_thing, 299);
+	set_anim(p_thing, 302);
 //	p_thing->Genus.Person->Flags |= (FLAG_PERSON_NON_INT_M | FLAG_PERSON_NON_INT_C);
 
 
@@ -4355,7 +4357,7 @@ ULONG	old_apply_button_input(struct Thing* p_player, struct Thing* p_person, ULO
 
 	if (input & INPUT_MASK_TEST)
 	{
-		processed |= do_the_thing(p_person, input);
+		processed |= do_the_handshake_anim(p_person, input);
 		input &= ~processed;
 	}
 
@@ -5234,6 +5236,9 @@ void set_person_unsit(Thing *p_person);
 					processed|=input_used; //needs a clear click 
 					break;
 				case	ACTION_HANDSHAKE:
+					/*Thing* p_target = TO_THING(p_person->Genus.Person->Target);
+					lighting_strike_person(p_target);*/
+
 					set_person_liukang_kick(p_person);
 					//set_person_cut_fence(p_person);
 					//set_person_kick_off_wall(p_person,0,0);
@@ -5676,9 +5681,18 @@ ULONG apply_button_input_fight(Thing *p_player, Thing *p_person, ULONG input)
 			}
 			else
 			{
+				//set_anim(p_person, ANIM_PZI_TEST+1);
+				set_anim(p_person, 302);
+				//p_person->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
+				//p_person->Genus.Person->Action = ACTION_SIT_BENCH;
+
+				//Thing* p_target = TO_THING(p_person->Genus.Person->Target);
+				//set_person_float_up(p_target);
+
+				//lighting_strike_person(p_target);
 						//PANEL_new_text(NULL,4000,"ACTION jump kick");
 				//set_generic_person_state_function(p_person, STATE_FIGHTING);
-				set_person_liukang_kick(p_person);
+				//set_person_liukang_kick(p_person);
  				//set_person_fight_anim(p_person, ANIM_PZI_TEST);
  				//set_person_fight_anim(p_person,ANIM_KICK_NS);
  				//set_person_fight_anim(p_person, ANIM_PZI_TEST);
@@ -6755,12 +6769,13 @@ extern DIJOYSTATE			the_state;
 
 				if ( BUTTON_IS_PRESSED(the_state.rgbButtons[joypad_button_use[JOYPAD_BUTTON_MOVE]] ) )
 				{
+					input |= INPUT_MASK_HANDSHAKE;
 					// Force walk
-					m_bForceWalk = TRUE;
+					//m_bForceWalk = TRUE;
 				}
 				else
 				{
-					m_bForceWalk = FALSE;
+					//m_bForceWalk = FALSE;
 				}
 
 

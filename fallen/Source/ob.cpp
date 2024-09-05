@@ -728,8 +728,10 @@ void OB_load_needed_prims()
 #endif
 	{
 		for (i = 1; i < OB_ob_upto; i++)
+		//for (i = 0; i < 256; i++)
 		{
-			load_prim_object(OB_ob[i].prim);
+			load_prim_object(i);
+			//load_prim_object(OB_ob[i].prim);
 
 			if (OB_ob[i].prim == PRIM_OBJ_SWITCH_OFF)
 			{

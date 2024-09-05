@@ -158,10 +158,14 @@ void lighting_strike_person(Thing* p_person)
 		py,
 		pz,
 		0x300,
-		200,
+		0,
 		p_person);
 
 	DIRT_gust(p_person, px, pz, px + 400, pz);
+
+	p_person->Genus.Person->Health = 0;
+	set_person_dead(p_person, NULL, 6, 0, 0);
+	//p_person->SubState = STATE_DEAD;
 
 	remove_thing_from_map(p_person);
 }

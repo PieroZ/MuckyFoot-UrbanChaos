@@ -8089,7 +8089,7 @@ void ANIM_obj_draw(Thing *p_thing,DrawTween *dt)
 		return;
 	}
 
-	/*
+	
 
 	{
 		//
@@ -8112,7 +8112,7 @@ void ANIM_obj_draw(Thing *p_thing,DrawTween *dt)
 			TRUE);
 	}
 
-	*/
+	
 
 	//
 	// The offset to keep the locked limb in the same place.
@@ -8150,7 +8150,7 @@ void ANIM_obj_draw(Thing *p_thing,DrawTween *dt)
 	// What colour do we draw the figure?
 	//
 
-	colour   = 0;
+	colour   = 0xff00ff;
 	specular = 0;
 
 	SLONG lx;

@@ -8010,7 +8010,8 @@ void	set_person_liukang_kick(Thing *p_person)
 {
 	MSG_add(" start flykicking ");
 
-	set_anim(p_person, ANIM_PZI_TEST);
+	//set_anim(p_person, ANIM_PZI_TEST);
+	set_anim(p_person, 302);
 	//p_person->Genus.Person->Action = ACTION_HANDSHAKE;
 
 	//set_generic_person_state_function(p_person,STATE_MOVEING);
@@ -8748,7 +8749,7 @@ void set_person_mount_bike(Thing *p_person, Thing *p_bike)
 {
 	set_generic_person_state_function(p_person,STATE_MOVEING);
 
-	//set_anim(p_person, ANIM_BIKE_MOUNT);
+	set_anim(p_person, ANIM_BIKE_MOUNT);
 
 	//
 	// Position the person for getting on the bike.
@@ -22516,7 +22517,7 @@ void set_person_float_up(Thing *p_person)
 {
 	set_generic_person_state_function(p_person, STATE_FLOAT);
 
-	p_person->SubState = SUB_STATE_FLOAT_UP;
+	p_person->SubState = SUB_STATE_FLOAT_UP_QUICKLY;
 
 //	set_anim(p_person, ANIM_DANCE_HEADBANG);
 }
@@ -22539,6 +22540,19 @@ void fn_person_float(Thing *p_person)
 
 	switch(p_person->SubState)
 	{
+		case SUB_STATE_FLOAT_UP_QUICKLY:
+
+			p_person->WorldPos.Y += 4*640 * TICK_RATIO >> TICK_SHIFT;
+			p_person->WorldPos.X += 640 * TICK_RATIO >> TICK_SHIFT;
+			p_person->Draw.Tweened->Tilt = (-p_person->WorldPos.Y >> 8) - ground;
+
+ 			if (p_person->Draw.Tweened->Tilt < -150)
+			{
+				lighting_strike_person(p_person);
+				//p_person->SubState = SUB_STATE_FLOAT_BOB;
+			}
+
+			break;
 		case SUB_STATE_FLOAT_UP:
 
 			p_person->WorldPos.Y        += 64 * TICK_RATIO >> TICK_SHIFT;

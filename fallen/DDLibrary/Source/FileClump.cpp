@@ -94,8 +94,14 @@ FileClump::~FileClump()
 bool FileClump::Exists(ULONG id)
 {
 	//return false;
-	if (id >= MaxID)	return false;
-	if (!Offsets[id])	return false;
+	if (id >= MaxID)
+	{
+		return false;
+	}
+	if (!Offsets[id])
+	{
+		return false;
+	}
 
 	return true;
 }

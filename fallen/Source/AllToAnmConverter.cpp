@@ -8,7 +8,7 @@
 #include "../Headers/AllToAnmConverter.h"
 
 
-Gowno::Gowno()
+AllExporter::AllExporter()
 {
 }
 
@@ -258,7 +258,7 @@ void	uncompress_matrix2(CMatrix33* cm, Matrix33* m)
 }
 
 
-void Gowno::DoStuff(Anim* key_list, GameKeyFrameChunk* p_chunk, KeyFrameChunk* the_chunk)
+void AllExporter::DoStuff(Anim* key_list, GameKeyFrameChunk* p_chunk, KeyFrameChunk* the_chunk)
 {
 	std::vector<Anim*> AnimList;
 	std::map<int, int> framesCountPerAnimNo;
@@ -370,7 +370,7 @@ void	uncompress_matrix3(CMatrix33* cm, Matrix33* m)
 	v = ((cm->M[2] & CMAT2_MASK) << 22) >> 22;
 	m->M[2][2] = (v << 6);
 }
-void Gowno::KeyFrameListStuff(GameKeyFrameChunk* game_chunk, struct	KeyFrameChunk* the_chunk, Anim*& OutputAnimList, int& animCount)
+void AllExporter::KeyFrameListStuff(GameKeyFrameChunk* game_chunk, struct	KeyFrameChunk* the_chunk, Anim*& OutputAnimList, int& animCount)
 {
 
 	GameKeyFrameElement gameChunkElement2 = game_chunk[0].TheElements[0];
@@ -388,6 +388,11 @@ void Gowno::KeyFrameListStuff(GameKeyFrameChunk* game_chunk, struct	KeyFrameChun
 	std::map<GameKeyFrameElement*, KeyFrameElement*> gameKeyElementToKeyFrameElement;
 
 	generate_anim_names_map();
+
+	for (int i = 0; i < game_chunk[0].MaxKeyFrames; ++i)
+	{
+		TRACE("i=%d, TweenStep=%d\n", i, game_chunk[0].AnimKeyFrames[i].TweenStep);
+	}
 
 	for (int i = 0; i < game_chunk[0].MaxElements; ++i)
 	{
@@ -433,7 +438,7 @@ void Gowno::KeyFrameListStuff(GameKeyFrameChunk* game_chunk, struct	KeyFrameChun
 		the_key_frame = &the_chunk->KeyFrames[frame];
 		the_key_frame->ChunkID = 0;
 		the_key_frame->FrameID = frame;
-		the_key_frame->TweenStep = 1;
+		the_key_frame->TweenStep = 4;
 		the_key_frame->ElementCount = the_chunk->ElementCount;
 		the_key_frame->FirstElement = &firstElement[frame * 15];
 	}
@@ -494,7 +499,7 @@ void Gowno::KeyFrameListStuff(GameKeyFrameChunk* game_chunk, struct	KeyFrameChun
 			
 			kf->FrameID = gameKeyFrameElementToId[gkfe] / 15;
 			
-			kf->TweenStep = 1;
+			kf->TweenStep = 4;
 			kf->ElementCount = 15;
 			kf->Dx = 0;
 			kf->Dy = 0;
@@ -581,7 +586,7 @@ void Gowno::KeyFrameListStuff(GameKeyFrameChunk* game_chunk, struct	KeyFrameChun
 
 						next_kf->FrameID = gameKeyFrameElementToId[next_gkfe]/15;
 
-						next_kf->TweenStep = 1;
+						next_kf->TweenStep = 4;
 						next_kf->ElementCount = 15;
 						next_kf->Dx = 0;
 						next_kf->Dy = 0;

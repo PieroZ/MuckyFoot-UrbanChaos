@@ -1054,7 +1054,7 @@ void FC_rotate_left(SLONG cam)
 
 	if (FC_allowed_to_rotate(fc, FC_ROTATE_DIR_LEFT))
 	{
-		fc->rotate = -0x900;
+		fc->rotate = -0x500;
 	}
 }
 
@@ -1066,7 +1066,7 @@ void FC_rotate_right(SLONG cam)
 
 	if (FC_allowed_to_rotate(fc, FC_ROTATE_DIR_RIGHT))
 	{
-		fc->rotate = +0x600;
+		fc->rotate = +0x300;
 	}
 }
 
@@ -1886,7 +1886,7 @@ extern	SLONG	EWAY_cam_jumped;
 		{
 #ifndef TARGET_DC
 #ifdef DEBUG
-			FONT2D_DrawString("SNAP",100,120);
+			//FONT2D_DrawString("SNAP",100,120);
 #endif
 #endif
 			fc->want_yaw   = fc->yaw;
