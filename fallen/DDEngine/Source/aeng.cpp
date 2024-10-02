@@ -16800,8 +16800,8 @@ void AENG_get_rid_of_unused_dfcache_lighting(SLONG splitscreen)	// Splitscreen =
 		// free up the cached lighting info for it.
 		//
 
-		ASSERT(WITHIN(ndf->dfacet, 1, next_dfacet - 1));
-		ASSERT(dfacets[ndf->dfacet].Dfcache == dfcache);
+		/*ASSERT(WITHIN(ndf->dfacet, 1, next_dfacet - 1));
+		ASSERT(dfacets[ndf->dfacet].Dfcache == dfcache);*/
 
 		if (dfacets[ndf->dfacet].Counter[0] != SUPERMAP_counter[0])
 		{

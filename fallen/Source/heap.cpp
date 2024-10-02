@@ -22,7 +22,7 @@ UBYTE HEAP_pad[HEAP_PAD_SIZE];
 #elif defined(TARGET_DC)
 #define HEAP_SIZE (1024 * 64)
 #else
-#define HEAP_SIZE (1024 * 128)
+#define HEAP_SIZE (1024 * 1280)
 #endif
 
 UBYTE HEAP_heap[HEAP_SIZE];
@@ -62,8 +62,8 @@ void HEAP_check()
 
 	for (hf = HEAP_free; hf; hf = hf->next)
 	{
-		//ASSERT(hf->size <= HEAP_SIZE);
-		//ASSERT(hf->start + hf->size == hf->end);
+		ASSERT(hf->size <= HEAP_SIZE);
+		ASSERT(hf->start + hf->size == hf->end);
 	}
 }
 
@@ -306,7 +306,7 @@ void *HEAP_get(SLONG size)
 		//
 
 		onheap = (HEAP_Free *) bit.start;
-	   *onheap = bit;
+ 	   *onheap = bit;
 
 		//
 		// Add the bit to the free list.

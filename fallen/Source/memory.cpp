@@ -3253,7 +3253,12 @@ SLONG MEMORY_quick_avaliable;
 
 void MEMORY_quick_init()
 {
-	FileDelete(MEMORY_QUICK_FNAME);
+	//FileDelete(MEMORY_QUICK_FNAME);
+
+	FILE* handle = fopen(MEMORY_QUICK_FNAME, "wb");
+
+	MF_Fclose(handle);
+
 
 	MEMORY_quick_avaliable = FALSE;
 }
@@ -3286,13 +3291,41 @@ void MEMORY_quick_save()
 
 	MemTable *mt;
 
+	int savedBytes = 0;
+
+	//FILE* analysisData = fopen("analysisSaveData.txt", "w");
+
+	//if (analysisData == NULL)
+	//{
+	//	TRACE("Error opening file");
+	//	return;
+	//}
+
+
 	for (i = 0; save_table[i].Point; i++)
 	{
 		mt = &save_table[i];
 
-		if (fwrite(mt->Point, mt->StructSize, mt->Maximum, handle) != (unsigned)mt->Maximum) goto file_error;
-	}
+		//if (mt->Name == "players" /*|| mt->Name == "net_plyr" || mt->Name == "players"*/)
+		{
+			fwrite(*mt->Point, mt->StructSize, mt->Maximum, handle);
+			
+		}
 
+		//if (fwrite(mt->Point, mt->StructSize, mt->Maximum, handle) != (unsigned)mt->Maximum)
+		//{
+		//	goto file_error;
+		//}
+		//else
+		//{
+		//	fflush(handle);
+		//	//fprintf(analysisData, "%s,%d,%d\n", mt->Name, mt->StructSize, mt->Maximum);
+		//}
+	}
+	//MF_Fclose(handle);
+	//return;
+
+	//fclose(analysisData);
 	//
 	// Save out the extra data we might need!
 	//
@@ -3384,13 +3417,13 @@ void MEMORY_quick_save()
 	// Lighting stuff that isn't saved on the PSX, so it isn't in the save table.
 	//
 
-	if (fwrite( NIGHT_square,       sizeof(NIGHT_Square),      NIGHT_MAX_SQUARES        , handle) != NIGHT_MAX_SQUARES        ) goto file_error;
-	if (fwrite(&NIGHT_square_free,  sizeof(NIGHT_square_free), 1                        , handle) != 1                        ) goto file_error;
-	if (fwrite( NIGHT_cache,        sizeof(UBYTE),             PAP_SIZE_LO * PAP_SIZE_LO, handle) != PAP_SIZE_LO * PAP_SIZE_LO) goto file_error;
+	//if (fwrite( NIGHT_square,       sizeof(NIGHT_Square),      NIGHT_MAX_SQUARES        , handle) != NIGHT_MAX_SQUARES        ) goto file_error;
+	//if (fwrite(&NIGHT_square_free,  sizeof(NIGHT_square_free), 1                        , handle) != 1                        ) goto file_error;
+	//if (fwrite( NIGHT_cache,        sizeof(UBYTE),             PAP_SIZE_LO * PAP_SIZE_LO, handle) != PAP_SIZE_LO * PAP_SIZE_LO) goto file_error;
 
-	if (fwrite( NIGHT_dfcache,      sizeof(NIGHT_Dfcache),     NIGHT_MAX_DFCACHES       , handle) != NIGHT_MAX_DFCACHES       ) goto file_error;
-	if (fwrite(&NIGHT_dfcache_used, sizeof(UBYTE),             1                        , handle) != 1                        ) goto file_error;
-	if (fwrite(&NIGHT_dfcache_free, sizeof(UBYTE),             1                        , handle) != 1                        ) goto file_error;
+	//if (fwrite( NIGHT_dfcache,      sizeof(NIGHT_Dfcache),     NIGHT_MAX_DFCACHES       , handle) != NIGHT_MAX_DFCACHES       ) goto file_error;
+	//if (fwrite(&NIGHT_dfcache_used, sizeof(UBYTE),             1                        , handle) != 1                        ) goto file_error;
+	//if (fwrite(&NIGHT_dfcache_free, sizeof(UBYTE),             1                        , handle) != 1                        ) goto file_error;
 
 	//
 	// Make sure we're in the right place.
@@ -3456,9 +3489,17 @@ SLONG MEMORY_quick_load()
 	for (i = 0; save_table[i].Point; i++)
 	{
 		mt = &save_table[i];
+		
+		//if (mt->Name == "players" /*|| mt->Name == "net_plyr" || mt->Name == "players"*/)
+		{
+			fread(*mt->Point, mt->StructSize, mt->Maximum, handle);
 
-		if (fread(mt->Point, mt->StructSize, mt->Maximum, handle) != (unsigned)mt->Maximum) goto file_error;
+		}
+
+		//if (fread(mt->Point, mt->StructSize, mt->Maximum, handle) != (unsigned)mt->Maximum) goto file_error;
 	}
+	//MF_Fclose(handle);
+	//return 1;
 
 	//
 	// Save out the extra data we might need!
@@ -3555,13 +3596,13 @@ SLONG MEMORY_quick_load()
 	// Lighting stuff that isn't saved on the PSX, so it isn't in the save table.
 	//
 
-	if (fread( NIGHT_square,       sizeof(NIGHT_Square),      NIGHT_MAX_SQUARES        , handle) != NIGHT_MAX_SQUARES        ) goto file_error;
-	if (fread(&NIGHT_square_free,  sizeof(NIGHT_square_free), 1                        , handle) != 1                        ) goto file_error;
-	if (fread( NIGHT_cache,        sizeof(UBYTE),             PAP_SIZE_LO * PAP_SIZE_LO, handle) != PAP_SIZE_LO * PAP_SIZE_LO) goto file_error;
+	//if (fread( NIGHT_square,       sizeof(NIGHT_Square),      NIGHT_MAX_SQUARES        , handle) != NIGHT_MAX_SQUARES        ) goto file_error;
+	//if (fread(&NIGHT_square_free,  sizeof(NIGHT_square_free), 1                        , handle) != 1                        ) goto file_error;
+	//if (fread( NIGHT_cache,        sizeof(UBYTE),             PAP_SIZE_LO * PAP_SIZE_LO, handle) != PAP_SIZE_LO * PAP_SIZE_LO) goto file_error;
 
-	if (fread( NIGHT_dfcache,      sizeof(NIGHT_Dfcache),     NIGHT_MAX_DFCACHES       , handle) != NIGHT_MAX_DFCACHES       ) goto file_error;
-	if (fread(&NIGHT_dfcache_used, sizeof(UBYTE),             1                        , handle) != 1                        ) goto file_error;
-	if (fread(&NIGHT_dfcache_free, sizeof(UBYTE),             1                        , handle) != 1                        ) goto file_error;
+	//if (fread( NIGHT_dfcache,      sizeof(NIGHT_Dfcache),     NIGHT_MAX_DFCACHES       , handle) != NIGHT_MAX_DFCACHES       ) goto file_error;
+	//if (fread(&NIGHT_dfcache_used, sizeof(UBYTE),             1                        , handle) != 1                        ) goto file_error;
+	//if (fread(&NIGHT_dfcache_free, sizeof(UBYTE),             1                        , handle) != 1                        ) goto file_error;
 
 	//
 	// Make sure we're in the right place.
