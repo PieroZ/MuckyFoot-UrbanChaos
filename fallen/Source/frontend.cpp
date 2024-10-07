@@ -410,7 +410,7 @@ RawMenuData raw_menu_data[] = {
 
 
 //	{	FE_CONFIG_VIDEO,	OT_SLIDER,	X_DETAIL,		0,	128,				},
-#ifdef ALLOW_DANGEROUS_OPTIONS
+#ifndef ALLOW_DANGEROUS_OPTIONS
 	{   FE_CONFIG_VIDEO,     OT_LABEL,  X_GRAPHICS,     0,  1,                  },
 	{                 0,     OT_MULTI,  X_RESOLUTION,   0,  1,                  },
 	{                 0,     OT_MULTI,  X_DRIVERS,	    0,  1,                  },

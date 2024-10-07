@@ -2569,7 +2569,7 @@ SLONG DIRT_get_info(SLONG which,DIRT_Info *ans)
 	return(1);
 }
 
-/*
+
 void DIRT_gale_height(SLONG dx,SLONG dy,SLONG dz)
 {
 	SLONG i;
@@ -2688,7 +2688,7 @@ void DIRT_gale_height(SLONG dx,SLONG dy,SLONG dz)
 				break;
 
 			default:
-				ASSERT(0);
+				//ASSERT(0);
 				break;
 		}
 	}
@@ -2699,7 +2699,7 @@ void DIRT_gale(SLONG dx,SLONG dz)
 {
 	DIRT_gale_height(dx,0xFFFFFF,dz);
 }
-*/
+
 
 void DIRT_mark_as_offscreen(SLONG which)
 {

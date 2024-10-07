@@ -121,12 +121,12 @@ DrawTween *alloc_tween(SLONG type, SLONG part) {
 	SLONG chunk;
 	DrawTween *dt;
 
-	ASSERT(0); //better add an extra game_chunk if your going to put animals in
-	return(0);
+	//ASSERT(0); //better add an extra game_chunk if your going to put animals in
+	//return(0);
 
 //	chunk=animal_bodies[type].start+part;
 //	chunk=animal_bodies[type];
-	chunk=6;// heh
+	chunk=5;// heh
 	dt = alloc_draw_tween(DT_ANIMAL_PRIM);
 
 	if (dt) {
@@ -177,8 +177,8 @@ Thing *alloc_animal(UBYTE type)
 	SLONG       a_index;
 
 	ASSERT(WITHIN(type, 1, ANIMAL_NUMBER - 1));
-	ASSERT(0);
-	return(0);
+	//ASSERT(0);
+	//return(0);
 
 	//
 	// Look for an unused animal structure.
@@ -288,7 +288,7 @@ void free_animal(Thing *p_thing) {
 Thing *ANIMAL_create(GameCoord pos, UBYTE type)
 {
 	Thing *p_thing = alloc_animal(type);
-	return(0);
+	//return(0);
 
 	if (p_thing != NULL)
 	{
@@ -312,7 +312,7 @@ Thing *ANIMAL_create(GameCoord pos, UBYTE type)
 
 UBYTE ANIMAL_animatetween(DrawTween *draw_info) {
 	SLONG tween_step;
-	ASSERT(0);
+	//ASSERT(0);
 
 //	tween_step=256/(draw_info->CurrentFrame->TweenStep+1);
 	tween_step=draw_info->CurrentFrame->TweenStep<<1;
@@ -334,7 +334,7 @@ SLONG advance_keyframe(DrawTween *draw_info);
 
 UBYTE ANIMAL_animate(Thing *animal) {
 	UBYTE	     i,j=0;
-	ASSERT(0);
+	//ASSERT(0);
 //	for (i=0;i<animal_bodies[animal->Genus.Animal->AnimalType].size;i++)
 //		j|=ANIMAL_animatetween(animal->Genus.Animal->dts[i]);
 //	j=ANIMAL_animatetween(animal->Genus.Animal->dts[0]);
@@ -352,11 +352,11 @@ void	ANIMAL_set_anim(Thing *thing, SLONG anim) {
 	UBYTE i;
 	SLONG chunk;
 	DrawTween *dt;
-	ASSERT(0);
+	//ASSERT(0);
 	return;
 
 //	chunk=animal_bodies[animal->AnimalType].start;
-	chunk=6;
+	chunk=5;
 //	for (i=0;i<animal_bodies[animal->AnimalType].size;i++)
 	i=0;
 	{

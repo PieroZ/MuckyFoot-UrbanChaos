@@ -67,7 +67,8 @@ static const int BAT_STATE_BANE_IDLE = 16;
 static const int BAT_STATE_BANE_ATTACK = 17;
 static const int BAT_STATE_BANE_START = 18;
 static const int BAT_STATE_TURRET_IDLE = 19;
-static const int BAT_STATE_NUMBER = 20;
+static const int BAT_STATE_TURRET_FOLLOW = 20;
+static const int BAT_STATE_NUMBER = 21;
 
 
 #ifndef PSX
@@ -287,8 +288,8 @@ void BAT_set_anim(Thing *p_thing, SLONG anim)
 			{BAT_ANIM_GARGOYLE_FLY, BAT_ANIM_GARGOYLE_TAKE_HIT}
 		};
 
-		ASSERT(WITHIN(p_thing->Genus.Bat->type - 1, 0, 1));
-		ASSERT(WITHIN(-anim - 1, 0, 1));
+		//ASSERT(WITHIN(p_thing->Genus.Bat->type - 1, 0, 1));
+		//ASSERT(WITHIN(-anim - 1, 0, 1));
 
 		anim = generic_bat_anim[p_thing->Genus.Bat->type - 1][-anim - 1];
 	}
@@ -302,8 +303,11 @@ void BAT_set_anim(Thing *p_thing, SLONG anim)
 
 	dt->AnimTween	 =	0;
 	dt->QueuedFrame	 =	NULL;
+
+
 	dt->TheChunk	 = &anim_chunk[p_thing->Genus.Bat->type];
 	dt->CurrentFrame =  anim_chunk[p_thing->Genus.Bat->type].AnimList[anim];
+	
 	dt->NextFrame	 =  dt->CurrentFrame->NextFrame;
 	dt->CurrentAnim	 =  anim;
 	dt->FrameIndex	 =  0;
@@ -547,7 +551,7 @@ SLONG BAT_turn_to_place(Thing *p_thing, SLONG world_x, SLONG world_z)
 
 	wangle = calc_angle(dx,dz);
 
-	if (p_bat->type == BAT_TYPE_BALROG)
+	if (p_bat->type == BAT_TYPE_BALROG || p_bat->type == BAT_TYPE_TURRET)
 	{
 		//
 		// Oh dear! He's back-to-front!
@@ -962,6 +966,32 @@ void BAT_change_state(Thing *p_thing)
 		}
 	}
 #ifndef PSX
+	if (p_bat->type == BAT_TYPE_TURRET)
+	{
+		//
+		// Is the player close by?
+		//
+		darci = NET_PERSON(0);
+
+		if (THING_dist_between(darci, p_thing) < 0x600)
+		{
+			p_bat->target = THING_NUMBER(darci);
+		}
+		else
+		{
+			p_bat->target = NULL;
+		}
+
+
+		SLONG dx = p_thing->WorldPos.X - ((p_bat->home_x << 16) + 0x8000);
+		SLONG dz = p_thing->WorldPos.Z - ((p_bat->home_z << 16) + 0x8000);
+		//
+		//if (abs(dx) > 0x40000 ||
+		//	abs(dz) > 0x40000)
+		{
+			new_state = BAT_STATE_TURRET_FOLLOW;
+		}
+	}
 	else
 	{
 		//
@@ -1222,6 +1252,22 @@ void BAT_change_state(Thing *p_thing)
 			// make some funky noises
 
 			MFX_play_thing(THING_NUMBER(p_thing),S_RECKONING_LOOP,MFX_LOOPED,p_thing);
+
+			break;
+
+		case BAT_STATE_TURRET_FOLLOW:
+			if (p_bat->target)
+			{
+				p_bat->substate = BAT_SUBSTATE_CIRCLE_TARGET;
+			}
+			else
+			{
+				p_bat->substate = BAT_SUBSTATE_CIRCLE_HOME;
+			}
+
+			p_bat->timer = BAT_TICKS_PER_SECOND * (3 + (Random() & 0x3));
+
+			BAT_set_anim(p_thing, BAT_ANIM_GENERIC_FLY);
 
 			break;
 
@@ -2039,6 +2085,7 @@ void BAT_normal(Thing *p_thing)
 
 		case BAT_STATE_BALROG_FOLLOW:
 		case BAT_STATE_BALROG_CHARGE:
+		case BAT_STATE_TURRET_FOLLOW:
 
 			{
 				if (!p_bat->target)
@@ -2096,59 +2143,78 @@ void BAT_normal(Thing *p_thing)
 								p_bat->want_x,
 								p_bat->want_z);
 
-					if (abs(dangle) > 256 || p_bat->substate == BAT_SUBSTATE_YOMP_END)
+					if (abs(dangle) < 256 || p_bat->substate == BAT_SUBSTATE_YOMP_END)
 					{	
 						//
 						// Don't move!
 						//
 
-						p_bat->dx -= p_bat->dx >> 3;
-						p_bat->dz -= p_bat->dz >> 3;
-					}
-					else
-					{
-						//
-						// Accelerate to moving speed.
-						//
+						//p_bat->dx -= p_bat->dx >> 3;
+						//p_bat->dz -= p_bat->dz >> 3;
 
-						want_dx = -SIN(p_thing->Draw.Tweened->Angle) >> 4;
-						want_dz = -COS(p_thing->Draw.Tweened->Angle) >> 4;
-
-						want_dx += want_dx >> 1;
-						want_dz += want_dz >> 1;
-
-						want_dx -= want_dx >> 5;
-						want_dz -= want_dz >> 5;
-
-						p_bat->dx += (want_dx - p_bat->dx) >> 3;
-						p_bat->dz += (want_dz - p_bat->dz) >> 3;
-					}
-
-					end = BAT_animate(p_thing);
-
-					if (end)
-					{
-						if (p_bat->substate == BAT_SUBSTATE_YOMP_START)
+						if (p_bat->timer <= ticks)
 						{
-							end = FALSE;
+							p_bat->timer = 1000;
 
-							BAT_set_anim(p_thing, BAT_ANIM_BALROG_YOMP);
-
-							p_bat->substate = BAT_SUBSTATE_YOMP_MIDDLE;
-						}
-						else
-						if (p_bat->substate == BAT_SUBSTATE_YOMP_MIDDLE)
-						{
-							end = FALSE;
-
-							if (p_bat->timer == 0)
+							//if (end)
 							{
-								BAT_set_anim(p_thing, BAT_ANIM_BALROG_YOMP_END);
+								//BAT_change_state(p_thing);
+								BAT_emit_fireball(p_thing);
 
-								p_bat->substate = BAT_SUBSTATE_YOMP_END;
+								TRACE("Oh no the timer has ran out!\n");
 							}
 						}
+						else
+						{
+							p_bat->timer -= ticks;
+						}
+
 					}
+
+					//else
+					//{
+					//	//
+					//	// Accelerate to moving speed.
+					//	//
+
+					//	want_dx = -SIN(p_thing->Draw.Tweened->Angle) >> 4;
+					//	want_dz = -COS(p_thing->Draw.Tweened->Angle) >> 4;
+
+					//	want_dx += want_dx >> 1;
+					//	want_dz += want_dz >> 1;
+
+					//	want_dx -= want_dx >> 5;
+					//	want_dz -= want_dz >> 5;
+
+					//	p_bat->dx += (want_dx - p_bat->dx) >> 3;
+					//	p_bat->dz += (want_dz - p_bat->dz) >> 3;
+					//}
+
+					//end = BAT_animate(p_thing);
+
+					//if (end)
+					//{
+					//	if (p_bat->substate == BAT_SUBSTATE_YOMP_START)
+					//	{
+					//		end = FALSE;
+
+					//		BAT_set_anim(p_thing, BAT_ANIM_BALROG_YOMP);
+
+					//		p_bat->substate = BAT_SUBSTATE_YOMP_MIDDLE;
+					//	}
+					//	else
+					//	if (p_bat->substate == BAT_SUBSTATE_YOMP_MIDDLE)
+					//	{
+					//		end = FALSE;
+
+					//		if (p_bat->timer == 0)
+					//		{
+					//			BAT_set_anim(p_thing, BAT_ANIM_BALROG_YOMP_END);
+
+					//			p_bat->substate = BAT_SUBSTATE_YOMP_END;
+					//		}
+					//	}
+					//}
 				}
 			}
 
@@ -2361,6 +2427,10 @@ void BAT_normal(Thing *p_thing)
 			p_bat->timer = 0;*/
 
 			break;
+
+		//case BAT_STATE_TURRET_FOLLOW:
+
+		//	break;
 
 		default:
 			ASSERT(0);
@@ -2657,7 +2727,7 @@ extern	SLONG load_anim_prim_object(SLONG prim);
 			break;
 
 		case BAT_TYPE_TURRET:
-			p_bat->state         = BAT_STATE_BANE_IDLE;
+			p_bat->state         = BAT_STATE_TURRET_IDLE;
 			p_bat->substate      = BAT_SUBSTATE_NONE;
 			p_bat->glow          = 0x7f00;
 			p_thing->WorldPos.Y += 0x60 << 8;
@@ -2671,6 +2741,196 @@ extern	SLONG load_anim_prim_object(SLONG prim);
 
 	return THING_NUMBER(p_thing);
 }
+
+
+THING_INDEX BAT_create_specify_anim(
+	SLONG type,
+	SLONG x,
+	SLONG z,
+	UWORD yaw,
+	SLONG animId)
+{
+	SLONG i;
+
+	Thing* p_thing;
+	Bat* p_bat;
+	DrawTween* dt;
+
+	//
+	// Get a thing structure.
+	//
+
+
+	p_thing = alloc_thing(CLASS_BAT);
+
+	if (p_thing == NULL)
+	{
+		//
+		// No more things left!
+		//
+
+		return NULL;
+	}
+
+	//
+	// Get a bat structure.
+	//
+
+	for (i = 0; i < BAT_MAX_BATS; i++)
+	{
+		p_bat = TO_BAT(i);
+
+		if (p_bat->type == BAT_TYPE_UNUSED)
+		{
+			goto found_unused_bat;
+		}
+	}
+
+	//
+	// No more bat structures.
+	//
+
+	return NULL;
+
+found_unused_bat:;
+
+	//
+	// Allocate a drawtween structure.
+	//
+
+	dt = alloc_draw_tween(DT_ROT_MULTI);
+
+	if (dt == NULL)
+	{
+		return NULL;
+	}
+
+#ifndef PSX
+#ifndef TARGET_DC
+	//
+	// Initialise the thing.
+	//
+	if (anim_chunk[animId].MultiObject[0] == 0)
+	{
+		extern	SLONG load_anim_prim_object(SLONG prim);
+		load_anim_prim_object(animId);
+		//		ASSERT(0);
+
+	}
+#else
+	ASSERT(anim_chunk[type].MultiObject[0] != 0);
+#endif
+#endif
+
+	p_thing->WorldPos.X = x << 8;
+	p_thing->WorldPos.Z = z << 8;
+	p_thing->WorldPos.Y = PAP_calc_map_height_at(x, z) << 8;
+
+	p_thing->DrawType = DT_ANIM_PRIM;
+	p_thing->Draw.Tweened = dt;
+
+	p_thing->Genus.Bat = p_bat;
+	p_thing->State = STATE_NORMAL;
+	p_thing->SubState = NULL;
+	p_thing->StateFn = BAT_normal;
+	p_thing->Index = type;
+
+	add_thing_to_map(p_thing);
+
+	//
+	// Initialise the draw tween (anim prim <type>, animation 1)
+	//
+
+	dt->Angle = yaw;
+	dt->Roll = 0;
+	dt->Tilt = 0;
+	dt->AnimTween = 0;
+	dt->TweenStage = 0;
+	dt->NextFrame = NULL;
+	dt->QueuedFrame = NULL;
+	dt->TheChunk = &anim_chunk[animId];
+	dt->CurrentFrame = anim_chunk[animId].AnimList[1];
+	dt->NextFrame = dt->CurrentFrame->NextFrame;
+	dt->CurrentAnim = 1;
+	dt->FrameIndex = 0;
+	dt->Flags = 0;
+
+	//
+	// Initialise the bat.
+	//
+
+	p_bat->type = type;
+	p_bat->dx = 0;
+	p_bat->dy = 0;
+	p_bat->dz = 0;
+	p_bat->health = 100;
+	p_bat->home_x = x >> 8;
+	p_bat->home_z = z >> 8;
+	p_bat->target = NULL;
+	p_bat->timer = 0;
+	p_bat->flag = 0;
+
+	switch (type)
+	{
+#ifndef PSX
+		case BAT_TYPE_BAT:
+			p_bat->state = BAT_STATE_IDLE;
+			p_bat->substate = BAT_SUBSTATE_NONE;
+			p_thing->WorldPos.Y += 0x100 << 8;
+			break;
+
+		case BAT_TYPE_GARGOYLE:
+			p_bat->state = BAT_STATE_GROUND;
+			p_bat->substate = BAT_SUBSTATE_GROUND_WAIT;
+			break;
+#endif
+		case BAT_TYPE_BALROG:
+			p_bat->state = BAT_STATE_BALROG_ROAR;
+			p_bat->substate = BAT_SUBSTATE_NONE;
+			p_bat->health = 255;
+			BAT_set_anim(p_thing, BAT_ANIM_BALROG_ROAR);
+			// let's set this mutha alight
+			{
+				Thing* pyro;
+				pyro = PYRO_create(p_thing->WorldPos, PYRO_IMMOLATE);
+				if (pyro)
+				{
+					pyro->Genus.Pyro->victim = p_thing;
+					pyro->Genus.Pyro->Flags = PYRO_FLAGS_FLICKER;
+				}
+				//darci->Genus.Person->BurnIndex=PYRO_NUMBER(pyro->Genus.Pyro)+1;
+			}
+			// and cast some light nearby...
+			p_bat->glow = NIGHT_dlight_create(p_thing->WorldPos.X >> 8, p_thing->WorldPos.Y >> 8, p_thing->WorldPos.Z >> 8, 200, 32, 28, 10);
+
+			break;
+
+		case BAT_TYPE_BANE:
+			p_bat->state = BAT_STATE_BANE_IDLE;
+			p_bat->substate = BAT_SUBSTATE_NONE;
+			p_bat->glow = 0x7f00;
+			p_thing->WorldPos.Y += 0x60 << 8;
+			BAT_set_anim(p_thing, BAT_ANIM_BANE_IDLE);
+			break;
+
+		case BAT_TYPE_TURRET:
+			p_bat->state = BAT_STATE_TURRET_IDLE;
+			p_bat->substate = BAT_SUBSTATE_NONE;
+			p_bat->glow = 0x7f00;
+			p_thing->WorldPos.Y += 0x60 << 8;
+			BAT_set_anim(p_thing, BAT_ANIM_BANE_IDLE);
+			break;
+
+		default:
+			ASSERT(0);
+			break;
+	}
+
+	return THING_NUMBER(p_thing);
+}
+
+
+
 
 
 void BAT_apply_hit(

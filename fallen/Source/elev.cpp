@@ -2306,7 +2306,7 @@ void	init_gangattack(void);
 	PUDDLE_init();
 //	AZ_init();
 	DRIP_init();
-//	BANG_init();
+	BANG_init();
 	GLITTER_init();
 	POW_init();
 	SPARK_init();

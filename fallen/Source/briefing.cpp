@@ -6,14 +6,16 @@
 
 #include	"game.h"
 
+#include	"DIManager.h"
+
 #ifndef	PSX
-#include "c:\fallen\ddengine\headers\font3d.h"
-#include "c:\fallen\ddengine\headers\poly.h"
-#include "c:\fallen\ddengine\headers\aeng.h"
+#include "font3d.h"
+#include "poly.h"
+#include "aeng.h"
 #endif
 #include "briefing.h"
-#include "C:\fallen\DDLibrary\headers\D3DTexture.h"
-#include "C:\fallen\DDLibrary\headers\GDisplay.h"
+#include "D3DTexture.h"
+#include "GDisplay.h"
 #include "sound.h"
 #include "io.h"
 

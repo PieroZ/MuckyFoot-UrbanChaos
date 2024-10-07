@@ -504,7 +504,7 @@ SLONG load_anim_prim_object(SLONG prim)
 		return(0);
 
 	sprintf(fname, "anim%03d.all", prim);
-/*
+
 	handle = MF_Fopen(fname, "rb");
 
 	if (!handle)
@@ -512,7 +512,7 @@ SLONG load_anim_prim_object(SLONG prim)
 		return FALSE;
 	}
 	MF_Fclose(handle);
-*/
+
 
 	if(prim>=next_anim_chunk)
 		next_anim_chunk=prim+1;
@@ -572,12 +572,16 @@ void load_needed_anim_prims()
 	}
 
 //	load_anim_prim_object(3); //balrog
-	#ifdef BIKE
-	load_anim_prim_object(9);
+	//#ifdef BIKE
+	/*for (int i = 5; i < 16; ++i)
+	{
+		load_anim_prim_object(i);
+	}*/
+	load_anim_prim_object(5);
 			DebugText(" next_prim_point %d primface3 %d primface4 %d   load ANIMprim %d \n",next_prim_point,next_prim_face3,next_prim_face4,9);
 	load_anim_prim_object(12);
 			DebugText(" next_prim_point %d primface3 %d primface4 %d   load ANIMprim %d \n",next_prim_point,next_prim_face3,next_prim_face4,12);
-	#endif
+	//#endif
 }
 
 void load_level_anim_prims(void)

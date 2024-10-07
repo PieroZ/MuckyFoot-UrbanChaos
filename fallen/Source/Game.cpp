@@ -428,10 +428,10 @@ BOOL	SetupMemory(void);
 //
 
 //extern CBYTE       *playback_name = "Data\\Game.pkt";
-extern CBYTE	*playback_name = "C:\\Windows\\Desktop\\UrbanChaosRecordedGame.pkt";
+extern CBYTE	*playback_name = "C:\\x\\UrbanChaosRecordedGame.pkt";
 extern MFFileHandle	playback_file;
 
-extern CBYTE	*verifier_name = "C:\\Windows\\Desktop\\UrbanChaosRecordedGame.tst";
+extern CBYTE	*verifier_name = "C:\\x\\UrbanChaosRecordedGame.tst";
 extern MFFileHandle	verifier_file;
 
 #endif

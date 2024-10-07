@@ -104,7 +104,7 @@ void CANID_register() {
 void CANID_Homing(Thing *canid, SLONG dest_x, SLONG dest_z, int wibble) {
     SLONG dx, dz;
 	Animal *animal = ANIMAL_get_animal(canid);
-//	DrawTween *dt = ANIMAL_get_drawtween(animal);
+//	DrawTween *dt = ANIMAL_get_drawtween(animal);c
 	DrawTween *dt = canid->Draw.Tweened;
 	GameCoord new_pos;
 	SLONG angle,dangle,i;
@@ -416,15 +416,17 @@ void CANID_init_chase(Thing *canid, Thing *victim)
 
 void CANID_start_doing_something(Thing *canid)
 {
+	Thing* darci = NET_PERSON(0);
 	switch(Random() & 0x3)
 	{
 		case 0:
 		case 1:
+			CANID_init_bark(canid, darci);
 		case 2:
-			CANID_init_prowl(canid);
+			CANID_init_bark(canid, darci);
 			break;
 		case 3:
-			CANID_init_sleep(canid);
+			CANID_init_bark(canid, darci);
 			break;
 		default:
 			ASSERT(0);
@@ -536,7 +538,7 @@ void CANID_process_chase(Thing *canid)
 }
 
 
-/*
+
 void CANID_process_peck(Thing *canid)
 {
 	Animal *animal = ANIMAL_get_animal(canid);
@@ -570,364 +572,364 @@ void CANID_process_peck(Thing *canid)
 		CANID_start_doing_something(canid);
 	}
 }
-
-void CANID_process_walk(Thing *canid)
-{
-	SLONG dx;
-	SLONG dz;
-
-	Animal   *animal = ANIMAL_get_animal  (canid);
-	DrawMesh *dm     = ANIMAL_get_drawmesh(canid);
-
-	//
-	// Have we arrived yet?
-	//
-
-	animal->counter -= 1;
-
-	if (animal->counter == 0)
-	{
-		//
-		// We have arrived. What do we do now?
-		//
-
-		CANID_start_doing_something(canid);
-	}
-	else
-	{
-		//
-		// Move the canid.
-		//
-
-		GameCoord new_pos = canid->WorldPos;
-
-		dx = SIN(dm->Angle) >> 6;
-		dz = COS(dm->Angle) >> 6;
-
-		new_pos.X -= dx;
-		new_pos.Z -= dz;
-
-		dx  *= TICK_RATIO;
-		dz  *= TICK_RATIO;
-
-		dx >>= TICK_SHIFT;
-		dz >>= TICK_SHIFT;
-
-		move_thing_on_map(canid, &new_pos);
-	}
-}
-
-void CANID_process_flee(Thing *canid)
-{
-	SLONG dx;
-	SLONG dz;
-
-	Animal   *animal = ANIMAL_get_animal  (canid);
-	DrawMesh *dm     = ANIMAL_get_drawmesh(canid);
-
-	//
-	// Time to stop fleeing?
-	//
-
-	animal->counter -= 1;
-
-	if (animal->counter == 0)
-	{
-		CANID_start_doing_something(canid);
-	}
-	else
-	{
-		//
-		// Move the canid.
-		//
-
-		GameCoord new_pos = canid->WorldPos;
-
-		if (animal->counter >= CANID_FLEE_TIME / 2)
-		{
-			dx = SIN(dm->Angle) >> 4;
-			dz = COS(dm->Angle) >> 4;
-		}
-		else
-		{
-			dx = SIN(dm->Angle) >> 5;
-			dz = COS(dm->Angle) >> 5;
-		}
-
-		dx  *= TICK_RATIO;
-		dz  *= TICK_RATIO;
-
-		dx >>= TICK_SHIFT;
-		dz >>= TICK_SHIFT;
-
-		new_pos.X -= dx;
-		new_pos.Z -= dz;
-
-		move_thing_on_map(canid, &new_pos);
-	}
-}
-
-void CANID_process_fly(Thing *canid)
-{
-	SLONG dx;
-	SLONG dy;
-	SLONG dz;
-
-	SLONG yangle;
-	SLONG angle;
-	SLONG dangle;
-	SLONG speed;
-	SLONG dist;
-
-	SLONG dest_x;
-	SLONG dest_y;
-	SLONG dest_z;
-
-	SLONG vel_x;
-	SLONG vel_z;
-
-	GameCoord new_pos;
-
-	Animal *animal = ANIMAL_get_animal(canid);
-	DrawMesh *dm   = ANIMAL_get_drawmesh(canid);
-
-	//
-	// Where are we flying to?
-	//
-
-	CANID_find_pos_along_vect(
-		animal->other_index,
-		animal->along,
-	   &dest_x,
-	   &dest_y,
-	   &dest_z);
-
-	e_draw_3d_line(
-		canid->WorldPos.X >> 8,
-		canid->WorldPos.Y >> 8,
-		canid->WorldPos.Z >> 8,
-		dest_x,
-		dest_y,
-		dest_z);
-
-	//
-	// Turn the canid towards its destination.
-	//
-
-	dx = dest_x - (canid->WorldPos.X >> 8);
-	dy = dest_y - (canid->WorldPos.Y >> 8);
-	dz = dest_z - (canid->WorldPos.Z >> 8);
-
-	dist = QDIST2(abs(dx),abs(dz));
-
-	angle  = -Arctan(dx, dz);
-	angle &=  2047;
-
-	dangle = angle - dm->Angle;
-
-	if (dangle >  1024) {dangle -= 2048;}
-	if (dangle < -1024) {dangle += 2048;}
-
-	dangle >>= 3;
-
-	SATURATE(dangle, -100, +100);
-
-	dm->Angle += dangle;
-	dm->Angle &= 2047;
-
-	//
-	// How fast is the canid moving.
-	//
-
-	#define CANID_FLY_ACCEL_SPEED 15
-	#define CANID_FLY_DECEL_SPEED 32
-
-	#define CANID_FLY_ACCEL_TIME 8
-	#define CANID_FLY_DECEL_TIME 16
-
-	if (animal->counter < CANID_FLY_ACCEL_TIME)
-	{
-		speed = CANID_FLY_ACCEL_SPEED;
-		animal->counter += 1;
-	}
-	else
-	{
-		speed = CANID_FLY_DECEL_SPEED;
-	}
-
-	//
-	// Are we too close for our dangle?
-	//
-
-	if (abs(dangle) > 10)
-	{
-		if (dist < 256) {speed >>= 1;}
-		if (dist < 128) {speed >>= 1;}
-	}
-
-	if (dist < 90) {speed >>= 1;}
-	if (dist < 50) {speed >>= 1;}
-
-	//
-	// Find the new canid position in x,z
-	//
-
-	vel_x = SIN(dm->Angle) * speed >> 8;
-	vel_z = COS(dm->Angle) * speed >> 8;
-
-	vel_x  *= TICK_RATIO;
-	vel_z  *= TICK_RATIO;
-
-	vel_x >>= TICK_SHIFT;
-	vel_z >>= TICK_SHIFT;
-
-	new_pos.X = canid->WorldPos.X - vel_x;
-	new_pos.Z = canid->WorldPos.Z - vel_z;
-
-	//
-	// Find the new canid position in y.
-	//
-
-	yangle = 512 - (dist * 512) / animal->dist;
-
-	SATURATE(yangle, 0, 512);
-
-	new_pos.Y   = animal->starty;
-	new_pos.Y  += (dest_y - animal->starty) * SIN(yangle) >> 16;
-	new_pos.Y <<= 8;
-
-	//
-	// Move the canid.
-	//
-	
-	move_thing_on_map(canid, &new_pos);
-
-	if (dist < CANID_FLY_DECEL_SPEED)
-	{
-		//
-		// Start perching.
-		//
-
-		CANID_init_perch(canid);
-	}
-}
-
-void CANID_process_perch(Thing *canid)
-{
-	UBYTE doing;
-	UBYTE howlong;
-	UBYTE oldalong;
-
-	Animal *animal = ANIMAL_get_animal(canid);
-
-	doing    = animal->counter >> 6;
-	howlong  = animal->counter & 0x3f;
-
-	if (howlong == 0)
-	{
-		switch(Random() & 0x3)
-		{
-			case 0:
-				howlong = 32 + (Random() & 31);
-				doing   = CANID_PERCH_WAIT;
-				break;
-
-			case 1:
-				howlong = 32 + (Random() & 31);
-				doing   = CANID_PERCH_SHUFFLE_LEFT;
-				break;
-
-			case 2:
-				howlong = 32 + (Random() & 31);
-				doing   = CANID_PERCH_SHUFFLE_RIGHT;
-				break;
-
-			case 3:
-
-				//
-				// It is too scary to return to where we were
-				// (animal->map_x, animal->map_z)?
-				//
-
-				CANID_init_land(canid);
-				return;
-		}
-	}
-	else
-	{
-		howlong -= 1;
-	}
-
-	switch(doing)
-	{
-		case CANID_PERCH_WAIT:
-			break;
-
-		case CANID_PERCH_SHUFFLE_LEFT:
-
-			if (animal->along == 0)
-			{
-				doing = CANID_PERCH_SHUFFLE_RIGHT;
-			}
-			else
-			{
-				animal->along -= 1;
-			}
-			
-			break;
-
-		case CANID_PERCH_SHUFFLE_RIGHT:
-
-			if (animal->along == 255)
-			{
-				doing = CANID_PERCH_SHUFFLE_LEFT;
-			}
-			else
-			{
-				animal->along += 1;
-			}
-			
-			break;
-
-		default:
-			ASSERT(0);
-			break;
-	}
-
-	animal->counter  = howlong;
-	animal->counter |= doing << 6;
-
-	//
-	// Move the canid.
-	//
-
-	SLONG dest_x;
-	SLONG dest_y;
-	SLONG dest_z;
-
-	CANID_find_pos_along_vect(
-		animal->other_index,
-		animal->along,
-	   &dest_x,
-	   &dest_y,
-	   &dest_z);
-
-	GameCoord new_pos;
-
-	new_pos.X = dest_x << 8;
-	new_pos.Y = dest_y << 8;
-	new_pos.Z = dest_z << 8;
-
-	move_thing_on_map(canid, &new_pos);
-}
-
-void CANID_process_land(Thing *canid)
-{
-	Animal *animal = ANIMAL_get_animal(canid);
-
-}
-
-  */
+//
+//void CANID_process_walk(Thing *canid)
+//{
+//	SLONG dx;
+//	SLONG dz;
+//
+//	Animal   *animal = ANIMAL_get_animal  (canid);
+//	DrawMesh *dm     = ANIMAL_get_drawmesh(canid);
+//
+//	//
+//	// Have we arrived yet?
+//	//
+//
+//	animal->counter -= 1;
+//
+//	if (animal->counter == 0)
+//	{
+//		//
+//		// We have arrived. What do we do now?
+//		//
+//
+//		CANID_start_doing_something(canid);
+//	}
+//	else
+//	{
+//		//
+//		// Move the canid.
+//		//
+//
+//		GameCoord new_pos = canid->WorldPos;
+//
+//		dx = SIN(dm->Angle) >> 6;
+//		dz = COS(dm->Angle) >> 6;
+//
+//		new_pos.X -= dx;
+//		new_pos.Z -= dz;
+//
+//		dx  *= TICK_RATIO;
+//		dz  *= TICK_RATIO;
+//
+//		dx >>= TICK_SHIFT;
+//		dz >>= TICK_SHIFT;
+//
+//		move_thing_on_map(canid, &new_pos);
+//	}
+//}
+//
+//void CANID_process_flee(Thing *canid)
+//{
+//	SLONG dx;
+//	SLONG dz;
+//
+//	Animal   *animal = ANIMAL_get_animal  (canid);
+//	DrawMesh *dm     = ANIMAL_get_drawmesh(canid);
+//
+//	//
+//	// Time to stop fleeing?
+//	//
+//
+//	animal->counter -= 1;
+//
+//	if (animal->counter == 0)
+//	{
+//		CANID_start_doing_something(canid);
+//	}
+//	else
+//	{
+//		//
+//		// Move the canid.
+//		//
+//
+//		GameCoord new_pos = canid->WorldPos;
+//
+//		if (animal->counter >= CANID_FLEE_TIME / 2)
+//		{
+//			dx = SIN(dm->Angle) >> 4;
+//			dz = COS(dm->Angle) >> 4;
+//		}
+//		else
+//		{
+//			dx = SIN(dm->Angle) >> 5;
+//			dz = COS(dm->Angle) >> 5;
+//		}
+//
+//		dx  *= TICK_RATIO;
+//		dz  *= TICK_RATIO;
+//
+//		dx >>= TICK_SHIFT;
+//		dz >>= TICK_SHIFT;
+//
+//		new_pos.X -= dx;
+//		new_pos.Z -= dz;
+//
+//		move_thing_on_map(canid, &new_pos);
+//	}
+//}
+//
+//void CANID_process_fly(Thing *canid)
+//{
+//	SLONG dx;
+//	SLONG dy;
+//	SLONG dz;
+//
+//	SLONG yangle;
+//	SLONG angle;
+//	SLONG dangle;
+//	SLONG speed;
+//	SLONG dist;
+//
+//	SLONG dest_x;
+//	SLONG dest_y;
+//	SLONG dest_z;
+//
+//	SLONG vel_x;
+//	SLONG vel_z;
+//
+//	GameCoord new_pos;
+//
+//	Animal *animal = ANIMAL_get_animal(canid);
+//	DrawMesh *dm   = ANIMAL_get_drawmesh(canid);
+//
+//	//
+//	// Where are we flying to?
+//	//
+//
+//	CANID_find_pos_along_vect(
+//		animal->other_index,
+//		animal->along,
+//	   &dest_x,
+//	   &dest_y,
+//	   &dest_z);
+//
+//	e_draw_3d_line(
+//		canid->WorldPos.X >> 8,
+//		canid->WorldPos.Y >> 8,
+//		canid->WorldPos.Z >> 8,
+//		dest_x,
+//		dest_y,
+//		dest_z);
+//
+//	//
+//	// Turn the canid towards its destination.
+//	//
+//
+//	dx = dest_x - (canid->WorldPos.X >> 8);
+//	dy = dest_y - (canid->WorldPos.Y >> 8);
+//	dz = dest_z - (canid->WorldPos.Z >> 8);
+//
+//	dist = QDIST2(abs(dx),abs(dz));
+//
+//	angle  = -Arctan(dx, dz);
+//	angle &=  2047;
+//
+//	dangle = angle - dm->Angle;
+//
+//	if (dangle >  1024) {dangle -= 2048;}
+//	if (dangle < -1024) {dangle += 2048;}
+//
+//	dangle >>= 3;
+//
+//	SATURATE(dangle, -100, +100);
+//
+//	dm->Angle += dangle;
+//	dm->Angle &= 2047;
+//
+//	//
+//	// How fast is the canid moving.
+//	//
+//
+//	#define CANID_FLY_ACCEL_SPEED 15
+//	#define CANID_FLY_DECEL_SPEED 32
+//
+//	#define CANID_FLY_ACCEL_TIME 8
+//	#define CANID_FLY_DECEL_TIME 16
+//
+//	if (animal->counter < CANID_FLY_ACCEL_TIME)
+//	{
+//		speed = CANID_FLY_ACCEL_SPEED;
+//		animal->counter += 1;
+//	}
+//	else
+//	{
+//		speed = CANID_FLY_DECEL_SPEED;
+//	}
+//
+//	//
+//	// Are we too close for our dangle?
+//	//
+//
+//	if (abs(dangle) > 10)
+//	{
+//		if (dist < 256) {speed >>= 1;}
+//		if (dist < 128) {speed >>= 1;}
+//	}
+//
+//	if (dist < 90) {speed >>= 1;}
+//	if (dist < 50) {speed >>= 1;}
+//
+//	//
+//	// Find the new canid position in x,z
+//	//
+//
+//	vel_x = SIN(dm->Angle) * speed >> 8;
+//	vel_z = COS(dm->Angle) * speed >> 8;
+//
+//	vel_x  *= TICK_RATIO;
+//	vel_z  *= TICK_RATIO;
+//
+//	vel_x >>= TICK_SHIFT;
+//	vel_z >>= TICK_SHIFT;
+//
+//	new_pos.X = canid->WorldPos.X - vel_x;
+//	new_pos.Z = canid->WorldPos.Z - vel_z;
+//
+//	//
+//	// Find the new canid position in y.
+//	//
+//
+//	yangle = 512 - (dist * 512) / animal->dist;
+//
+//	SATURATE(yangle, 0, 512);
+//
+//	new_pos.Y   = animal->starty;
+//	new_pos.Y  += (dest_y - animal->starty) * SIN(yangle) >> 16;
+//	new_pos.Y <<= 8;
+//
+//	//
+//	// Move the canid.
+//	//
+//	
+//	move_thing_on_map(canid, &new_pos);
+//
+//	if (dist < CANID_FLY_DECEL_SPEED)
+//	{
+//		//
+//		// Start perching.
+//		//
+//
+//		CANID_init_perch(canid);
+//	}
+//}
+//
+//void CANID_process_perch(Thing *canid)
+//{
+//	UBYTE doing;
+//	UBYTE howlong;
+//	UBYTE oldalong;
+//
+//	Animal *animal = ANIMAL_get_animal(canid);
+//
+//	doing    = animal->counter >> 6;
+//	howlong  = animal->counter & 0x3f;
+//
+//	if (howlong == 0)
+//	{
+//		switch(Random() & 0x3)
+//		{
+//			case 0:
+//				howlong = 32 + (Random() & 31);
+//				doing   = CANID_PERCH_WAIT;
+//				break;
+//
+//			case 1:
+//				howlong = 32 + (Random() & 31);
+//				doing   = CANID_PERCH_SHUFFLE_LEFT;
+//				break;
+//
+//			case 2:
+//				howlong = 32 + (Random() & 31);
+//				doing   = CANID_PERCH_SHUFFLE_RIGHT;
+//				break;
+//
+//			case 3:
+//
+//				//
+//				// It is too scary to return to where we were
+//				// (animal->map_x, animal->map_z)?
+//				//
+//
+//				CANID_init_land(canid);
+//				return;
+//		}
+//	}
+//	else
+//	{
+//		howlong -= 1;
+//	}
+//
+//	switch(doing)
+//	{
+//		case CANID_PERCH_WAIT:
+//			break;
+//
+//		case CANID_PERCH_SHUFFLE_LEFT:
+//
+//			if (animal->along == 0)
+//			{
+//				doing = CANID_PERCH_SHUFFLE_RIGHT;
+//			}
+//			else
+//			{
+//				animal->along -= 1;
+//			}
+//			
+//			break;
+//
+//		case CANID_PERCH_SHUFFLE_RIGHT:
+//
+//			if (animal->along == 255)
+//			{
+//				doing = CANID_PERCH_SHUFFLE_LEFT;
+//			}
+//			else
+//			{
+//				animal->along += 1;
+//			}
+//			
+//			break;
+//
+//		default:
+//			ASSERT(0);
+//			break;
+//	}
+//
+//	animal->counter  = howlong;
+//	animal->counter |= doing << 6;
+//
+//	//
+//	// Move the canid.
+//	//
+//
+//	SLONG dest_x;
+//	SLONG dest_y;
+//	SLONG dest_z;
+//
+//	CANID_find_pos_along_vect(
+//		animal->other_index,
+//		animal->along,
+//	   &dest_x,
+//	   &dest_y,
+//	   &dest_z);
+//
+//	GameCoord new_pos;
+//
+//	new_pos.X = dest_x << 8;
+//	new_pos.Y = dest_y << 8;
+//	new_pos.Z = dest_z << 8;
+//
+//	move_thing_on_map(canid, &new_pos);
+//}
+//
+//void CANID_process_land(Thing *canid)
+//{
+//	Animal *animal = ANIMAL_get_animal(canid);
+//
+//}
+//
+// 
 
 // ========================================================
 //
@@ -962,13 +964,13 @@ void CANID_fn_normal(Thing *canid)
 
 
 	Animal *animal = ANIMAL_get_animal(canid);
-/*	
+	
 	SLONG px = canid->WorldPos.X >> 8;
 	SLONG py = canid->WorldPos.Y >> 8;
 	py += 0x20;
 	SLONG pz = canid->WorldPos.Z >> 8;
     DIRT_new_water(px, py, pz,     -1, 28,  0);
-/
+
 
 	switch(animal->substate)
 	{
@@ -982,7 +984,7 @@ void CANID_fn_normal(Thing *canid)
 			ASSERT(0);
 			break;
 	}
-*/
+
 
 
 }

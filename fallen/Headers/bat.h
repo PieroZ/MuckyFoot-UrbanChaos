@@ -16,7 +16,7 @@ static const int BAT_TYPE_BAT = 1;
 static const int BAT_TYPE_GARGOYLE = 2;
 static const int BAT_TYPE_BALROG = 3;
 static const int BAT_TYPE_BANE = 4;
-static const int BAT_TYPE_TURRET = 5;
+static const int BAT_TYPE_TURRET = 6;
 
 
 typedef struct
@@ -63,6 +63,14 @@ THING_INDEX BAT_create(
 				SLONG x,
 				SLONG z,
 				UWORD yaw);
+
+THING_INDEX BAT_create_specify_anim(
+	SLONG type,
+	SLONG x,
+	SLONG z,
+	UWORD yaw,
+	SLONG animId);
+
 
 
 //

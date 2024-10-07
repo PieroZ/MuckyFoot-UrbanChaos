@@ -5239,7 +5239,7 @@ void set_person_unsit(Thing *p_person);
 					/*Thing* p_target = TO_THING(p_person->Genus.Person->Target);
 					lighting_strike_person(p_target);*/
 
-					set_person_liukang_kick(p_person);
+					//set_person_liukang_kick(p_person);
 					//set_person_cut_fence(p_person);
 					//set_person_kick_off_wall(p_person,0,0);
 

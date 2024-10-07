@@ -920,9 +920,9 @@ void	setup_extra_anims(void)
 	}
 */
 
-//	load_anim_system(&game_chunk[6],"data\\dog2.all");
+	load_anim_system(&game_chunk[6],"dog2.all");
 
-	next_game_chunk=4;
+	next_game_chunk=6;
 	
 }
 extern	UWORD	darci_normal_count;

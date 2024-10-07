@@ -67,6 +67,7 @@
 #include	"night.h"
 #include	"grenade.h"
 #include	"demo.h"
+#include <cstdlib>
 
 #include	"DebugVars.h"
 #include	"PersonPZI.h"
@@ -176,7 +177,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -619,13 +620,15 @@ extern int AENG_detail_crinkles;
 			case 37: // johnwick
 				if (allow_debug_keys)
 				{
+
+					//i = atoi(ptr);
 					//darci->Genus.Player->Strength = 240;
 					//the_game.net_players[0]->Genus.Player->Skill = 240;
-					SLONG  world_x = darci->WorldPos.X;
-					SLONG  world_y = darci->WorldPos.Y;
-					SLONG  world_z = darci->WorldPos.Z;
+					SLONG  world_x = darci->WorldPos.X >> 8;
+					SLONG  world_y = darci->WorldPos.Y >> 8;
+					SLONG  world_z = darci->WorldPos.Z >> 8;
 
-					BANG_create(0, world_x, world_y, world_z);
+					//BANG_create(0, world_x, world_y, world_z);
 				}
 				break; 
 			case 38: //nanana
@@ -752,6 +755,48 @@ extern int AENG_detail_crinkles;
 					i = atoi(ptr);
 					//FC_look_at(0, 1);
 					FC_cam->cam_dist = i;
+				}
+				break;
+			case 47: // turret
+				if (allow_debug_keys)
+				{
+					i = atoi(ptr);
+
+
+					SLONG  world_x = darci->WorldPos.X >> 8;
+					SLONG  world_y = darci->WorldPos.Y >> 8;
+					SLONG  world_z = darci->WorldPos.Z >> 8;
+
+					//THING_INDEX p_index = BAT_create_specify_anim(
+					//	BAT_TYPE_TURRET,
+					//	world_x,
+					//	world_z,
+					//	8000,
+					//	i);
+
+					THING_INDEX p_index = BAT_create(
+						BAT_TYPE_TURRET,
+						world_x,
+						world_z,
+						8000);
+
+
+				}
+				break;
+			case 48: // bang
+				if (allow_debug_keys)
+				{
+
+					//i = atoi(ptr);
+					//darci->Genus.Player->Strength = 240;
+					//the_game.net_players[0]->Genus.Player->Skill = 240;
+					SLONG  world_x = darci->WorldPos.X >> 8;
+					SLONG  world_y = darci->WorldPos.Y >> 8;
+					SLONG  world_z = darci->WorldPos.Z >> 8;
+
+					int random_number = std::rand() % 4; // Generates a number between 0 and 3
+
+					BANG_create(random_number, world_x, world_y, world_z);
 				}
 				break;
 		  }
@@ -2564,7 +2609,7 @@ SLONG is_person_crouching(Thing *p_person);
 #endif
 	MIST_process();
 //	WATER_process();
-//	BANG_process();
+	BANG_process();
 	SPARK_process();
 	GLITTER_process();
 //	LIGHT_process();
@@ -4710,7 +4755,7 @@ void	set_person_mav_to_xz(Thing *p_person,SLONG x,SLONG z);
 		}
 */
 
-/*
+
 		if (Keys[KB_N])
 		{
 			GameCoord posn;
@@ -4724,7 +4769,7 @@ void	set_person_mav_to_xz(Thing *p_person,SLONG x,SLONG z);
 			TRACE("Animal created\n");
 
 		}
-*/
+
 		if (Keys[KB_O])
 		{
 			Thing *chopper;

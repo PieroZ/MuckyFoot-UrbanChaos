@@ -10034,6 +10034,8 @@ extern HWND GEDIT_edit_wnd;
 		{
 			for (x = NGAMUT_lo_gamut[z].xmin; x <= NGAMUT_lo_gamut[z].xmax; x++)
 			{
+				// sciany
+				// 
 				//
 				// The cached lighting for this low-res mapsquare.
 				//
@@ -10758,7 +10760,7 @@ extern HWND GEDIT_edit_wnd;
 								PYRO_draw_pyro(p_thing);
 								break;
 							case DT_ANIMAL_PRIM:
-#if 0
+#if 1
 extern	void	ANIMAL_draw(Thing *p_thing);
 								ANIMAL_draw(p_thing);
 #endif
@@ -11128,7 +11130,7 @@ extern	void	ANIMAL_draw(Thing *p_thing);
 	LOG_ENTER ( AENG_Draw_Pyros )
 
 	if(!INDOORS_INDEX||outside)
-	AENG_draw_bangs();
+ 	AENG_draw_bangs();
 	if(!INDOORS_INDEX||outside)
 	AENG_draw_fire();
 	if(!INDOORS_INDEX||outside)
@@ -12760,7 +12762,7 @@ void AENG_draw_warehouse()
 							break;
 
 						case DT_ANIMAL_PRIM:
-#if 0
+#if 1
 							ANIMAL_draw(p_thing);
 #endif
 							break;

@@ -339,7 +339,7 @@ extern SLONG TEXTURE_page_water;
 extern	BOOL	allow_debug_keys;
 		if(allow_debug_keys)
 		{
-			if(ControlFlag && LastKey==KB_R)
+			if(ControlFlag && LastKey==KB_Z)
 			{
 				LastKey	=	0;
 				GAME_STATE	&= ~GS_ATTRACT_MODE;
