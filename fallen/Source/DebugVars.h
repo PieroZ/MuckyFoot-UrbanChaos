@@ -12,12 +12,16 @@ public:
     void SetRandomGrapple();
     void SetCorpseExplosion();
     void SetRandomCharacters();
+    void SetDisableFloorsRender();
+    void SetDisableThingsRender();
 
     bool GetInflate() const;
     bool GetMIBExplosions() const;
     bool GetRandomGrapple() const;
     bool GetCorpseExplosion() const;
     bool GetRandomCharacters() const;
+    bool GetDisableFloorsRender() const;
+    bool GetDisableThingsRender() const;
 
 private:
     bool mInflate = false;
@@ -26,6 +30,8 @@ private:
     bool mCorpseExplosion = false;
     bool mParasyte = false;
     bool mRandomCharacters = false;
+    bool mDisableFloorsRender = false;
+    bool mDisableThingsRender = false;
 
     DebugVars();
 };

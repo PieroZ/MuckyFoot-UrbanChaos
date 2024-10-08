@@ -177,7 +177,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -797,6 +797,36 @@ extern int AENG_detail_crinkles;
 					int random_number = std::rand() % 4; // Generates a number between 0 and 3
 
 					BANG_create(random_number, world_x, world_y, world_z);
+				}
+				break;
+			case 49: //dfloor
+				if (allow_debug_keys)
+				{
+					DebugVars::getInstance().SetDisableFloorsRender();
+
+					if (DebugVars::getInstance().GetDisableFloorsRender())
+					{
+						CONSOLE_text("Floors render disabled");
+					}
+					else
+					{
+						CONSOLE_text("Floors render enabled");
+					}
+				}
+				break;
+			case 50: //dthings
+				if (allow_debug_keys)
+				{
+					DebugVars::getInstance().SetDisableThingsRender();
+
+					if (DebugVars::getInstance().GetDisableThingsRender())
+					{
+						CONSOLE_text("Things render disabled");
+					}
+					else
+					{
+						CONSOLE_text("Things render enabled");
+					}
 				}
 				break;
 		  }

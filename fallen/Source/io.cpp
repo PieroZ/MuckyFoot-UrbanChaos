@@ -558,16 +558,23 @@ void load_needed_anim_prims()
 		extern UBYTE this_level_has_the_balrog;
 		extern UBYTE this_level_has_bane;
 
+	//	for (int i = 1; i < 16; ++i)
+	//{
+	//	load_anim_prim_object(i);
+	//}
+
+		load_anim_prim_object(9);
+		load_anim_prim_object(12);
 		//if (this_level_has_the_balrog)
 		{
-			load_anim_prim_object(1);
-			load_anim_prim_object(2);
-			load_anim_prim_object(3); //balrog
+			//load_anim_prim_object(1);
+			//load_anim_prim_object(2);
+			//load_anim_prim_object(3); //balrog
 		}
 
 		//if (this_level_has_bane)
 		{
-			load_anim_prim_object(4); //bane
+			//load_anim_prim_object(4); //bane
 		}
 	}
 
@@ -577,10 +584,10 @@ void load_needed_anim_prims()
 	{
 		load_anim_prim_object(i);
 	}*/
-	load_anim_prim_object(5);
+	/*load_anim_prim_object(5);
 			DebugText(" next_prim_point %d primface3 %d primface4 %d   load ANIMprim %d \n",next_prim_point,next_prim_face3,next_prim_face4,9);
 	load_anim_prim_object(12);
-			DebugText(" next_prim_point %d primface3 %d primface4 %d   load ANIMprim %d \n",next_prim_point,next_prim_face3,next_prim_face4,12);
+			DebugText(" next_prim_point %d primface3 %d primface4 %d   load ANIMprim %d \n",next_prim_point,next_prim_face3,next_prim_face4,12);*/
 	//#endif
 }
 

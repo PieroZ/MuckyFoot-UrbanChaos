@@ -37,6 +37,16 @@ void DebugVars::SetRandomCharacters()
     mRandomCharacters = !mRandomCharacters;
 }
 
+void DebugVars::SetDisableFloorsRender()
+{
+    mDisableFloorsRender = !mDisableFloorsRender;
+}
+
+void DebugVars::SetDisableThingsRender()
+{
+    mDisableThingsRender = !mDisableThingsRender;
+}
+
 bool DebugVars::GetInflate() const
 {
     return mInflate;
@@ -60,5 +70,15 @@ bool DebugVars::GetCorpseExplosion() const
 bool DebugVars::GetRandomCharacters() const
 {
     return mRandomCharacters;
+}
+
+bool DebugVars::GetDisableFloorsRender() const
+{
+    return mDisableFloorsRender;
+}
+
+bool DebugVars::GetDisableThingsRender() const
+{
+    return mDisableThingsRender;
 }
 

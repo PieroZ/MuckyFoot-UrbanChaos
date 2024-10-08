@@ -90,6 +90,7 @@
 #include "polypage.h"
 #include "DCLowLevel.h"
 #include "es.h"
+#include "..\..\Source\DebugVars.h"
 
 #ifdef TARGET_DC
 #include <shsgintr.h>
@@ -3178,8 +3179,10 @@ void AENG_draw_dirt2()
 	// TRACE ( "Drew %i bits of dirt\n", iDrawnDirtCount );
 }
 
+
 void AENG_draw_dirt()
 {
+
  	if (GAME_FLAGS & GF_NO_FLOOR)
 	{
 		//
@@ -3245,18 +3248,18 @@ void AENG_draw_dirt()
 	#else
 	ULONG leaf_colour_choice_rgb[4] =
 	{
-		0x332d1d,
-		0x243224,
-		0x123320,
-		0x332f07
+		0xffffff,
+		0xffffff,
+		0xffffff,
+		0xffffff
 	};
 
 	ULONG leaf_colour_choice_grey[4] =
 	{
-		0x333333,
-		0x444444,
-		0x222222,
-		0x383838
+		0xffffff,
+		0xffffff,
+		0xffffff,
+		0xffffff
 	};
 	#endif
 
@@ -3348,6 +3351,8 @@ void AENG_draw_dirt()
 	// Draw the dirt.
 	//
 
+
+
 	DIRT_Dirt *dd;
 
 #ifdef DEBUG
@@ -3384,16 +3389,18 @@ void AENG_draw_dirt()
 				dy * AENG_cam_matrix[7] + 
 				dz * AENG_cam_matrix[8];
 
-			//if (dprod < 64.0F)
-			//{
-			//	//
-			//	// Offscreen...
-			//	//
 
-			//	DIRT_MARK_AS_OFFSCREEN_QUICK(i);
 
-			//	goto do_next_dirt;
-			//}
+			if (dprod < 64.0F)
+			{
+				//
+				// Offscreen...
+				//
+
+				DIRT_MARK_AS_OFFSCREEN_QUICK(i);
+
+				goto do_next_dirt;
+			}
 		}
 
 #ifdef DEBUG
@@ -3428,6 +3435,24 @@ void AENG_draw_dirt()
 							POLY_Page[POLY_PAGE_LEAF].RS.SetChanged();
 						}
 
+			/*			float lvert_x = the_game.net_persons[0]->WorldPos.X;
+						float shifted_lvert_x = lvert_x / (1 << 8);
+						float lvert_y = the_game.net_persons[0]->WorldPos.Y + 0x8000;
+						float shifted_lvert_y = lvert_y / (1 << 8);
+						float lvert_z = the_game.net_persons[0]->WorldPos.Z;
+						float shifted_lvert_z = lvert_z / (1 << 8);
+						*/
+
+						static int mum_go_sky = 0;
+
+						++mum_go_sky;
+						//static int mum_go_sky = 10;
+						for (int i = 0; i < AENG_dirt_lvert_upto; ++i)
+						{
+							//AENG_dirt_lvert[i].x = shifted_lvert_x;
+							//AENG_dirt_lvert[i].y = AENG_dirt_lvert[i].y + (mum_go_sky/100);
+							//AENG_dirt_lvert[i].z += 1.f;
+						}
 
 						the_display.lp_D3D_Device->DrawIndexedPrimitive(
 														D3DPT_TRIANGLELIST,
@@ -3530,6 +3555,12 @@ void AENG_draw_dirt()
 						lv[3].x = base_x - matrix[6] - matrix[0];
 						lv[3].y = base_y - matrix[7] - matrix[1];
 						lv[3].z = base_z - matrix[8] - matrix[2];
+
+
+						lv[0].z += 0.001f;  // Adding a small bias to push leaves slightly above ground
+						lv[1].z += 0.001f;
+						lv[2].z += 0.001f;
+						lv[3].z += 0.001f;
 
 						//
 						// What are the uv's and colour of this quad?
@@ -3937,19 +3968,19 @@ void AENG_draw_dirt()
 
 
 
-#if 0
-/*
-		switch(di.type)
+#if 1
+
+		switch(dd->type)
 		{
 			case DIRT_INFO_TYPE_WATER:
 
 				SHAPE_droplet(
-					di.x,
-					di.y,
-					di.z,
-					di.dx * 4,
-					di.dy * 4,
-					di.dz * 4,
+					dd->x,
+					dd->y,
+					dd->z,
+					dd->dx >> 2,
+					dd->dy >> TICK_SHIFT,
+					dd->dz >> 2,
 #ifdef TARGET
 					0xff224455,
 #else
@@ -3962,12 +3993,12 @@ void AENG_draw_dirt()
 			case DIRT_INFO_TYPE_URINE:
 
 				SHAPE_droplet(
-					di.x,
-					di.y,
-					di.z,
-					di.dx * 4,
-					di.dy * 4,
-					di.dz * 4,
+					dd->x,
+					dd->y,
+					dd->z,
+					dd->dx >> 2,
+					dd->dy >> TICK_SHIFT,
+					dd->dz >> 2,
 #ifdef TARGET
 					0xff775533,
 #else
@@ -3980,12 +4011,12 @@ void AENG_draw_dirt()
 			case DIRT_INFO_TYPE_SPARKS:
 
 				SHAPE_droplet(
-					di.x,
-					di.y,
-					di.z,
-					di.dx * 4,
-					di.dy * 4,
-					di.dz * 4,
+					dd->x,
+					dd->y,
+					dd->z,
+					dd->dx >> 2,
+					dd->dy >> TICK_SHIFT,
+					dd->dz >> 2,
 					0x7f997744,
 					POLY_PAGE_BLOOM1);
 
@@ -3994,22 +4025,22 @@ void AENG_draw_dirt()
 			case DIRT_INFO_TYPE_BLOOD:
 
 				SHAPE_droplet(
-					di.x,
-					di.y,
-					di.z,
-					di.dx * 4,
-					di.dy * 4,
-					di.dz * 4,
+					dd->x,
+					dd->y,
+					dd->z,
+					dd->dx >> 2,
+					dd->dy >> TICK_SHIFT,
+					dd->dz >> 2,
 					0x9fFFFFFF,
 					POLY_PAGE_BLOODSPLAT);
 
 				break;
 
 			case DIRT_INFO_TYPE_SNOW:
-				leaf_colour=di.morph1;
+				/*leaf_colour=di.morph1;
 				leaf_colour<<=23;
 				leaf_colour|=0xffFFff;
-				SPRITE_draw_tex(di.x,di.y,di.z,20,leaf_colour,0xFF000000,POLY_PAGE_SNOWFLAKE,0.0,0.0,1.0,1.0,SPRITE_SORT_NORMAL);
+				SPRITE_draw_tex(di.x,di.y,di.z,20,leaf_colour,0xFF000000,POLY_PAGE_SNOWFLAKE,0.0,0.0,1.0,1.0,SPRITE_SORT_NORMAL);*/
 				break;
 
 			case DIRT_INFO_TYPE_LEAF:
@@ -4018,10 +4049,10 @@ void AENG_draw_dirt()
 				// Create the rotation matrix for this bit of dirt...
 				//
 
-				if ((di.pitch | di.roll) == 0)
-				{
-					
-				}
+				//if ((di.pitch | di.roll) == 0)
+				//{
+				//	
+				//}
 
 				//
 				// There is a chance we are going to draw some rubbish instead of a leaf.
@@ -4033,8 +4064,8 @@ void AENG_draw_dirt()
 					// The rotation matrix of this bit of dirt.
 					//
 
-					fpitch = float(di.pitch) * (PI / 1024.0F);
-					froll  = float(di.roll)  * (PI / 1024.0F);
+					fpitch = float(dd->pitch) * (PI / 1024.0F);
+					froll  = float(dd->roll)  * (PI / 1024.0F);
 					fyaw   = float(i);
 
 					MATRIX_calc(matrix, fyaw, fpitch, froll);
@@ -4047,25 +4078,32 @@ void AENG_draw_dirt()
 					matrix[7] *= 24.0F;
 					matrix[8] *= 24.0F;
 					
-					temp[0].X = float(di.x) + matrix[6] + matrix[0];
-					temp[0].Y = float(di.y) + matrix[7] + matrix[1];
-					temp[0].Z = float(di.z) + matrix[8] + matrix[2];
+					temp[0].X = float(dd->x) + matrix[6] + matrix[0];
+					temp[0].Y = float(dd->y) + matrix[7] + matrix[1];
+					temp[0].Z = float(dd->z) + matrix[8] + matrix[2];
 					
-					temp[1].X = float(di.x) + matrix[6] - matrix[0];
-					temp[1].Y = float(di.y) + matrix[7] - matrix[1];
-					temp[1].Z = float(di.z) + matrix[8] - matrix[2];
+					temp[1].X = float(dd->x) + matrix[6] - matrix[0];
+					temp[1].Y = float(dd->y) + matrix[7] - matrix[1];
+					temp[1].Z = float(dd->z) + matrix[8] - matrix[2];
 					
-					temp[2].X = float(di.x) - matrix[6] + matrix[0];
-					temp[2].Y = float(di.y) - matrix[7] + matrix[1];
-					temp[2].Z = float(di.z) - matrix[8] + matrix[2];
+					temp[2].X = float(dd->x) - matrix[6] + matrix[0];
+					temp[2].Y = float(dd->y) - matrix[7] + matrix[1];
+					temp[2].Z = float(dd->z) - matrix[8] + matrix[2];
 					
-					temp[3].X = float(di.x) - matrix[6] - matrix[0];
-					temp[3].Y = float(di.y) - matrix[7] - matrix[1];
-					temp[3].Z = float(di.z) - matrix[8] - matrix[2];
+					temp[3].X = float(dd->x) - matrix[6] - matrix[0];
+					temp[3].Y = float(dd->y) - matrix[7] - matrix[1];
+					temp[3].Z = float(dd->z) - matrix[8] - matrix[2];
 
 					//
 					// Transform the points.
 					//
+					POLY_Point pzi_pp[4];
+					POLY_Point* quad[4];
+
+					quad[0] = &pzi_pp[0];
+					quad[1] = &pzi_pp[1];
+					quad[2] = &pzi_pp[2];
+					quad[3] = &pzi_pp[3];
 
 					for (j = 0; j < 4; j++)
 					{
@@ -4073,9 +4111,9 @@ void AENG_draw_dirt()
 							temp[j].X,
 							temp[j].Y + 4.0F,
 							temp[j].Z,
-						   &pp[j]);
+						   &pzi_pp[j]);
 
-						if (!pp[j].IsValid())
+						if (!pzi_pp[j].IsValid())
 						{
 							//
 							// Tell the DIRT module that the leaf is off-screen.
@@ -4091,7 +4129,7 @@ void AENG_draw_dirt()
 						}
 					}
 
-					if (POLY_valid_quad(quad))
+					//if (POLY_valid_quad(quad))
 					{
 						float ubase;
 						float vbase;
@@ -4135,18 +4173,18 @@ void AENG_draw_dirt()
 
 						for (j = 0; j < 4; j++)
 						{
-							pp[j].u = ubase;
-							pp[j].v = vbase;
+							pzi_pp[j].u = ubase;
+							pzi_pp[j].v = vbase;
 
-							if (j & 1) {pp[j].u += 0.5F;}
-							if (j & 2) {pp[j].v += 0.5F;}
+							if (j & 1) { pzi_pp[j].u += 0.5F;}
+							if (j & 2) { pzi_pp[j].v += 0.5F;}
 
 #ifdef TARGET_DC
 							pp[j].colour   = ( NIGHT_amb_d3d_colour & colour_and ) | 0xff000000;
 #else
-							pp[j].colour   = NIGHT_amb_d3d_colour & colour_and;
+							pzi_pp[j].colour   = NIGHT_amb_d3d_colour & colour_and;
 #endif
-							pp[j].specular = 0xff000000;
+							pzi_pp[j].specular = 0xff000000;
 						}
 
 						//
@@ -4155,34 +4193,34 @@ void AENG_draw_dirt()
 
 						POLY_add_quad(quad, POLY_PAGE_RUBBISH, FALSE);
 					}
-					else
-					{
-						//
-						// Tell the DIRT module that the leaf is off-screen.
-						//
+					//else
+					//{
+					//	//
+					//	// Tell the DIRT module that the leaf is off-screen.
+					//	//
 
-						DIRT_mark_as_offscreen(i);
-					}
+					//	DIRT_mark_as_offscreen(i);
+					//}
 				}
 				else
 				{
-					if ((di.yaw | di.pitch | di.roll) == 0)
+					if ((dd->yaw | dd->pitch | dd->roll) == 0)
 					{
 						//
 						// This happens often... so we optimise it out.
 						//
 
-						temp[0].X = float(di.x);
-						temp[0].Y = float(di.y + LEAF_UP);
-						temp[0].Z = float(di.z + LEAF_SIZE);
+						temp[0].X = float(dd->x);
+						temp[0].Y = float(dd->y + LEAF_UP);
+						temp[0].Z = float(dd->z + LEAF_SIZE);
 
-						temp[1].X = float(di.x + LEAF_SIZE);
-						temp[1].Y = float(di.y + LEAF_UP);
-						temp[1].Z = float(di.z - LEAF_SIZE);
+						temp[1].X = float(dd->x + LEAF_SIZE);
+						temp[1].Y = float(dd->y + LEAF_UP);
+						temp[1].Z = float(dd->z - LEAF_SIZE);
 
-						temp[2].X = float(di.x - LEAF_SIZE);
-						temp[2].Y = float(di.y + LEAF_UP);
-						temp[2].Z = float(di.z - LEAF_SIZE);
+						temp[2].X = float(dd->x - LEAF_SIZE);
+						temp[2].Y = float(dd->y + LEAF_UP);
+						temp[2].Z = float(dd->z - LEAF_SIZE);
 					}
 					else
 					{
@@ -4190,9 +4228,9 @@ void AENG_draw_dirt()
 						// The rotation matrix of this bit of dirt.
 						//
 
-						fyaw   = float(di.yaw)   * (PI / 1024.0F);
-						fpitch = float(di.pitch) * (PI / 1024.0F);
-						froll  = float(di.roll)  * (PI / 1024.0F);
+						fyaw   = float(dd->yaw)   * (PI / 1024.0F);
+						fpitch = float(dd->pitch) * (PI / 1024.0F);
+						froll  = float(dd->roll)  * (PI / 1024.0F);
 
 						MATRIX_calc(matrix, fyaw, fpitch, froll);
 
@@ -4203,9 +4241,9 @@ void AENG_draw_dirt()
 						for (j = 0; j < 3; j++)
 						{
 
-							temp[j].X  = float(di.x);
-							temp[j].Y  = float(di.y);
-							temp[j].Z  = float(di.z);
+							temp[j].X  = float(dd->x);
+							temp[j].Y  = float(dd->y);
+							temp[j].Z  = float(dd->z);
 
 							temp[j].Y += float(LEAF_UP);
 						}
@@ -4231,12 +4269,20 @@ void AENG_draw_dirt()
 						temp[2].Y -= matrix[1] * LEAF_SIZE;
 						temp[2].Z -= matrix[2] * LEAF_SIZE;
 
-						falling = TRUE;
+						//falling = TRUE;
 					}
 
 					//
 					// Transform the points.
 					//
+
+
+					POLY_Point pzi2_pp[3];
+					POLY_Point* tri[3];
+
+					tri[0] = &pzi2_pp[0];
+					tri[1] = &pzi2_pp[1];
+					tri[2] = &pzi2_pp[2];
 
 					for (j = 0; j < 3; j++)
 					{
@@ -4244,9 +4290,9 @@ void AENG_draw_dirt()
 							temp[j].X,
 							temp[j].Y,
 							temp[j].Z,
-						   &pp[j]);
+						   &pzi2_pp[j]);
 
-						if (!pp[j].IsValid())
+						if (!pzi2_pp[j].IsValid())
 						{
 							//
 							// Tell the DIRT module that the leaf is off-screen.
@@ -4282,14 +4328,14 @@ void AENG_draw_dirt()
 
 						for (j = 0; j < 3; j++)
 						{
-						    pp[j].colour =  leaf_colour * (j + 3);
-							pp[j].colour  &= ~POLY_colour_restrict;
+							pzi2_pp[j].colour =  leaf_colour * (j + 3);
+							pzi2_pp[j].colour  &= ~POLY_colour_restrict;
 #ifdef TARGET_DC
 							pp[j].colour |= 0xff000000;
 #endif
-							pp[j].specular =  0xff000000;
-							pp[j].u        =  LEAF_U(angle);
-							pp[j].v        =  LEAF_V(angle);
+							pzi2_pp[j].specular =  0xff000000;
+							pzi2_pp[j].u        =  LEAF_U(angle);
+							pzi2_pp[j].v        =  LEAF_V(angle);
 
 							angle += 2.0F * PI / 3.0F;
 						}
@@ -4313,19 +4359,19 @@ void AENG_draw_dirt()
 
 				extern UBYTE kludge_shrink;
 
-				if (di.held||(di.prim==253))
+				/*if (di.held||(di.prim==253))
 				{
 					kludge_shrink = TRUE;
-				}
+				}*/
 
 				MESH_draw_poly(
-					di.prim,
-					di.x,
-					di.y,
-					di.z,
-					di.yaw,
-					di.pitch,
-					di.roll,
+					dd->UU.Head.prim,
+					dd->x,
+					dd->y,
+					dd->z,
+					dd->yaw,
+					dd->pitch,
+					dd->roll,
 #ifdef TARGET_DC
 					NULL,0xff,0);
 #else
@@ -4338,7 +4384,7 @@ void AENG_draw_dirt()
 
 			case DIRT_INFO_TYPE_MORPH:
 
-				MESH_draw_morph(
+			/*	MESH_draw_morph(
 					di.prim,
 					di.morph1,
 					di.morph2,
@@ -4349,15 +4395,15 @@ void AENG_draw_dirt()
 					di.yaw,
 					di.pitch,
 					di.roll,
-					NULL);
+					NULL);*/
 
 				break;
 
 			default:
-				ASSERT(0);
+				//ASSERT(0);
 				break;
 		}
-*/
+
 #endif
 
 	  do_next_dirt:;
@@ -4383,21 +4429,25 @@ void AENG_draw_dirt()
 		}
 
 
-		HRESULT result = the_display.lp_D3D_Device->DrawIndexedPrimitive(
-										D3DPT_TRIANGLELIST,
-										D3DFVF_LVERTEX,
-										AENG_dirt_lvert,
-										AENG_dirt_lvert_upto,
-										AENG_dirt_index,
-										AENG_dirt_index_upto,
-										0);
+		// INSERT SNIPPET HERE
+// Adjust y-coordinate for leaves before rendering them
 
-		if (FAILED(result))
-		{
-			// Log or handle the error
-			TRACE("DrawIndexedPrimitive failed: %lx\n", result);
-			printf("lx \n", result);
-		}
+
+		//HRESULT result = the_display.lp_D3D_Device->DrawIndexedPrimitive(
+		//								D3DPT_TRIANGLELIST,
+		//								D3DFVF_LVERTEX,
+		//								AENG_dirt_lvert,
+		//								AENG_dirt_lvert_upto,
+		//								AENG_dirt_index,
+		//								AENG_dirt_index_upto,
+		//								0);
+
+		//if (FAILED(result))
+		//{
+		//	// Log or handle the error
+		//	TRACE("DrawIndexedPrimitive failed: %lx\n", result);
+		//	printf("lx \n", result);
+		//}
 	}
 
 	//TRACE ( "Drew %i bits of dirt\n", iDrawnDirtCount );
@@ -9331,6 +9381,10 @@ extern	void SKY_draw_poly_sky_old(float world_camera_x,float world_camera_y,floa
 		{
 			for (x = NGAMUT_gamut[z].xmin; x <= NGAMUT_gamut[z].xmax; x++)
 			{
+				if (DebugVars::getInstance().GetDisableFloorsRender())
+				{
+					continue;
+				}
 				ASSERT(WITHIN(x, 0, PAP_SIZE_HI - 2));
 				ASSERT(WITHIN(z, 0, PAP_SIZE_HI - 2));
 
@@ -9342,7 +9396,10 @@ extern	void SKY_draw_poly_sky_old(float world_camera_x,float world_camera_y,floa
 				}
 
 	#ifdef FAST_EDDIE
-				if (Keys[KB_1] && ((x ^ z) & 1))	continue;
+				if (Keys[KB_1] && ((x ^ z) & 1))
+				{
+					continue;
+				}
 	#endif
 
 				/*
@@ -10186,6 +10243,10 @@ extern HWND GEDIT_edit_wnd;
 		{
 			for (x = NGAMUT_lo_gamut[z].xmin; x <= NGAMUT_lo_gamut[z].xmax; x++)
 			{
+				if (DebugVars::getInstance().GetDisableThingsRender())
+				{
+					continue;
+				}
 				//
 				// The cached lighting for this low-res mapsquare.
 				//
