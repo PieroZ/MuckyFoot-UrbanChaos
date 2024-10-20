@@ -241,7 +241,7 @@ typedef struct
 	UBYTE	Flags2;
 	UBYTE	SlideOdd;				// A counter for how many consecutive gameturns this person has slid along something that isn't a wall or fence.
 
-	UBYTE EquippedWeaponId;
+	//UBYTE EquippedWeaponId;
 
 // using BUILD_PSX means that it'll be commented out both on the PSX, *AND* when Mike builds 
 // PSX nads on his PC.

@@ -236,7 +236,7 @@ void VertexBufferPool::Create(IDirect3D3* d3d, bool force_system)
 	static int	Allocations[16] = {0,0,0,0, 0,0,128,64,32,16, 8,4, 0,0,0,0};
 #else
 	//static int	Allocations[16] = {0,0,0,0, 0,0,128,64, 32,16,8,4, 0,0,0,0};	// total 48,000 vertices
-	static int Allocations[VertexBufferPoolConst] = {     0, 0, 0, 0, 0, 0, 64, 32, 32, 16, 8, 4, 2, 1, 0, 0,0,0,0,0};
+	static int Allocations[VertexBufferPoolConst] = {     0, 0, 0, 0, 0, 0, 64, 32, 32, 16, 8, 4, 2, 1, 0, 0};
 #endif
 
 	for (int i = 0; i < VertexBufferPoolConst; ++i)

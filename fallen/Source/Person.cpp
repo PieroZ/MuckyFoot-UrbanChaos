@@ -1559,7 +1559,7 @@ void set_persons_personid(Thing *p_person)
 	if (p_person->Genus.Person->Flags & FLAG_PERSON_GUN_OUT)
 	{
 		p_person->Draw.Tweened->PersonID |= 1<<5;
-		p_person->Genus.Person->EquippedWeaponId = 1;
+		//p_person->Genus.Person->EquippedWeaponId = 1;
 
 
 		return;
@@ -1582,7 +1582,7 @@ void set_persons_personid(Thing *p_person)
 			case SPECIAL_GUN:
 				p_person->Draw.Tweened->PersonID |= 1<<5;
 
-				p_person->Genus.Person->EquippedWeaponId = 1;
+				//p_person->Genus.Person->EquippedWeaponId = 1;
 				break;
 
 			case SPECIAL_HEALTH:
@@ -1591,17 +1591,17 @@ void set_persons_personid(Thing *p_person)
 
 			case SPECIAL_SILENCED_GUN:
 
-				p_person->Genus.Person->EquippedWeaponId = 1;
+				//p_person->Genus.Person->EquippedWeaponId = 1;
 				p_person->Draw.Tweened->PersonID |= 3<<5;
 				break;
 			case SPECIAL_SHOTGUN:
 				p_person->Draw.Tweened->PersonID |= 3<<5;
-				p_person->Genus.Person->EquippedWeaponId = 3;
+				//p_person->Genus.Person->EquippedWeaponId = 3;
 				break;
 
 			case SPECIAL_KNIFE:
 				p_person->Draw.Tweened->PersonID |= 2<<5;
-				p_person->Genus.Person->EquippedWeaponId = 2;
+				//p_person->Genus.Person->EquippedWeaponId = 2;
 				break;
 
 			case SPECIAL_EXPLOSIVES:
@@ -1610,12 +1610,12 @@ void set_persons_personid(Thing *p_person)
 
 			case SPECIAL_AK47:
 				p_person->Draw.Tweened->PersonID |= 5<<5;
-				p_person->Genus.Person->EquippedWeaponId = 5;
+				//p_person->Genus.Person->EquippedWeaponId = 5;
 				break;
 
 			case SPECIAL_BASEBALLBAT:
 				p_person->Draw.Tweened->PersonID |= 4<<5;
-				p_person->Genus.Person->EquippedWeaponId = 4;
+				//p_person->Genus.Person->EquippedWeaponId = 4;
 				break;
 
 			default:
@@ -5658,14 +5658,16 @@ void set_person_aim(Thing *p_person,SLONG locked=0)
 			anim = ANIM_SHOTGUN_AIM;
 		}
 */
-		if (p_person->Genus.Person->EquippedWeaponId == 1)
+		anim = ANIM_SHOTGUN_AIM;
+
+		/*if (p_person->Genus.Person->EquippedWeaponId == 1)ss
 		{
 			anim = ANIM_PISTOL_AIM_AHEAD;
 		}
 		else
 		{
 			anim = ANIM_SHOTGUN_AIM;
-		}
+		}*/
 
 	}
 	else
@@ -8250,7 +8252,7 @@ void	set_person_draw_gun(Thing *p_person)
 	}
 
 
-	p_person->Genus.Person->EquippedWeaponId = 1;
+	//p_person->Genus.Person->EquippedWeaponId = 1;
 	MSG_add(" start draw gun");
 	p_person->Genus.Person->Mode = PERSON_MODE_RUN;
 	set_anim(p_person,ANIM_PISTOL_DRAW);
