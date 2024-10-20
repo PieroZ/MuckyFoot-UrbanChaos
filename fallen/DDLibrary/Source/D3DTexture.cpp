@@ -354,7 +354,10 @@ HRESULT D3DTexture::Reload_TGA(void)
 	// Allocate memory for the texture.
 	//
 
-	tga = (TGA_Pixel *) MemAlloc (256 * 256 * sizeof(TGA_Pixel));
+	const int max_width = 2048;
+	const int max_height = 2048;
+
+	tga = (TGA_Pixel *) MemAlloc (max_width * max_height * sizeof(TGA_Pixel));
 
 	if (tga == NULL)
 	{
@@ -368,8 +371,8 @@ HRESULT D3DTexture::Reload_TGA(void)
 	//
 	ti = TGA_load(
 			texture_name,
-			256,
-			256,
+		max_width,
+		max_height,
 			tga,
 			ID,
 			bCanShrink);

@@ -55,6 +55,8 @@ private:
 //
 // vertex buffer pool
 
+static const int VertexBufferPoolConst = 20;
+
 class VertexBufferPool
 {
 public:
@@ -80,10 +82,10 @@ public:
 private:
 	IDirect3D3*		m_D3D;					// D3D object
 	bool			m_SysMem;				// use system memory?
-	VertexBuffer*	m_FreeList[16];			// free vertex buffers (locked)
-	VertexBuffer*	m_BusyListLRU[16];		// busy vertex buffers, least recent end = head
-	VertexBuffer*	m_BusyListMRU[16];		// busy vertex buffers, most recent end = tail
-	ULONG			m_Count[16];			// total number of buffers
+	VertexBuffer*	m_FreeList[VertexBufferPoolConst];			// free vertex buffers (locked)
+	VertexBuffer*	m_BusyListLRU[VertexBufferPoolConst];		// busy vertex buffers, least recent end = head
+	VertexBuffer*	m_BusyListMRU[VertexBufferPoolConst];		// busy vertex buffers, most recent end = tail
+	ULONG			m_Count[VertexBufferPoolConst];			// total number of buffers
 
 	void	CreateBuffer(ULONG logsize);						// create a buffer of the given size
 	void	CheckBuffers(ULONG logsize, bool time_critical);	// check busy buffers

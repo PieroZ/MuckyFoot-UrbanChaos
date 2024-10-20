@@ -1504,6 +1504,7 @@ SBYTE CONTROLS_get_selected_item(Thing *darci, Thing *player) {
 //
 // ak47 / shotgun / pistol
 //
+#define	SILENCER_SCORE	7
 #define	AK47_SCORE		6
 #define	SHOTGUN_SCORE	5
 #define	PISTOL_SCORE	4
@@ -1566,6 +1567,13 @@ SBYTE CONTROLS_get_best_item(Thing *darci, Thing *player)
 						{
 							current_item=count;
 							current_score=KNIFE_SCORE;
+						}
+						break;
+					case SPECIAL_SILENCED_GUN:
+						if (current_score < SILENCER_SCORE)
+						{
+							current_item = count;
+							current_score = SILENCER_SCORE;
 						}
 						break;
 				}
@@ -4993,7 +5001,7 @@ extern	SLONG	FC_cam_height;
 				switch(angle)
 				{
 					case 0: 
-						alloc_special(SPECIAL_HEALTH     , SPECIAL_SUBSTATE_NONE, wx+dx, wy + 0x10, wz+dz, 0); 
+						alloc_special(SPECIAL_SILENCED_GUN, SPECIAL_SUBSTATE_NONE, wx+dx, wy + 0x10, wz+dz, 0);
 						break;
 					case 1: 
 						alloc_special(SPECIAL_BASEBALLBAT        , SPECIAL_SUBSTATE_NONE, wx+dx, wy,        wz+dz, 0); 

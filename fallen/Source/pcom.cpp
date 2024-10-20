@@ -5017,6 +5017,7 @@ Thing *PCOM_is_there_an_item_i_should_get(Thing *p_person)
 			case SPECIAL_AK47:
 			case SPECIAL_BASEBALLBAT:
 			case SPECIAL_KNIFE:
+			case SPECIAL_SILENCED_GUN:
 
 				//
 				// These are the special types we can pickup.

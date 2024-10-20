@@ -69,7 +69,6 @@ VertexBuffer::~VertexBuffer()
 // Create
 //
 // create the vertex buffer
-
 HRESULT VertexBuffer::Create(IDirect3D3* d3d, bool force_system, ULONG logsize)
 {
 	ASSERT(!m_LockedPtr);
@@ -86,14 +85,36 @@ HRESULT VertexBuffer::Create(IDirect3D3* d3d, bool force_system, ULONG logsize)
 	InitStruct(desc);
 
 	desc.dwCaps = force_system ? D3DVBCAPS_SYSTEMMEMORY : 0;
-//	desc.dwCaps |= D3DVBCAPS_WRITEONLY;	// oops ... can't expand with this flag set ;-)
-	desc.dwFVF	= D3DFVF_TLVERTEX;
+	//	desc.dwCaps |= D3DVBCAPS_WRITEONLY;	// oops ... can't expand with this flag set ;-)
+	desc.dwFVF = D3DFVF_TLVERTEX;
 	desc.dwNumVertices = 1 << logsize;
 
 	HRESULT	res = d3d->CreateVertexBuffer(&desc, &m_TheBuffer, 0, NULL);
 
 	if (FAILED(res))
 	{
+		if (res == D3DERR_VBUF_CREATE_FAILED)
+		{
+			TRACE("I am the danger\n");
+		}
+		else if (res == D3DERR_VERTEXBUFFEROPTIMIZED || res == D3DERR_VERTEXBUFFERLOCKED || res == D3DERR_VERTEXBUFFERUNLOCKFAILED)
+		{
+			TRACE("I am the danger\n");
+		}
+		else if (res == D3DERR_TOOMANYVERTICES)
+		{
+			TRACE("TOO MANY VERTICIES ?!\n");
+
+			DWORD version = d3d->QueryInterface(IID_IDirect3D3, (void**)&d3d);
+			if (version == D3D_OK)
+			{
+				TRACE("Direct3D Version: Direct3D 3 (DirectX 6)\n");
+			}
+			else
+			{
+				TRACE("Could not determine Direct3D version\n");
+			}
+		}
 		m_TheBuffer = NULL;
 		return res;
 	}
@@ -101,7 +122,7 @@ HRESULT VertexBuffer::Create(IDirect3D3* d3d, bool force_system, ULONG logsize)
 #else
 
 	//m_LockedPtr = new D3DTLVERTEX[1 << logsize];
-	m_LockedPtr = (D3DTLVERTEX*)MemAlloc ( (1 << logsize) * sizeof (D3DTLVERTEX ) );
+	m_LockedPtr = (D3DTLVERTEX*)MemAlloc((1 << logsize) * sizeof(D3DTLVERTEX));
 	if (!m_LockedPtr)	return DDERR_OUTOFMEMORY;
 
 #endif
@@ -110,6 +131,7 @@ HRESULT VertexBuffer::Create(IDirect3D3* d3d, bool force_system, ULONG logsize)
 
 	return DD_OK;
 }
+
 
 // Lock
 //
@@ -122,7 +144,7 @@ D3DTLVERTEX* VertexBuffer::Lock()
 	ASSERT(m_TheBuffer);
 	ASSERT(!m_LockedPtr);
 
-	HRESULT	res = m_TheBuffer->Lock(DDLOCK_SURFACEMEMORYPTR | DDLOCK_NOSYSLOCK, (LPVOID*)&m_LockedPtr, NULL);
+ 	HRESULT	res = m_TheBuffer->Lock(DDLOCK_SURFACEMEMORYPTR | DDLOCK_NOSYSLOCK, (LPVOID*)&m_LockedPtr, NULL);
 
 	if (FAILED(res))
 	{
@@ -171,7 +193,7 @@ VertexBufferPool::VertexBufferPool()
 	m_D3D = NULL;
 	m_SysMem = false;
 
-	for (int ii = 0; ii < 16; ii++)
+	for (int ii = 0; ii < VertexBufferPoolConst; ii++)
 	{
 		m_FreeList[ii] = NULL;
 		m_BusyListLRU[ii] = NULL;
@@ -184,7 +206,7 @@ VertexBufferPool::~VertexBufferPool()
 {
 	VertexBuffer*	p;
 
-	for (int ii = 0; ii < 16; ii++)
+	for (int ii = 0; ii < VertexBufferPoolConst; ii++)
 	{
 		while (p = m_FreeList[ii])
 		{
@@ -213,9 +235,14 @@ void VertexBufferPool::Create(IDirect3D3* d3d, bool force_system)
 	// A quarter of the size.
 	static int	Allocations[16] = {0,0,0,0, 0,0,128,64,32,16, 8,4, 0,0,0,0};
 #else
-	static int	Allocations[16] = {0,0,0,0, 0,0,128,64, 32,16,8,4, 0,0,0,0};	// total 48,000 vertices
+	//static int	Allocations[16] = {0,0,0,0, 0,0,128,64, 32,16,8,4, 0,0,0,0};	// total 48,000 vertices
+	static int Allocations[VertexBufferPoolConst] = {     0, 0, 0, 0, 0, 0, 64, 32, 32, 16, 8, 4, 2, 1, 0, 0,0,0,0,0};
 #endif
 
+	for (int i = 0; i < VertexBufferPoolConst; ++i)
+	{
+		//Allocations[i] = 512;
+	}
 	ASSERT(!m_D3D);
 	ASSERT(d3d);
 
@@ -223,7 +250,7 @@ void VertexBufferPool::Create(IDirect3D3* d3d, bool force_system)
 	m_SysMem = force_system;
 
 	// create a variety of buffers
-	for (int ii = 0; ii < 16; ii++)
+	for (int ii = 0; ii < VertexBufferPoolConst; ii++)
 	{
 		for (int jj = 0; jj < Allocations[ii]; jj++)
 		{
@@ -238,7 +265,7 @@ void VertexBufferPool::Create(IDirect3D3* d3d, bool force_system)
 
 void VertexBufferPool::CreateBuffer(ULONG logsize)
 {
-	ASSERT(logsize < 16);
+	ASSERT(logsize < VertexBufferPoolConst);
 
 	VertexBuffer* p = new VertexBuffer;
 	if (!p)	return;
@@ -301,7 +328,7 @@ void VertexBufferPool::CheckBuffers(ULONG logsize, bool time_critical)
 
 VertexBuffer* VertexBufferPool::GetBuffer(ULONG logsize)
 {
-	ASSERT(logsize < 16);
+	ASSERT(logsize < VertexBufferPoolConst);
 
 	if (!m_FreeList[logsize])
 	{
@@ -361,7 +388,7 @@ VertexBuffer* VertexBufferPool::ExpandBuffer(VertexBuffer* buffer)
 	ASSERT(buffer);
 	ASSERT(buffer->m_LockedPtr);
 	ASSERT(!buffer->m_Next);
-	ASSERT(buffer->m_LogSize < 16);
+	ASSERT(buffer->m_LogSize < VertexBufferPoolConst);
 
 	VertexBuffer* p = GetBuffer(buffer->m_LogSize + 1);
 
@@ -419,7 +446,7 @@ void VertexBufferPool::DumpInfo(FILE* fd)
 {
 	ReclaimBuffers();
 
-	for (int ii = 0; ii < 16; ii++)
+	for (int ii = 0; ii < VertexBufferPoolConst; ii++)
 	{
 		if (m_Count[ii])
 		{
@@ -456,7 +483,7 @@ void VertexBufferPool::DumpInfo(FILE* fd)
 
 void VertexBufferPool::ReclaimBuffers()
 {
-	for (int ii = 0; ii < 16; ii++)
+	for (int ii = 0; ii < VertexBufferPoolConst; ii++)
 	{
 		CheckBuffers(ii, false);
 	}

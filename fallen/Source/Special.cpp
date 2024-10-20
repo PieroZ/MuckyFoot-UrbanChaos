@@ -79,6 +79,7 @@ SPECIAL_Info SPECIAL_info[SPECIAL_NUM_TYPES] =
 	{"Black Car Keys",	PRIM_OBJ_ITEM_KEY,			SPECIAL_GROUP_USEFUL			},
 	{"White Car Keys",	PRIM_OBJ_ITEM_KEY,			SPECIAL_GROUP_USEFUL			},
 	{"Wire Cutters",	PRIM_OBJ_ITEM_WRENCH,		SPECIAL_GROUP_USEFUL			},
+	{"Gun silencer",	PRIM_OBJ_ITEM_GUN,			SPECIAL_GROUP_ONEHANDED_WEAPON	},
 };
 
 
@@ -454,6 +455,36 @@ void person_get_item(Thing *p_person, Thing *p_special)
 			*/
 
 			break;
+
+		case SPECIAL_SILENCED_GUN:
+		{
+			Thing* p_gun = person_has_special(p_person, SPECIAL_SILENCED_GUN);
+			if (p_gun)
+			{
+			}
+			else
+			{
+				special_pickup(p_special, p_person);
+
+				//
+				// Make sure it isn't drawn!
+				//
+
+				remove_thing_from_map(p_special);
+
+				//
+				// Dont free up the special.
+				//
+
+				keep = TRUE;
+
+				x_message = X_SHOTGUN;
+
+				//p_person->Flags |= FLAGS_HAS_GUN;
+			}
+
+			break;
+		}
 
 		case SPECIAL_SHOTGUN:
 			

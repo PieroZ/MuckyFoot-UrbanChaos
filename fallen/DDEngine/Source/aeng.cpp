@@ -8056,6 +8056,7 @@ extern	UBYTE	player_visited[16][128];
 
 		for (i = 0; i < shadow_person_upto; i++)
 		{
+
 			darci = shadow_person[i].p_person;
 
 			memset(AENG_aa_buffer, 0, sizeof(AENG_aa_buffer));

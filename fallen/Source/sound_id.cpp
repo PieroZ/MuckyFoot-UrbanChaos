@@ -29,6 +29,8 @@ CBYTE *sound_list[] = {
     "f_pDUD.wav",
     "f_pSHOT1.wav",
     "f_pSHOT2.wav",
+    /*"silencer_m&p9mmpistolsuppressed.wav",
+    "silencer_m&p9mmpistolsuppressed.wav",*/
     "f_RICO1.wav",
     "f_RICO2.wav",
     "f_RICO3.wav",

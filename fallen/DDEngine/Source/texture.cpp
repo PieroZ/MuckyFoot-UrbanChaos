@@ -207,6 +207,7 @@ SLONG TEXTURE_page_litebolt;
 SLONG TEXTURE_page_ladshad;
 SLONG TEXTURE_page_meteor;
 SLONG TEXTURE_page_splash;
+SLONG TEXTURE_page_PZI_custom;
 
 
 
@@ -735,6 +736,10 @@ static void TEXTURE_load_page(SLONG page)
 		sprintf(name_res32, "%stex%03d.tga",   TEXTURE_world_dir, page);
 		sprintf(name_res64, "%stex%03dhi.tga", TEXTURE_world_dir, page);
 		sprintf(name_res128,"%stex%03dto.tga", TEXTURE_world_dir, page);
+	/*	if (!strcmp(name_res64, "server\\textures\\shared\\prims\\tex354hi.tga"))
+		{
+			printf("stop;");
+		}*/
 		sprintf(name_sex,   "%ssex%03dhi.sex", TEXTURE_world_dir, page);
 
 		sprintf(shortname_res32, "tex%03d.tga",   page);
@@ -773,6 +778,7 @@ static void TEXTURE_load_page(SLONG page)
 		sprintf(shortname_res32, "tex%03d.tga",   page);
 		sprintf(shortname_res64, "tex%03dhi.tga", page);
 		sprintf(shortname_res128,"tex%03dto.tga", page);
+
 
 #ifndef TARGET_DC
 		fxref=GetPrivateProfileInt("Textures",shortname_res64,-1,TEXTURE_shared_fx_inifile);
@@ -868,6 +874,11 @@ static void TEXTURE_load_page(SLONG page)
 
 
 #else
+
+		if (!strcmp(name_res64, "server\\textures\\shared\\prims\\tex354hi.tga"))
+		{
+			printf("stop;");
+		}
 
 		exists128 = MF_Fopen(name_res128, "rb");
 		if (exists128)
@@ -1198,6 +1209,7 @@ extern void ATTRACT_loadscreen_draw(SLONG completion);
 	TEXTURE_page_splash			 = TEXTURE_NUM_STANDARD + 73;
 	TEXTURE_page_snowflake		 = TEXTURE_NUM_STANDARD + 74;
 	TEXTURE_page_fade_MF         = TEXTURE_NUM_STANDARD + 75;
+	TEXTURE_page_PZI_custom      = TEXTURE_NUM_STANDARD + 76;
 
 #ifdef TARGET_DC
 	TEXTURE_page_joypad_a		 = TEXTURE_NUM_STANDARD + 76;
@@ -1413,6 +1425,10 @@ LOADED_THIS_MANY_TEXTURES(6);
 		TEXTURE_texture[TEXTURE_page_ladder      ].LoadTextureTGA(TEXTURE_EXTRA_DIR"secret.tga",       TEXTURE_page_ladder);
 		TEXTURE_texture[TEXTURE_page_shadowoval  ].LoadTextureTGA(TEXTURE_EXTRA_DIR"shadow.tga",       TEXTURE_page_shadowoval);
 		TEXTURE_texture[TEXTURE_page_rubbish     ].LoadTextureTGA(TEXTURE_EXTRA_DIR"rubbish.tga",      TEXTURE_page_rubbish);
+		
+		TEXTURE_texture[TEXTURE_page_PZI_custom].LoadTextureTGA(TEXTURE_EXTRA_DIR"NewWeaponsIcons2.tga", TEXTURE_page_PZI_custom); 
+
+		
 
 LOADED_THIS_MANY_TEXTURES(5);
 

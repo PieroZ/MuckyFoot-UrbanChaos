@@ -1104,7 +1104,7 @@ void calc_prim_info()
 //
 
 #ifndef	PSX
-#define MAX_POINTS_PER_PRIM 5000
+#define MAX_POINTS_PER_PRIM 15000
 #else
 #define MAX_POINTS_PER_PRIM 1
 #endif
@@ -1160,7 +1160,7 @@ void calc_prim_normals(void)
 		// all the faces.
 		//
 
-		ASSERT(( -p_obj->StartFace3 +p_obj->EndFace3)<2000);
+		//ASSERT(( -p_obj->StartFace3 +p_obj->EndFace3)<2000);
 		for (j = p_obj->StartFace3; j < p_obj->EndFace3; j++)
 		{
 			p_f3 = &prim_faces3[j];

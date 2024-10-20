@@ -164,7 +164,7 @@ typedef struct
 
 } SMAP_Point;
 
-#define SMAP_MAX_POINTS 2048
+#define SMAP_MAX_POINTS 20480
 
 SMAP_Point SMAP_point[SMAP_MAX_POINTS];
 SLONG      SMAP_point_upto;
@@ -289,7 +289,7 @@ SLONG SMAP_point_add(
 
 	sp = &SMAP_point[SMAP_point_upto];
 
- 	sp->world_x = world_x;
+  	sp->world_x = world_x;
 	sp->world_y = world_y;
 	sp->world_z = world_z;
 

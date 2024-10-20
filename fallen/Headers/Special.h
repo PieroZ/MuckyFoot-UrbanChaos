@@ -46,7 +46,8 @@
 #define SPECIAL_CARKEY_BLACK 27
 #define SPECIAL_CARKEY_WHITE 28
 #define SPECIAL_WIRE_CUTTER	 29
-#define SPECIAL_NUM_TYPES    30
+#define SPECIAL_SILENCED_GUN 30
+#define SPECIAL_NUM_TYPES    31
 
 //
 // Info about every special

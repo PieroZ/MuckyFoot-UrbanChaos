@@ -1002,7 +1002,6 @@ void	OVERLAY_handle(void)
 	PANEL_start();
 
 
-
 	if (!EWAY_stop_player_moving())
 	{
 		if (panel)
@@ -1015,6 +1014,8 @@ void	OVERLAY_handle(void)
 			OVERLAY_draw_enemy_health();
 		}
 	}
+
+
 
 //	OVERLAY_draw_damage_values();
 	if(panel)
@@ -1354,6 +1355,7 @@ extern	SLONG	tick_tock_unclipped;
 	*/
 
 	PANEL_finish();
+
 /*
 	if (GAME_STATE & GS_LEVEL_WON)
 	{

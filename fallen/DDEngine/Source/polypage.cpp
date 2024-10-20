@@ -517,10 +517,10 @@ void PolyPage::Render(IDirect3DDevice3* dev)
 	for (ii = 0; ii < m_PolyBufUsed; ii++)
 	{
 		UWORD v1 = src->first_vertex;
-
+		ULONG jj = 1;
 		if (src->num_vertices & 0x8000)
 		{
-			for (ULONG jj = 1; jj < (src->num_vertices & 0x7FFF); jj++)
+			for (jj = 1; jj < (src->num_vertices & 0x7FFF); jj++)
 			{
 				*dst++ = v1 + jj - 1;
 				*dst++ = v1 + jj;

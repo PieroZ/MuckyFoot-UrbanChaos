@@ -980,6 +980,10 @@ void	setup_people_anims(void)
 		load_anim_system(&game_chunk[ANIM_TYPE_ROPER2], "roper2.all");
 	}
 
+	
+	load_anim_system(&game_chunk[ANIM_TYPE_PZI], "PROTOTYPE_DARCI1");
+
+
 
 	//append_anim_system(&game_chunk[ANIM_TYPE_ROPER],"C:\\stuff\\police1.all",200,0);
 	//append_anim_system(&game_chunk[ANIM_TYPE_CIV],"C:\\stuff\\newciv.all",CIV_M_START,1);
@@ -1035,6 +1039,23 @@ extern	SLONG	playing_level(const CBYTE *name);
 #endif
 #endif
 
+void	setup_additional_anims(void)
+{
+	int beta_animations_arr[] = { ANIM_BIKE_MOUNT, ANIM_BIKE_RIDE, ANIM_BIKE_LEAN_LEFT_FOOT,ANIM_BIKE_LEAN_RIGHT_FOOT, ANIM_BIKE_LEAN_LEFT, ANIM_BIKE_LEAN_RIGHT, ANIM_BIKE_LEAN };
+
+	if (game_chunk[ANIM_TYPE_PZI].ElementCount != 0)
+	{
+		for (int animId : beta_animations_arr)
+		{
+			global_anim_array[0][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
+			global_anim_array[1][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
+			global_anim_array[2][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
+			global_anim_array[3][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
+		}
+	}
+
+}
+
 void	setup_global_anim_array(void)
 {
 	//setup_people_anims();
@@ -1056,6 +1077,7 @@ void	setup_global_anim_array(void)
 //		global_anim_array[7][c0]=game_chunk[ANIM_TYPE_DARCI].AnimList[c0];
 	}
 
+	setup_additional_anims();
 
 	//
 	// If people have their own anims, then set them up to use

@@ -139,6 +139,7 @@ extern SLONG TEXTURE_page_litebolt;
 extern SLONG TEXTURE_page_ladshad;
 extern SLONG TEXTURE_page_meteor;
 extern SLONG TEXTURE_page_splash;
+extern SLONG TEXTURE_page_PZI_custom;
 
 extern SLONG TEXTURE_num_textures;	// The total number of pages.
 

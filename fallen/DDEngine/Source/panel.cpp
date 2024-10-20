@@ -512,6 +512,7 @@ void PANEL_draw_timer_do(float time, float x, float y)
 void PANEL_draw_buffered()
 {
 
+
 	SLONG i;
 
 	for (i = 0; i < PANEL_store_upto; i++)
@@ -3659,7 +3660,8 @@ SLONG PANEL_fadeout_finished()
 #define PANEL_LSPRITE_FIST       12
 #define PANEL_LSPRITE_EXPLOSIVES 13
 #define PANEL_LSPRITE_KNIFE      14
-#define PANEL_LSPRITE_NUMBER     15
+#define PANEL_LSPRITE_SILENCER   15
+#define PANEL_LSPRITE_NUMBER     16
 
 typedef struct
 {
@@ -3730,7 +3732,7 @@ PANEL_Lsprite PANEL_lsprite[PANEL_LSPRITE_NUMBER] =
 	PLS(POLY_PAGE_LASTPANEL_ALPHA,   0,  90, 212, 256),			// display
 	PLS(POLY_PAGE_LASTPANEL_ALPHA,  70,  50, 142,  90),			// AK
 	PLS(POLY_PAGE_LASTPANEL_ALPHA,   0,  50,  70,  88),			// Shotgun
-	PLS(POLY_PAGE_LASTPANEL_ALPHA, 174,   0, 246,  50),			// LoGear
+	PLS(POLY_PAGE_LASTPANEL_ALPHA, 174,   0, 246,  50),			// LoGearddd
 	PLS(POLY_PAGE_LASTPANEL_ALPHA, 104,   0, 174,  50),			// HiGear
 	PLS(POLY_PAGE_LASTPANEL_ALPHA,  70,   0, 104,  46),			// Grenade
 	PLS(POLY_PAGE_LASTPANEL_ALPHA, 224, 102, 242, 114),			// Arrow
@@ -3751,6 +3753,7 @@ PANEL_Lsprite PANEL_lsprite[PANEL_LSPRITE_NUMBER] =
 	PLS(POLY_PAGE_LASTPANEL_ALPHA,   0,  52,  69,  88),			// Shotgun
 	PLS(POLY_PAGE_LASTPANEL_ALPHA, 175,   0, 246,  50),			// LoGear
 	PLS(POLY_PAGE_LASTPANEL_ALPHA, 104,   0, 174,  50),			// HiGear
+	//PLS(POLY_PAGE_MOON, 104,   0, 174,  50),			// HiGear
 	PLS(POLY_PAGE_LASTPANEL_ALPHA,  70,   0, 104,  46),			// Grenade
 	PLS(POLY_PAGE_LASTPANEL_ALPHA, 224, 102, 242, 114),			// Arrow
 	PLS(POLY_PAGE_LASTPANEL_ALPHA, 226,76, 246,103),			// ?
@@ -3761,7 +3764,7 @@ PANEL_Lsprite PANEL_lsprite[PANEL_LSPRITE_NUMBER] =
 	PLS(POLY_PAGE_LASTPANEL2_ALPHA,126, 124, 162, 168),			// Fist
 	PLS(POLY_PAGE_LASTPANEL2_ALPHA, 72, 123, 120, 161),			// splosive
 	PLS(POLY_PAGE_LASTPANEL_ALPHA, 141,  62, 212,  84),			// knife
-
+	PLS(POLY_PAGE_PZI_CUSTOM,  0,   0,  69,  50),				// Silencer
 };
 
 
@@ -3967,7 +3970,9 @@ inline SLONG BodgePageIntoAddAlpha(SLONG oldpage)
 // this sucks too!
 inline SLONG BodgePageIntoAdd(SLONG oldpage)
 {
-	if (oldpage==POLY_PAGE_LASTPANEL_ALPHA) return POLY_PAGE_LASTPANEL_ADD;
+	if (oldpage == POLY_PAGE_LASTPANEL_ALPHA) return POLY_PAGE_LASTPANEL_ADD;
+	else if (oldpage == POLY_PAGE_PZI_CUSTOM) return POLY_PAGE_PZI_CUSTOM;
+
 	return POLY_PAGE_LASTPANEL2_ADD;
 }
 // this sucks as well!
@@ -4067,6 +4072,9 @@ void PANEL_inv_weapon(SLONG x, SLONG y, SLONG item, UBYTE who, SLONG rgb, UBYTE 
 			break;
 		case SPECIAL_BASEBALLBAT:
 			sprite = PANEL_LSPRITE_BBB;
+			break;
+		case SPECIAL_SILENCED_GUN:
+			sprite = PANEL_LSPRITE_SILENCER;
 			break;
 		default:
 			sprite = PANEL_LSPRITE_FIST;
@@ -4612,6 +4620,10 @@ void PANEL_last()
 
 				case SPECIAL_BASEBALLBAT:
 					sprite = PANEL_LSPRITE_BBB;
+					break;
+
+				case SPECIAL_SILENCED_GUN:
+					sprite = PANEL_LSPRITE_SILENCER;
 					break;
 
 				default:
