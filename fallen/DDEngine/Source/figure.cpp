@@ -8100,18 +8100,18 @@ void ANIM_obj_draw(Thing *p_thing,DrawTween *dt)
 
 		AnimPrimBbox *apb = &anim_prim_bbox[p_thing->Index];
 
-		AENG_world_line(
-			apb->minx + (p_thing->WorldPos.X >> 8),
-			apb->miny + (p_thing->WorldPos.Y >> 8),
-			apb->minz + (p_thing->WorldPos.Z >> 8),
-			0x16,
-			0x00ffffff,
-			apb->maxx + (p_thing->WorldPos.X >> 8),
-			apb->maxy + (p_thing->WorldPos.Y >> 8),
-			apb->maxz + (p_thing->WorldPos.Z >> 8),
-			0x16,
-			0x000ccccff,
-			TRUE);
+		//AENG_world_line(
+		//	apb->minx + (p_thing->WorldPos.X >> 8),
+		//	apb->miny + (p_thing->WorldPos.Y >> 8),
+		//	apb->minz + (p_thing->WorldPos.Z >> 8),
+		//	0x16,
+		//	0x00ffffff,
+		//	apb->maxx + (p_thing->WorldPos.X >> 8),
+		//	apb->maxy + (p_thing->WorldPos.Y >> 8),
+		//	apb->maxz + (p_thing->WorldPos.Z >> 8),
+		//	0x16,
+		//	0x000ccccff,
+		//	TRUE);
 	}
 
 	

@@ -567,9 +567,9 @@ void load_needed_anim_prims()
 		load_anim_prim_object(12);
 		//if (this_level_has_the_balrog)
 		{
-			//load_anim_prim_object(1);
-			//load_anim_prim_object(2);
-			//load_anim_prim_object(3); //balrog
+			load_anim_prim_object(1);
+			load_anim_prim_object(2);
+			load_anim_prim_object(3); //balrog
 		}
 
 		//if (this_level_has_bane)
