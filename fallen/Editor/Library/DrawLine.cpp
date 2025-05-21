@@ -272,7 +272,7 @@ void	DrawHLine8(SLONG x1,SLONG x2,SLONG y,ULONG colour)
 
 	if(x1>x2)
 	{
-		swap(x1,x2);
+		mf_swap(x1,x2);
 	}
 	line_dest	=	WorkWindow+x1+(y*WorkScreenWidth);
 	count		=	(x2-x1)+1;
@@ -290,7 +290,7 @@ void	DrawHLine16(SLONG x1,SLONG x2,SLONG y,ULONG colour)
 
 	if(x1>x2)
 	{
-		swap(x1,x2);
+		mf_swap(x1,x2);
 	}
 	line_dest	=	(UWORD*)WorkWindow+x1+(y*WorkScreenWidth>>1);
 	count		=	(x2-x1)+1;
@@ -308,7 +308,7 @@ void	DrawHLine32(SLONG x1,SLONG x2,SLONG y,ULONG colour)
 
 	if(x1>x2)
 	{
-		swap(x1,x2);
+		mf_swap(x1,x2);
 	}
 	line_dest	=	(ULONG*)WorkWindow+x1+(y*WorkScreenWidth>>2);
 	count		=	(x2-x1)+1;
@@ -330,7 +330,7 @@ void	DrawHLineC8(SLONG x1,SLONG x2,SLONG y,ULONG colour)
 	{
 		if(x1>x2)
 		{
-			swap(x1,x2);
+			mf_swap(x1,x2);
 		}
 		if(x1<WorkWindowWidth && x2>=0)
 		{
@@ -358,7 +358,7 @@ void	DrawHLineC16(SLONG x1,SLONG x2,SLONG y,ULONG colour)
 	{
 		if(x1>x2)
 		{
-			swap(x1,x2);
+			mf_swap(x1,x2);
 		}
 		if(x1<WorkWindowWidth && x2>=0)
 		{
@@ -386,7 +386,7 @@ void	DrawHLineC32(SLONG x1,SLONG x2,SLONG y,ULONG colour)
 	{
 		if(x1>x2)
 		{
-			swap(x1,x2);
+			mf_swap(x1,x2);
 		}
 		if(x1<WorkWindowWidth && x2>=0)
 		{
@@ -415,7 +415,7 @@ void	DrawVLine8(SLONG x,SLONG y1,SLONG y2,ULONG colour)
 	
 	if(y1>y2)
 	{
-		swap(y1,y2);
+		mf_swap(y1,y2);
 	}
 	line_dest	=	WorkWindow+x+(y1*WorkScreenWidth);
 	count		=	(y2-y1)+1;
@@ -436,7 +436,7 @@ void	DrawVLine16(SLONG x,SLONG y1,SLONG y2,ULONG colour)
 	
 	if(y1>y2)
 	{
-		swap(y1,y2);
+		mf_swap(y1,y2);
 	}
 	line_dest	=	(UWORD*)WorkWindow+x+(y1*WorkScreenWidth>>1);
 	count		=	(y2-y1)+1;
@@ -457,7 +457,7 @@ void	DrawVLine32(SLONG x,SLONG y1,SLONG y2,ULONG colour)
 	
 	if(y1>y2)
 	{
-		swap(y1,y2);
+		mf_swap(y1,y2);
 	}
 	line_dest	=	(ULONG*)WorkWindow+x+(y1*WorkScreenWidth>>2);
 	count		=	(y2-y1)+1;
@@ -482,7 +482,7 @@ void	DrawVLineC8(SLONG x,SLONG y1,SLONG y2,ULONG colour)
 	{
 		if(y1>y2)
 		{
-			swap(y1,y2);
+			mf_swap(y1,y2);
 		}
 		if(y1<WorkWindowHeight && y2>=0)
 		{
@@ -511,7 +511,7 @@ void	DrawVLineC16(SLONG x,SLONG y1,SLONG y2,ULONG colour)
 	{
 		if(y1>y2)
 		{
-			swap(y1,y2);
+			mf_swap(y1,y2);
 		}
 		if(y1<WorkWindowHeight && y2>=0)
 		{
@@ -540,7 +540,7 @@ void	DrawVLineC32(SLONG x,SLONG y1,SLONG y2,ULONG colour)
 	{
 		if(y1>y2)
 		{
-			swap(y1,y2);
+			mf_swap(y1,y2);
 		}
 		if(y1<WorkWindowHeight && y2>=0)
 		{

@@ -156,6 +156,7 @@ void			DebugText(CBYTE *error, ...);
 //#define ASSERT(e)			{if (!(e)) { DebugBreak(); }else{/*TRACE("file %s line %d \n",__FILE__,__LINE__);*/}}
 #ifndef ASSERT
 #define ASSERT(e)			ERROR_MSG(e,"ASSERT TRIGGERED");
+//#define ASSERT(e)			printf("a");
 #endif
 
 #else
@@ -188,7 +189,7 @@ BOOL	ReadInputDevice(void);
 // Standard macros.
 
 #define	sgn(a)				(((a)<0) ? -1 : 1)
-#define	swap(a,b)			{a^=b;b^=a;a^=b;}
+#define	mf_swap(a,b)			{a^=b;b^=a;a^=b;}
 
 #define	in_range(a,min,max)	{if(a>(max))a=(max);else if(a<(min))a=(min);}
 #ifndef	min
