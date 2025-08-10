@@ -177,7 +177,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -732,8 +732,9 @@ extern int AENG_detail_crinkles;
 
 					BAT_set_anim_and_type(darci, anim_id, 3);
 
-				/*	darci->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
-					darci->Genus.Person->Action = ACTION_SIT_BENCH;*/
+					darci->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
+					darci->Genus.Person->Action = ACTION_SIT_BENCH;
+
 				}
 				break;
 			case 45: // camtest
@@ -827,6 +828,21 @@ extern int AENG_detail_crinkles;
 					{
 						CONSOLE_text("Things render enabled");
 					}
+				}
+				break;
+			case 51: //prim
+				if (allow_debug_keys)
+				{
+					i = atoi(ptr);
+
+					OB_create(
+						darci->WorldPos.X >> 8,
+						darci->WorldPos.Y >> 8,
+						darci->WorldPos.Z >> 8,
+						darci->Draw.Tweened->Angle,
+						0,
+						0,
+						i, 0, 0, 0);
 				}
 				break;
 		  }
@@ -5001,7 +5017,7 @@ extern	SLONG	FC_cam_height;
 				switch(angle)
 				{
 					case 0: 
-						alloc_special(SPECIAL_SILENCED_GUN, SPECIAL_SUBSTATE_NONE, wx+dx, wy + 0x10, wz+dz, 0);
+						alloc_special(SPECIAL_HEALTH, SPECIAL_SUBSTATE_NONE, wx+dx, wy + 0x10, wz+dz, 0);
 						break;
 					case 1: 
 						alloc_special(SPECIAL_BASEBALLBAT        , SPECIAL_SUBSTATE_NONE, wx+dx, wy,        wz+dz, 0); 

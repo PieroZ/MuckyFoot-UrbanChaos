@@ -333,6 +333,7 @@ void	init_joypad_config(void)
 	joypad_button_use[JOYPAD_BUTTON_CAM_LEFT]	= ENV_get_value_number("joypad_cam_left",	9, "Joypad");
 	joypad_button_use[JOYPAD_BUTTON_CAM_RIGHT]	= ENV_get_value_number("joypad_cam_right",	10, "Joypad");
 	joypad_button_use[JOYPAD_BUTTON_1STPERSON]	= ENV_get_value_number("joypad_1stperson",	5, "Joypad");
+	joypad_button_use[JOYPAD_BUTTON_FORWARDS]	= ENV_get_value_number("joypad_forward",	11, "Joypad");
 #else //#ifndef TARGET_DC
 
 	// Actually set up the buttons in a cunning way.
@@ -5681,8 +5682,9 @@ ULONG apply_button_input_fight(Thing *p_player, Thing *p_person, ULONG input)
 			}
 			else
 			{
+				set_person_fight_anim(p_person, ANIM_KICK_NS);
 				//set_anim(p_person, ANIM_PZI_TEST+1);
-				set_anim(p_person, 302);
+//				set_anim(p_person, 302);
 				//p_person->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
 				//p_person->Genus.Person->Action = ACTION_SIT_BENCH;
 
@@ -6678,6 +6680,26 @@ extern DIJOYSTATE			the_state;
 	{
 		if(ReadInputDevice())
 		{
+			TRACE("the_state.rgdwPOV[0] = %d\n", the_state.rgdwPOV[0]);
+			if (the_state.rgdwPOV[0] != 0xFFFF)
+			{
+				if (the_state.rgdwPOV[0] >= 18000 && the_state.rgdwPOV[0] < 27000)
+				{
+					TRACE("Down is pressed\n");
+				}
+				else if (the_state.rgdwPOV[0] >= 9000 && the_state.rgdwPOV[0] < 18000)
+				{
+					TRACE("Right is pressed\n");
+				}
+				else if (the_state.rgdwPOV[0] >= 27000 && the_state.rgdwPOV[0] < 36000)
+				{
+					TRACE("Left is pressed\n");
+				}
+				else if (the_state.rgdwPOV[0] >= 0 && the_state.rgdwPOV[0] < 9000)
+				{
+					TRACE("Up is pressed\n");
+				}
+			}
 			DIJOYSTATE my_copy_of_the_state;
 //			if (CAM_get_mode() != CAM_MODE_FIRST_PERSON)
 			{
@@ -6698,19 +6720,19 @@ extern DIJOYSTATE			the_state;
 					g_dwLastInputChangeTime = dwCurrentTime;
 					input |= INPUT_MASK_RIGHT;
 				}
-				else if(the_state.lX < ulAxisMin)
+				else if(the_state.lX < ulAxisMin )
 				{
 					g_dwLastInputChangeTime = dwCurrentTime;
 					input |= INPUT_MASK_LEFT;
 				}
 
 
-				if(the_state.lY > ulAxisMax)
+				if(the_state.lY > ulAxisMax )
 				{
 					g_dwLastInputChangeTime = dwCurrentTime;
 					input|=INPUT_MASK_BACKWARDS;
 				}
-				else if(the_state.lY < ulAxisMin)
+				else if(the_state.lY < ulAxisMin )
 				{
 #ifdef TARGET_DC
 					input|=INPUT_MASK_FORWARDS;
@@ -6762,6 +6784,44 @@ extern DIJOYSTATE			the_state;
 #endif
 #endif
 					g_dwLastInputChangeTime = dwCurrentTime;
+				
+				}
+
+				if (the_state.rgdwPOV[0] == 0)
+				{
+					input |= INPUT_MASK_FORWARDS;
+					input |= INPUT_MASK_MOVE;
+				}
+				else if (the_state.rgdwPOV[0] == 4500)
+				{
+					input |= INPUT_MASK_FORWARDS;
+					input |= INPUT_MASK_RIGHT;
+					input |= INPUT_MASK_MOVE;
+
+				}
+				else if (the_state.rgdwPOV[0] == 31500)
+				{
+					input |= INPUT_MASK_FORWARDS;
+					input |= INPUT_MASK_LEFT;
+					input |= INPUT_MASK_MOVE;
+				}
+				else if (the_state.rgdwPOV[0] == 13500)
+				{
+					input |= INPUT_MASK_BACKWARDS;
+					input |= INPUT_MASK_RIGHT;
+				}
+				else if (the_state.rgdwPOV[0] == 18000)
+				{
+					input |= INPUT_MASK_BACKWARDS;
+				}
+				else if (the_state.rgdwPOV[0] == 22500)
+				{
+					input |= INPUT_MASK_BACKWARDS;
+					input |= INPUT_MASK_LEFT;
+				}
+				else if (the_state.rgdwPOV[0] == 27000)
+				{
+					input |= INPUT_MASK_LEFT;
 				}
 
 
@@ -7332,6 +7392,12 @@ extern bool bWriteVMInsteadOfVMU;
 					g_dwLastInputChangeTime = dwCurrentTime;
 				}
 
+
+				if (BUTTON_IS_PRESSED(the_state.rgbButtons[joypad_button_use[JOYPAD_BUTTON_FORWARDS]]))
+				{
+					input |= INPUT_MASK_FORWARDS;
+					g_dwLastInputChangeTime = dwCurrentTime;
+				}
 
 #ifdef DREAMCAST_CHEATS_PLEASE_BOB
 				if ( g_bCheatsEnabled )
@@ -8347,7 +8413,7 @@ void	process_hardware_level_input_for_player(Thing *p_player)
 
 
 	input = PACKET_DATA(p_player->Genus.Player->PlayerID);
-	TRACE("input = %lu\n", input);
+	//TRACE("input = %lu\n", input);
 
 
 
@@ -8764,7 +8830,7 @@ void	process_hardware_level_input_for_player(Thing *p_player)
 				processed  = apply_button_input_bike(TO_THING(p_person->Genus.Person->InCar), input);
 				processed |= apply_button_input(p_player, p_person, input & INPUT_MASK_ACTION);
 			}
-			else
+			//else
 #endif
 #endif
 			{

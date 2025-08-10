@@ -1901,7 +1901,7 @@ void DIRT_process(void)
 
 							static bool justOncePls = true;
 
-							if (justOncePls)
+							/*if (justOncePls)
 							{
 								THING_INDEX p_index = BAT_create(
 									BAT_TYPE_BALROG,
@@ -1910,7 +1910,7 @@ void DIRT_process(void)
 									8000);
 
 								justOncePls = false;
-							}
+							}*/
 
 							MFX_play_xyz(i,S_KICK_CAN,MFX_REPLACE,dd->x<<8,dd->y<<8,dd->z<<8);
 

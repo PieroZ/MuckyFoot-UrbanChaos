@@ -214,6 +214,10 @@ extern UBYTE	keybrd_button_use[18];
 #define	JOYPAD_BUTTON_CAM_RIGHT  9
 #define JOYPAD_BUTTON_1STPERSON 10
 
+static const int JOYPAD_BUTTON_FORWARDS =  11;
+static const int JOYPAD_BUTTON_BACK     =  12;
+static const int JOYPAD_BUTTON_LEFT = 13;
+
 #define KEYBRD_BUTTON_LEFT		11
 #define KEYBRD_BUTTON_RIGHT		12
 #define KEYBRD_BUTTON_FORWARDS	13

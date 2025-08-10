@@ -538,7 +538,7 @@ SLONG	  GammaIndex;
 bool m_bGoIntoSaveScreen = FALSE;
 
 
-BOOL bCanChangeJoypadButtons = FALSE;
+BOOL bCanChangeJoypadButtons = TRUE;
 
 LPDIRECTDRAWSURFACE4 screenfull_back = NULL;
 LPDIRECTDRAWSURFACE4 screenfull_map = NULL;
@@ -3576,27 +3576,39 @@ UBYTE	FRONTEND_input() {
 
 		input = get_hardware_input(INPUT_TYPE_JOY);
 
+		//TRACE("input: %d\n", input);
+
 		input&=~(INPUT_MASK_LEFT|INPUT_MASK_RIGHT|INPUT_MASK_FORWARDS|INPUT_MASK_BACKWARDS);
-		if(the_state.lX>AXIS_MAX)
+		if(the_state.lX>AXIS_MAX || (the_state.rgdwPOV[0] >= 9000 && the_state.rgdwPOV[0] < 18000))
 		{
 			input |= INPUT_MASK_RIGHT;
 		}
-		else if(the_state.lX<AXIS_MIN)
+		else if(the_state.lX<AXIS_MIN || (the_state.rgdwPOV[0] >= 27000 && the_state.rgdwPOV[0] < 36000))
 		{
 			input |= INPUT_MASK_LEFT;
 		}
 
 		// let's not allow diagonals, they're silly.
 
-		if(the_state.lY>AXIS_MAX)
+		if(the_state.lY>AXIS_MAX  || (the_state.rgdwPOV[0] >= 18000 && the_state.rgdwPOV[0] < 27000))
 		{
 			input&=~(INPUT_MASK_LEFT|INPUT_MASK_RIGHT);
 			input|=INPUT_MASK_BACKWARDS;
 		}
-		else if(the_state.lY<AXIS_MIN)
+		else if(the_state.lY<AXIS_MIN || (the_state.rgdwPOV[0] >= 0 && the_state.rgdwPOV[0] < 9000))
 		{  
 			input&=~(INPUT_MASK_LEFT|INPUT_MASK_RIGHT);
 			input|=INPUT_MASK_FORWARDS;
+		}
+
+		if (the_state.rgdwPOV[0] == 0)
+		{
+			input |= INPUT_MASK_FORWARDS;
+		}
+		else if (the_state.rgdwPOV[0] == 4500)
+		{
+			input |= INPUT_MASK_FORWARDS;
+			input |= INPUT_MASK_RIGHT;
 		}
 
 		if (input==last_input) {

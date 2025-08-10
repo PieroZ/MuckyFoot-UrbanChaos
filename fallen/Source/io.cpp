@@ -505,13 +505,13 @@ SLONG load_anim_prim_object(SLONG prim)
 
 	sprintf(fname, "anim%03d.all", prim);
 
-	handle = MF_Fopen(fname, "rb");
+	//handle = MF_Fopen(fname, "rb");
 
-	if (!handle)
-	{
-		return FALSE;
-	}
-	MF_Fclose(handle);
+	//if (!handle)
+	//{
+	//	return FALSE;
+	//}
+	//MF_Fclose(handle);
 
 
 	if(prim>=next_anim_chunk)
