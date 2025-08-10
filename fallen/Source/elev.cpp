@@ -2438,7 +2438,7 @@ extern void MAP_pulse_init();
 
 	calc_prim_info();
 #ifndef PSX
-	calc_prim_normals();
+	//calc_prim_normals();
 	find_anim_prim_bboxes();
 #endif
 
@@ -2447,6 +2447,7 @@ extern void MAP_pulse_init();
 	if(!quick_load)
 	{
 		TEXTURE_load_needed(fname_level,  0, 256, 400);
+		TEXTURE_load_from_materials();
 
 		extern void PACK_do(void);
 
@@ -2518,13 +2519,13 @@ extern void SND_BeginAmbient();
 		NET_PERSON(PLAYER_ID)->WorldPos.Z + 0x10000 >> 8);
 #endif
 
-	/*
+	
 
 	HOOK_init(
 		NET_PERSON(PLAYER_ID)->WorldPos.X - 0x20000 >> 8,
 		NET_PERSON(PLAYER_ID)->WorldPos.Z - 0x20000 >> 8);
 
-	*/
+	
 
 	//
 	// New camera.

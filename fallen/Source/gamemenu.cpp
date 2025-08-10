@@ -481,7 +481,7 @@ extern DIDeviceInfo *primary_device;
 					case X_LOAD_GAME:
 						if (!MEMORY_quick_load())
 						{
-							return GAMEMENU_DO_RESTART;
+							//return GAMEMENU_DO_RESTART;
 						}
 						break;
 #endif

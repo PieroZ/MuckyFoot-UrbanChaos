@@ -469,7 +469,7 @@ struct MemTable save_table[]=
 	{M_("cutscene_text"),(void**)&PLAYCUTS_text_data	,MEM_DYNAMIC,0							,&PLAYCUTS_text_ctr			,MAX_CUTSCENE_TEXT			,sizeof(CBYTE)					,0},
 #endif
 	{M_("darci normal") ,(void**)&darci_normal			,MEM_DYNAMIC,0							,&darci_normal_count		,12000						,sizeof(UWORD)					,0},
-	{M_("prim info")	,(void**)&prim_info				,MEM_STATIC ,0							,0							,256						,sizeof(PrimInfo)				,0},
+	{M_("prim info")	,(void**)&prim_info				,MEM_STATIC ,0							,0							,501						,sizeof(PrimInfo)				,0},
 
 	{M_("Doors-gates")	,(void**)&DOOR_door				,MEM_STATIC	,0							,0							,DOOR_MAX_DOORS				,sizeof(DOOR_Door)				,0},
 

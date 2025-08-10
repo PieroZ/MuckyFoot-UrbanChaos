@@ -1677,7 +1677,7 @@ void BIKE_control_set(Thing *p_bike, BIKE_Control bc)
 
 	SATURATE(steer,-80,80)
 
-	p_bike->Genus.Bike->accel=accel;
+	p_bike->Genus.Bike->accel=accel+30;
 	p_bike->Genus.Bike->steer=steer;
 
 	if(bc.accel<0 || bc.brake)

@@ -194,6 +194,163 @@ HRESULT	D3DTexture::ChangeTextureTGA(CBYTE *tga_file) {
 	return	DDERR_GENERIC;
 }
 
+//#include <png.h> // Ensure libpng is included
+//
+//HRESULT D3DTexture::LoadTexturePNG(CBYTE* png_file, ULONG id, BOOL bCanShrink)
+//{
+//	HRESULT result;
+//
+//	if (Type != D3DTEXTURE_TYPE_UNUSED)
+//	{
+//		// Already loaded.
+//		return DD_OK;
+//	}
+//
+//	lp_Texture = NULL;
+//	lp_Surface = NULL;
+//
+//	this->bCanShrink = bCanShrink;
+//
+//	// Check parameters.
+//	if (!png_file)
+//	{
+//		// Invalid parameters.
+//		return DDERR_GENERIC;
+//	}
+//
+//	strcpy(texture_name, png_file);
+//	ID = id;
+//
+//	Type = D3DTEXTURE_TYPE_PNG;
+//
+//	// Load the PNG file
+//	FILE* file = fopen(png_file, "rb");
+//	if (!file)
+//	{
+//		TRACE("LoadTexturePNG: Unable to open file %s\n", png_file);
+//		return DDERR_GENERIC;
+//	}
+//
+//	// Initialize libpng structures
+//	png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+//	if (!png)
+//	{
+//		fclose(file);
+//		return DDERR_GENERIC;
+//	}
+//
+//	png_infop info = png_create_info_struct(png);
+//	if (!info)
+//	{
+//		png_destroy_read_struct(&png, NULL, NULL);
+//		fclose(file);
+//		return DDERR_GENERIC;
+//	}
+//
+//	if (setjmp(png_jmpbuf(png)))
+//	{
+//		png_destroy_read_struct(&png, &info, NULL);
+//		fclose(file);
+//		return DDERR_GENERIC;
+//	}
+//
+//	png_init_io(png, file);
+//	png_read_info(png, info);
+//
+//	// Get image details
+//	int width = png_get_image_width(png, info);
+//	int height = png_get_image_height(png, info);
+//	int color_type = png_get_color_type(png, info);
+//	int bit_depth = png_get_bit_depth(png, info);
+//
+//	// Ensure the image is in a format we can handle
+//	if (bit_depth == 16)
+//		png_set_strip_16(png);
+//
+//	if (color_type == PNG_COLOR_TYPE_PALETTE)
+//		png_set_palette_to_rgb(png);
+//
+//	if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
+//		png_set_expand_gray_1_2_4_to_8(png);
+//
+//	if (png_get_valid(png, info, PNG_INFO_tRNS))
+//		png_set_tRNS_to_alpha(png);
+//
+//	if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE)
+//		png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
+//
+//	if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+//		png_set_gray_to_rgb(png);
+//
+//	png_read_update_info(png, info);
+//
+//	// Allocate memory for the image
+//	png_bytep* row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
+//	for (int y = 0; y < height; y++)
+//	{
+//		row_pointers[y] = (png_byte*)malloc(png_get_rowbytes(png, info));
+//	}
+//
+//	png_read_image(png, row_pointers);
+//
+//	fclose(file);
+//	png_destroy_read_struct(&png, &info, NULL);
+//
+//	// Create the texture
+//	size = width; // Assuming square textures
+//	ContainsAlpha = (color_type & PNG_COLOR_MASK_ALPHA) != 0;
+//
+//	result = CreateUserPage(size, ContainsAlpha);
+//	if (FAILED(result))
+//	{
+//		TRACE("LoadTexturePNG: Could not create user page.\n");
+//		for (int y = 0; y < height; y++)
+//		{
+//			free(row_pointers[y]);
+//		}
+//		free(row_pointers);
+//		return DDERR_GENERIC;
+//	}
+//
+//	// Lock the texture and copy the image data
+//	UWORD* bitmap;
+//	SLONG pitch;
+//	if (SUCCEEDED(LockUser(&bitmap, &pitch)))
+//	{
+//		for (int y = 0; y < height; y++)
+//		{
+//			for (int x = 0; x < width; x++)
+//			{
+//				png_bytep px = &row_pointers[y][x * 4];
+//				UWORD pixel = 0;
+//
+//				pixel |= (px[0] >> mask_red) << shift_red;   // Red
+//				pixel |= (px[1] >> mask_green) << shift_green; // Green
+//				pixel |= (px[2] >> mask_blue) << shift_blue;  // Blue
+//				if (ContainsAlpha)
+//				{
+//					pixel |= (px[3] >> mask_alpha) << shift_alpha; // Alpha
+//				}
+//
+//				bitmap[x + y * (pitch >> 1)] = pixel;
+//			}
+//		}
+//		UnlockUser();
+//	}
+//
+//	// Free the row pointers
+//	for (int y = 0; y < height; y++)
+//	{
+//		free(row_pointers[y]);
+//	}
+//	free(row_pointers);
+//
+//	// Let the display driver know about this texture page
+//	the_display.AddLoadedTexture(this);
+//
+//	return DD_OK;
+//}
+
 HRESULT	D3DTexture::LoadTextureTGA(CBYTE *tga_file, ULONG id,BOOL bCanShrink)
 {
 	HRESULT		result;
@@ -389,12 +546,12 @@ HRESULT D3DTexture::Reload_TGA(void)
 		return DDERR_GENERIC;
 	}
 
-	if (ti.width != ti.height)
-	{
-		TRACE("TGA %s is not square\n", texture_name);
-		MemFree(tga);
-		return DDERR_GENERIC;
-	}
+	//if (ti.width != ti.height)
+	//{
+	//	TRACE("TGA %s is not square\n", texture_name);
+	//	MemFree(tga);
+	//	return DDERR_GENERIC;
+	//}
 
 	if ( ( ti.width & ( ti.width - 1 ) ) != 0 )
 	{

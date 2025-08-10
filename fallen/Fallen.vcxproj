@@ -101,6 +101,7 @@
       <LanguageStandard_C>Default</LanguageStandard_C>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Midl>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -309,6 +310,7 @@
     <ClCompile Include="DDLibrary\Source\net.cpp" />
     <ClCompile Include="DDLibrary\Source\Tga.cpp" />
     <ClCompile Include="DDLibrary\Source\WindProcs.cpp" />
+    <ClCompile Include="Editor\Source\ResourceManager.cpp" />
     <ClCompile Include="Source\AllToAnmConverter.cpp" />
     <ClCompile Include="Source\bang.cpp" />
     <ClCompile Include="Source\briefing.cpp" />
@@ -589,6 +591,7 @@
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='BIKE|Win32'"> /D /NODEFAULTLIB:libcmtd.lib" "  /D /NODEFAULTLIB:libcmtd.lib" "</AdditionalOptions>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /D /NODEFAULTLIB:libcmtd.lib" "  /D /NODEFAULTLIB:libcmtd.lib" "</AdditionalOptions>
     </ClCompile>
+    <ClCompile Include="Source\ExtraAnims.cpp" />
     <ClCompile Include="Source\fc.cpp">
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /D /NODEFAULTLIB:libcmtd.lib" "  /D /NODEFAULTLIB:libcmtd.lib" "</AdditionalOptions>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='BIKE|Win32'"> /D /NODEFAULTLIB:libcmtd.lib" "  /D /NODEFAULTLIB:libcmtd.lib" "</AdditionalOptions>
@@ -735,6 +738,7 @@
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='BIKE|Win32'"> /D /NODEFAULTLIB:libcmtd.lib" "  /D /NODEFAULTLIB:libcmtd.lib" "</AdditionalOptions>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /D /NODEFAULTLIB:libcmtd.lib" "  /D /NODEFAULTLIB:libcmtd.lib" "</AdditionalOptions>
     </ClCompile>
+    <ClCompile Include="Source\ObjLoader.cpp" />
     <ClCompile Include="Source\overlay.cpp">
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /D /NODEFAULTLIB:libcmtd.lib" "  /D /NODEFAULTLIB:libcmtd.lib" "</AdditionalOptions>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='BIKE|Win32'"> /D /NODEFAULTLIB:libcmtd.lib" "  /D /NODEFAULTLIB:libcmtd.lib" "</AdditionalOptions>
@@ -1246,6 +1250,7 @@
     <ClInclude Include="outro\Tga.h" />
     <ClInclude Include="outro\wire.h" />
     <ClInclude Include="sedit\Headers\es.h" />
+    <ClInclude Include="Source\ExtraAnims.h" />
     <ClInclude Include="Source\PersonPZI.h" />
   </ItemGroup>
   <ItemGroup>

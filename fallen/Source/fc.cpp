@@ -516,6 +516,10 @@ void FC_calc_focus(FC_Cam *fc)
 					fc->focus_yaw += 1024;
 					fc->focus_yaw &= 2047;
 				}
+				else if (fc->focus->Genus.Person->Action == ACTION_ROPE_CLIMBING)
+				{
+
+				}
 			}
 
 			if (fc->focus->Genus.Person->Flags & FLAG_PERSON_WAREHOUSE)

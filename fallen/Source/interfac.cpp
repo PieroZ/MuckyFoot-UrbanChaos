@@ -1220,9 +1220,20 @@ SLONG person_get_in_car(Thing *p_thing, SLONG *door)
 //#endif
 ULONG do_the_thing(Thing* p_thing, ULONG input)
 {
-	//set_anim(p_thing, 140);
+	//set_limb_to_y()
+
+	//set_anim(p_thing, ANIM_BATMAN);
+
+
+	Thing* darci = NET_PERSON(0);
+
+
+	set_person_rope_climbing(darci);
+
+	/*darci->WorldPos.Y = 10 + darci->WorldPos.Y;
+	set_limb_to_y(darci, SUB_OBJECT_HEAD, darci->WorldPos.Y);*/
 	//set_anim(p_thing, 302);
-	BAT_set_anim_test(p_thing, 3);
+	//BAT_set_anim_test(p_thing, 3);
 	return INPUT_MASK_TEST;
 }
 
@@ -6734,7 +6745,7 @@ extern DIJOYSTATE			the_state;
 				}
 				else if(the_state.lY < ulAxisMin )
 				{
-#ifdef TARGET_DC
+#ifndef TARGET_DC
 					input|=INPUT_MASK_FORWARDS;
 
 					// MIKE! Roper doesn't exist in the frontend - you're confusing the poor thing.
@@ -6764,7 +6775,7 @@ extern DIJOYSTATE			the_state;
 #else
 						// Everyone always runs now.
 						{
-							ASSERT ( RUN_WALK_LEVEL == 128 );
+							//ASSERT ( RUN_WALK_LEVEL == 128 );
 							input|=INPUT_MASK_MOVE;
 						}
 #endif
@@ -8841,6 +8852,7 @@ void	process_hardware_level_input_for_player(Thing *p_player)
 				}
 				else
 				{
+					// I EXIT THE VEHICLE HERE RIGHT?
 					input=pre_process_input(PERSON_MODE_RUN,input);
 					processed = apply_button_input(p_player,p_person,input);
 				}

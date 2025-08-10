@@ -1973,6 +1973,20 @@ void	save_walkables(MFFileHandle	handle)
 	FileWrite(handle,&roof_faces4[0],sizeof(struct RoofFace4)*next_roof_face4);
 
 
+	//MFFileHandle jandle = FILE_OPEN_ERROR;
+	//CBYTE* file_name = "gowno.dat";
+	//jandle = FileCreate(file_name, 1);
+	//if (jandle != FILE_CREATION_ERROR)
+	//{
+	//	FileWrite(jandle, &next_dwalkable, 2);
+	//	FileWrite(jandle, &next_roof_face4, 2);
+	//	FileWrite(jandle, &dwalkables[0], sizeof(struct DWalkable) * next_dwalkable);
+	//	FileWrite(jandle, &roof_faces4[0], sizeof(struct RoofFace4) * next_roof_face4);
+	//}
+	//FileClose(jandle);
+
+
+
 }
 void	save_walkables_old(MFFileHandle	handle)
 {
@@ -2198,6 +2212,20 @@ void	save_ob_ob(MFFileHandle	handle)
 		FileWrite(handle,(UBYTE*)&OB_ob[0],sizeof(OB_Ob)*OB_ob_upto);
 		FileWrite(handle,(UBYTE*)&OB_mapwho[0][0],sizeof(OB_Mapwho)*OB_SIZE*OB_SIZE);
 
+		//MFFileHandle jandle = FILE_OPEN_ERROR;
+		//CBYTE* file_name = "justshootmeindaface.dat";
+		//jandle = FileCreate(file_name, 1);
+		//if (jandle != FILE_CREATION_ERROR)
+		//{
+		//	//FileWrite(jandle, &roof_faces4[0], sizeof(struct RoofFace4) * next_roof_face4);
+
+		//	FileWrite(jandle, (UBYTE*)&OB_ob_upto, sizeof(OB_ob_upto));
+		//	FileWrite(jandle, (UBYTE*)&OB_ob[0], sizeof(OB_Ob) * OB_ob_upto);
+		//	FileWrite(jandle, (UBYTE*)&OB_mapwho[0][0], sizeof(OB_Mapwho) * OB_SIZE * OB_SIZE);
+		//}
+
+		//FileClose(jandle);
+
 }
 
 void	save_super_map(MFFileHandle	handle)
@@ -2245,6 +2273,47 @@ void	save_super_map(MFFileHandle	handle)
 	FileWrite(handle,&inside_storeys[0],sizeof(struct InsideStorey)*next_inside_storey);
 	FileWrite(handle,&inside_stairs[0],sizeof(struct Staircase)*next_inside_stair);
 	FileWrite(handle,&inside_block[0],sizeof(UBYTE)*next_inside_block);
+
+
+
+	//// DEBUG FILE
+	//{
+	//	MFFileHandle jandle = FILE_OPEN_ERROR;
+	//	CBYTE* file_name = "buildings.dat";
+	//	jandle = FileCreate(file_name, 1);
+	//	if (jandle != FILE_CREATION_ERROR)
+	//	{
+	//		//FileWrite(jandle, &roof_faces4[0], sizeof(struct RoofFace4) * next_roof_face4);
+	//	}
+
+	//	FileWrite(jandle, &next_dbuilding, 2);
+	//	FileWrite(jandle, &next_dfacet, 2);
+	//	FileWrite(jandle, &next_dstyle, 2);
+
+	//	FileWrite(jandle, &next_paint_mem, 2);
+	//	FileWrite(jandle, &next_dstorey, 2);
+
+	//	FileWrite(jandle, &dbuildings[0], sizeof(struct DBuilding) * next_dbuilding);
+	//	FileWrite(jandle, &dfacets[0], sizeof(struct DFacet) * next_dfacet);
+	//	FileWrite(jandle, &dstyles[0], sizeof(UWORD) * next_dstyle);
+	//	FileWrite(jandle, &paint_mem[0], sizeof(UBYTE) * next_paint_mem);
+	//	FileWrite(jandle, &dstoreys[0], sizeof(struct DStorey) * next_dstorey);
+
+	//	//
+	//	//	Inside data
+	//	//
+
+	//	FileWrite(jandle, &next_inside_storey, sizeof(next_inside_storey));
+	//	FileWrite(jandle, &next_inside_stair, sizeof(next_inside_stair));
+	//	FileWrite(jandle, &next_inside_block, sizeof(next_inside_block));
+
+	//	FileWrite(jandle, &inside_storeys[0], sizeof(struct InsideStorey) * next_inside_storey);
+	//	FileWrite(jandle, &inside_stairs[0], sizeof(struct Staircase) * next_inside_stair);
+	//	FileWrite(jandle, &inside_block[0], sizeof(UBYTE) * next_inside_block);
+
+
+	//	FileClose(jandle);
+	//}
 
 	save_walkables(handle);
 	save_ob_ob(handle);

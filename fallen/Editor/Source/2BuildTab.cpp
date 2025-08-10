@@ -4519,21 +4519,31 @@ UWORD	BuildTab::HandleTabClick(UBYTE flags,MFPoint *clicked_point)
 //
 SLONG  BuildTab::DoZoom(void)
 {
+	static int decrease_zoom_sensitivity = 0;
 	SLONG	update=0;
 	if(Keys[KB_I])
 	{
-		ViewSize++;
-		if(ViewSize>100)
-			ViewSize=100;
-		update=2;
+		decrease_zoom_sensitivity++;
+		if (decrease_zoom_sensitivity % 100000 == 0)
+		{
+			ViewSize++;
+			if(ViewSize>100)
+				ViewSize=100;
+			update=2;
+		}
 	}
 
 	if(Keys[KB_O])
 	{
-		ViewSize--;
-		if(ViewSize<3)
-			ViewSize=3;
-		update=2;
+		decrease_zoom_sensitivity++;
+
+		if (decrease_zoom_sensitivity % 100000 == 0)
+		{
+			ViewSize--;
+			if (ViewSize < 3)
+				ViewSize = 3;
+			update = 2;
+		}
 	}
 	return(update);
 	
@@ -4549,6 +4559,9 @@ SLONG  BuildTab::DoKeys(void)
 		scroll_step=1;
 
 	scroll_step<<=ELE_SHIFT;
+
+	// Slow down buddy. 
+	scroll_step /= 16;
 
 
 	update=DoZoom();

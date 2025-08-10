@@ -489,6 +489,38 @@ void	load_texture_styles(UBYTE editor, UBYTE world)
 
 #ifndef TARGET_DC
 
+SLONG load_anim_prim_object_from_given_filename(SLONG prim, CBYTE fname[130])
+{
+	//CBYTE fname[130];
+#ifdef	PSX
+	FILE handle;
+#else
+	FILE* handle;
+#endif
+	ASSERT(WITHIN(prim, 0, 255));
+
+
+	if (anim_chunk[prim].MultiObject[0])
+		return(0);
+
+	//sprintf(fname, "anim%03d.all", prim);
+
+	handle = MF_Fopen(fname, "rb");
+
+	if (!handle)
+	{
+		return FALSE;
+	}
+	MF_Fclose(handle);
+
+
+	if (prim >= next_anim_chunk)
+		next_anim_chunk = prim + 1;
+
+	return(load_anim_system(&anim_chunk[prim], fname));
+	//	return(TRUE);
+}
+
 SLONG load_anim_prim_object(SLONG prim)
 {
 	CBYTE fname[130];
@@ -569,7 +601,10 @@ void load_needed_anim_prims()
 		{
 			load_anim_prim_object(1);
 			load_anim_prim_object(2);
+
 			load_anim_prim_object(3); //balrog
+			//load_anim_prim_object(6); //PZI TURRET
+			load_anim_prim_object_from_given_filename(6, "turret.all");
 		}
 
 		//if (this_level_has_bane)
@@ -891,6 +926,75 @@ extern	void	record_prim_status(void);
 	
 }
 
+
+
+SLONG load_prim_object_from_obj(SLONG prim, const char* filename)
+{
+	FILE* file = fopen(filename, "r");
+	static const int MAX_LINE_LENGTH = 256;
+	if (!file)
+	{
+		printf("Failed to open OBJ file: %s\n", filename);
+		return FALSE;
+	}
+
+	PrimObject* po = &prim_objects[prim];
+	po->StartPoint = next_prim_point;
+	po->StartFace3 = next_prim_face3;
+	po->StartFace4 = next_prim_face4;
+
+	SLONG num_points = 0, num_faces3 = 0, num_faces4 = 0;
+	char line[MAX_LINE_LENGTH];
+
+	while (fgets(line, MAX_LINE_LENGTH, file))
+	{
+		if (strncmp(line, "v ", 2) == 0)
+		{
+			float x, y, z;
+			sscanf(line, "v %f %f %f", &x, &y, &z);
+			prim_points[next_prim_point + num_points].X = (SWORD)(x * 100);
+			prim_points[next_prim_point + num_points].Y = (SWORD)(y * 100);
+			prim_points[next_prim_point + num_points].Z = (SWORD)(z * 100);
+			num_points++;
+		}
+		else if (strncmp(line, "f ", 2) == 0)
+		{
+			int v[4];
+			int count = sscanf(line, "f %d %d %d %d", &v[0], &v[1], &v[2], &v[3]);
+			if (count == 3)
+			{
+				PrimFace3* f3 = &prim_faces3[next_prim_face3 + num_faces3];
+				f3->Points[0] = v[0] - 1 + next_prim_point;
+				f3->Points[1] = v[1] - 1 + next_prim_point;
+				f3->Points[2] = v[2] - 1 + next_prim_point;
+				f3->TexturePage = 0;
+				num_faces3++;
+			}
+			else if (count == 4)
+			{
+				PrimFace4* f4 = &prim_faces4[next_prim_face4 + num_faces4];
+				f4->Points[0] = v[0] - 1 + next_prim_point;
+				f4->Points[1] = v[1] - 1 + next_prim_point;
+				f4->Points[2] = v[2] - 1 + next_prim_point;
+				f4->Points[3] = v[3] - 1 + next_prim_point;
+				f4->TexturePage = 0;
+				num_faces4++;
+			}
+		}
+	}
+
+	fclose(file);
+
+	po->EndPoint = po->StartPoint + num_points;
+	po->EndFace3 = po->StartFace3 + num_faces3;
+	po->EndFace4 = po->StartFace4 + num_faces4;
+
+	next_prim_point += num_points;
+	next_prim_face3 += num_faces3;
+	next_prim_face4 += num_faces4;
+
+	return TRUE;
+}
 
 //
 // Loads in the given prim object if it is not already loaded.

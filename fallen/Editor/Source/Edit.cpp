@@ -1369,6 +1369,8 @@ SLONG	load_map(CBYTE	*name)
 		LogText(" load map %s \n",name);
 		FileRead(handle,(UBYTE*)&save_type,4);
 
+		DWORD filePointer = SetFilePointer(handle, 0, NULL, FILE_CURRENT);
+
 		if(save_type<=8)
 		{
 			for(dx=0;dx<EDIT_MAP_WIDTH;dx++)
@@ -1601,6 +1603,7 @@ SLONG	load_map(CBYTE	*name)
 			for(c0=0;c0<MAX_WALLS;c0++)
 			{
 				size+=FileRead(handle,(UBYTE*)&wall_list[c0],sizeof(struct FWall)*1);
+				wall_list[c0].DY = 4;
 				if(wall_list[c0].Tcount&&wall_list[c0].Textures)
 				{
 
@@ -1825,7 +1828,7 @@ SLONG	load_map(CBYTE	*name)
 			}
 		}
 
-
+		filePointer = SetFilePointer(handle, 0, NULL, FILE_CURRENT);
 		FileClose(handle);
 
 		load_tex_remap(name);

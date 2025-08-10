@@ -1559,7 +1559,7 @@ void set_persons_personid(Thing *p_person)
 	if (p_person->Genus.Person->Flags & FLAG_PERSON_GUN_OUT)
 	{
 		p_person->Draw.Tweened->PersonID |= 1<<5;
-		//p_person->Genus.Person->EquippedWeaponId = 1;
+		p_person->Genus.Person->EquippedWeaponId = 1;
 
 
 		return;
@@ -1582,7 +1582,7 @@ void set_persons_personid(Thing *p_person)
 			case SPECIAL_GUN:
 				p_person->Draw.Tweened->PersonID |= 1<<5;
 
-				//p_person->Genus.Person->EquippedWeaponId = 1;
+				p_person->Genus.Person->EquippedWeaponId = 1;
 				break;
 
 			case SPECIAL_HEALTH:
@@ -1591,17 +1591,17 @@ void set_persons_personid(Thing *p_person)
 
 			case SPECIAL_SILENCED_GUN:
 
-				//p_person->Genus.Person->EquippedWeaponId = 1;
+				p_person->Genus.Person->EquippedWeaponId = -11;
 				p_person->Draw.Tweened->PersonID |= 3<<5;
 				break;
 			case SPECIAL_SHOTGUN:
 				p_person->Draw.Tweened->PersonID |= 3<<5;
-				//p_person->Genus.Person->EquippedWeaponId = 3;
+				p_person->Genus.Person->EquippedWeaponId = 3;
 				break;
 
 			case SPECIAL_KNIFE:
 				p_person->Draw.Tweened->PersonID |= 2<<5;
-				//p_person->Genus.Person->EquippedWeaponId = 2;
+				p_person->Genus.Person->EquippedWeaponId = 2;
 				break;
 
 			case SPECIAL_EXPLOSIVES:
@@ -1610,12 +1610,12 @@ void set_persons_personid(Thing *p_person)
 
 			case SPECIAL_AK47:
 				p_person->Draw.Tweened->PersonID |= 5<<5;
-				//p_person->Genus.Person->EquippedWeaponId = 5;
+				p_person->Genus.Person->EquippedWeaponId = 5;
 				break;
 
 			case SPECIAL_BASEBALLBAT:
 				p_person->Draw.Tweened->PersonID |= 4<<5;
-				//p_person->Genus.Person->EquippedWeaponId = 4;
+				p_person->Genus.Person->EquippedWeaponId = 4;
 				break;
 
 			default:
@@ -1704,6 +1704,10 @@ void	set_anim(Thing *p_person,SLONG anim)
 		sprintf(str," fight %d 
 	}
 */
+	if (p_person->Genus.Person->Flags2 & FLAG2_PERSON_MORPHED)
+	{
+		return;
+	}
 	p_person->Genus.Person->Flags2&=~FLAG2_SYNC_SOUNDFX;
 
 	if(p_person->Genus.Person->Flags&FLAG_PERSON_LOCK_ANIM_CHANGE)
@@ -5658,16 +5662,16 @@ void set_person_aim(Thing *p_person,SLONG locked=0)
 			anim = ANIM_SHOTGUN_AIM;
 		}
 */
-		anim = ANIM_SHOTGUN_AIM;
+		//anim = ANIM_SHOTGUN_AIM;
 
-		/*if (p_person->Genus.Person->EquippedWeaponId == 1)ss
+		if (p_person->Genus.Person->EquippedWeaponId == 1)
 		{
 			anim = ANIM_PISTOL_AIM_AHEAD;
 		}
 		else
 		{
 			anim = ANIM_SHOTGUN_AIM;
-		}*/
+		}
 
 	}
 	else
@@ -8252,7 +8256,7 @@ void	set_person_draw_gun(Thing *p_person)
 	}
 
 
-	//p_person->Genus.Person->EquippedWeaponId = 1;
+	p_person->Genus.Person->EquippedWeaponId = 1;
 	MSG_add(" start draw gun");
 	p_person->Genus.Person->Mode = PERSON_MODE_RUN;
 	set_anim(p_person,ANIM_PISTOL_DRAW);
@@ -15635,6 +15639,11 @@ void	fn_person_moveing(Thing *p_person)
 
 	MSG_add(" state %d substate %d vel %d \n",p_person->State,p_person->SubState,p_person->Velocity);
 
+
+
+	static int state = 0;
+	static int repeatDance = 0;
+
 	if(p_person->Genus.Person->PlayerID)
 	{
 		camera_normal();
@@ -16623,6 +16632,71 @@ extern	UBYTE	cheat;
 				p_person->Draw.Tweened->Roll   = 0;
 
 				set_person_idle(p_person);
+			}
+
+			break;
+
+		case SUB_STATE_CLIMBING_ROPE:
+			end = person_normal_animate(p_person);
+
+
+			/*GameCoord new_position;
+			new_position.X = p_person->WorldPos.X;
+			new_position.Y = p_person->WorldPos.Y + (2 << 8);
+			new_position.Z = p_person->WorldPos.Z;
+			move_thing_on_map(p_person, &new_position);*/
+
+
+			if (end == 1)
+			{
+				if (repeatDance > 0)
+				{
+					repeatDance--;
+				}
+				if (repeatDance <= 0)
+				{
+
+					if (state == 0)
+					{
+						set_person_do_a_simple_anim(p_person, ANIM_T1);
+						state = 1;
+					}
+					else if (state == 1)
+					{
+						set_person_do_a_simple_anim(p_person, ANIM_T2);
+						state = 2;
+						repeatDance = 5;
+					}
+					else if (state == 2)
+					{
+						set_person_do_a_simple_anim(p_person, ANIM_T3);
+						state = 3;
+						repeatDance = 5;
+					}
+					else if (state == 3)
+					{
+						set_person_do_a_simple_anim(p_person, ANIM_T4);
+						state = 4;
+					}
+					else if (state == 4)
+					{
+						set_person_do_a_simple_anim(p_person, ANIM_T5);
+						state = 0;
+					}
+
+
+					p_person->SubState = SUB_STATE_CLIMBING_ROPE;
+					p_person->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
+					p_person->Genus.Person->Action = ACTION_SIT_BENCH;
+
+				}
+
+				/*if (p_person->Genus.Person->Flags & FLAG_PERSON_NO_RETURN_TO_NORMAL)
+				{
+					p_person->Genus.Person->Flags &= ~FLAG_PERSON_NO_RETURN_TO_NORMAL;
+
+					p_person->SubState = SUB_STATE_CLIMBING_ROPE;
+				}*/
 			}
 
 			break;
@@ -22693,4 +22767,25 @@ void push_people_apart(Thing *p_person, Thing *p_avoid)
 		// Bugger it! Doesn't have to work all the time...
 		//
 	}
+}
+
+
+// PZI EXTRAS
+void	set_person_rope_climbing(Thing* p_person)
+{
+	set_generic_person_state_function(p_person, STATE_MOVEING);
+
+	set_person_do_a_simple_anim(p_person, ANIM_BATMAN);
+
+	p_person->SubState = SUB_STATE_CLIMBING_ROPE;
+	p_person->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
+	p_person->Genus.Person->Action = ACTION_SIT_BENCH;
+
+
+	/*GameCoord new_position;
+	new_position.X = p_person->WorldPos.X;
+	new_position.Y = p_person->WorldPos.Y + 1;
+	new_position.Z = p_person->WorldPos.Z;
+	move_thing_on_map(p_person, &new_position);*/
+	//locked_anim_change_height_type(p_person, SUB_OBJECT_LEFT_HAND, ANIM_BATMAN, ANIM_TYPE_DARCI);
 }

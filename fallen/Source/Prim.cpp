@@ -886,10 +886,11 @@ void calc_prim_info()
 	PrimObject *obj;
 	PrimInfo   *inf;
 	PrimPoint  *pt;
+	int AVAILABLE_PRIM_COUNT = 501;
 
 	prim_objects[29].coltype=PRIM_COLLIDE_NONE;
 
-	for (i = 1; i < 256; i++)
+	for (i = 1; i < AVAILABLE_PRIM_COUNT; i++)
 	{
 		obj = &prim_objects[i];
 		inf = &prim_info   [i];
@@ -1144,10 +1145,19 @@ void calc_prim_normals(void)
 			continue;
 		}
 
+		//if (p_obj->pziFormat)
+		//{
+		//	//
+		//	// Ignore calc prim normals for .obj for now - what's the worst that could happen?
+		//	//
+		//	continue;
+		//}
+
+
 		num_points = p_obj->EndPoint - p_obj->StartPoint;
 
-		ASSERT(num_points <= MAX_POINTS_PER_PRIM);
-		ASSERT(num_points >=0);
+		//ASSERT(num_points <= MAX_POINTS_PER_PRIM);
+		//ASSERT(num_points >=0);
 
 		//
 		// Mark all the points as having zero faces using them.
@@ -1160,7 +1170,7 @@ void calc_prim_normals(void)
 		// all the faces.
 		//
 
-		//ASSERT(( -p_obj->StartFace3 +p_obj->EndFace3)<2000);
+		////ASSERT(( -p_obj->StartFace3 +p_obj->EndFace3)<2000);
 		for (j = p_obj->StartFace3; j < p_obj->EndFace3; j++)
 		{
 			p_f3 = &prim_faces3[j];
@@ -1180,8 +1190,8 @@ void calc_prim_normals(void)
 			{
 				p_index = p_f3->Points[k] - p_obj->StartPoint;
 
-				//ASSERT(WITHIN(p_index, 0, MAX_POINTS_PER_PRIM - 1));
-				//ASSERT(p_f3->Points[k]<MAX_PRIM_POINTS);
+				////ASSERT(WITHIN(p_index, 0, MAX_POINTS_PER_PRIM - 1));
+				////ASSERT(p_f3->Points[k]<MAX_PRIM_POINTS);
 
 				if (each_point[p_index] == 0)
 				{
@@ -1219,7 +1229,7 @@ void calc_prim_normals(void)
 			}
 		}
 
-		ASSERT(( -p_obj->StartFace4 +p_obj->EndFace4)<2000);
+		//ASSERT(( -p_obj->StartFace4 +p_obj->EndFace4)<2000);
 		for (j = p_obj->StartFace4; j < p_obj->EndFace4; j++)
 		{
 			p_f4 = &prim_faces4[j];
@@ -1239,8 +1249,8 @@ void calc_prim_normals(void)
 			{
 				p_index = p_f4->Points[k] - p_obj->StartPoint;
 
-				/*ASSERT(WITHIN(p_index, 0, MAX_POINTS_PER_PRIM - 1));
-				ASSERT(p_f4->Points[k]<MAX_PRIM_POINTS);*/
+				/*//ASSERT(WITHIN(p_index, 0, MAX_POINTS_PER_PRIM - 1));
+				//ASSERT(p_f4->Points[k]<MAX_PRIM_POINTS);*/
 				if (each_point[p_index] == 0)
 				{
 					//
@@ -1287,7 +1297,7 @@ void calc_prim_normals(void)
 
 		for (j = p_obj->StartPoint; j < p_obj->EndPoint; j++)
 		{
-			ASSERT(j<MAX_PRIM_POINTS);
+			//ASSERT(j<MAX_PRIM_POINTS);
 			old_nx = prim_normal[j].X;
 			old_ny = prim_normal[j].Y;
 			old_nz = prim_normal[j].Z;
@@ -1312,7 +1322,7 @@ void calc_prim_normals(void)
 				 prim_normal[j].Y * prim_normal[j].Y +
 				 prim_normal[j].Z * prim_normal[j].Z) > (65536+400))
 			{
-				ASSERT(0);
+				//ASSERT(0);
 			}
 		}
 	}
@@ -1321,7 +1331,7 @@ void calc_prim_normals(void)
 
 PrimInfo *get_prim_info(SLONG prim)
 {
-	ASSERT(WITHIN(prim, 1, 255));
+	//ASSERT(WITHIN(prim, 1, 255));
 
 	return &prim_info[prim];
 }
@@ -1671,7 +1681,7 @@ void calc_slide_edges()
 						// and faces flagged in the editor have their DrawFlags set!
 						//
 
-						ASSERT(g->FaceFlags & FACE_FLAG_WALKABLE);
+						//ASSERT(g->FaceFlags & FACE_FLAG_WALKABLE);
 
 						g->FaceFlags |= FACE_FLAG_WALKABLE;
 						g->DrawFlags |= POLY_FLAG_WALKABLE;
@@ -1895,7 +1905,7 @@ void get_rotated_point_world_pos(
 {
 	SLONG matrix[9];
 
-	ASSERT(WITHIN(prim, 1, next_prim_object - 1));
+	//ASSERT(WITHIN(prim, 1, next_prim_object - 1));
 
 	PrimObject *po = &prim_objects[prim];
 
@@ -2036,14 +2046,14 @@ SLONG slide_along_prim(
 
 UBYTE prim_get_collision_model(SLONG prim)
 {
-	ASSERT(WITHIN(prim, 0, 255));
+	//ASSERT(WITHIN(prim, 0, 255));
 
 	return prim_objects[prim].coltype;
 }
 
 UBYTE prim_get_shadow_type(SLONG prim)
 {
-	ASSERT(WITHIN(prim, 0, 255));
+	//ASSERT(WITHIN(prim, 0, 255));
 
 	return prim_objects[prim].shadowtype;
 }
@@ -2121,7 +2131,7 @@ void	fn_anim_prim_normal(Thing *p_thing)
 					break;
 
 				default:
-					ASSERT(0);
+					//ASSERT(0);
 					break;
 			}
 		}
@@ -2186,7 +2196,7 @@ void	create_anim_prim(SLONG x,SLONG y,SLONG z,SLONG prim, SLONG yaw)
 				break;
 
 			default:
-				ASSERT(0);
+				//ASSERT(0);
 				break;
 		}
 	}
@@ -2196,7 +2206,7 @@ void	set_anim_prim_anim(SLONG anim_prim, SLONG anim)
 {
 	Thing *t_thing = TO_THING(anim_prim);
 
-	ASSERT(WITHIN(anim, 1, anim_chunk[t_thing->Index].MaxAnimFrames - 1));
+	//ASSERT(WITHIN(anim, 1, anim_chunk[t_thing->Index].MaxAnimFrames - 1));
 
 	t_thing->Draw.Tweened->AnimTween	 = 0;
 	t_thing->Draw.Tweened->NextFrame	 = NULL;
@@ -2385,7 +2395,7 @@ void expand_anim_prim_bbox(
 	// The prim object.
 	//
 
-	ASSERT(WITHIN(prim, 1, next_prim_object - 1));
+	//ASSERT(WITHIN(prim, 1, next_prim_object - 1));
 
 	po = &prim_objects[prim];
 
@@ -2456,11 +2466,11 @@ void find_anim_prim_bboxes()
 			continue;
 		}
 
-		ASSERT(anim_chunk[i].AnimList[1]);
+		//ASSERT(anim_chunk[i].AnimList[1]);
 
 		ele = anim_chunk[i].AnimList[1]->FirstElement;
 
-		ASSERT(ele != NULL);
+		//ASSERT(ele != NULL);
 
 		ele_count = anim_chunk[i].ElementCount;
 		start_object = prim_multi_objects[anim_chunk[i].MultiObject[0]].StartObject;

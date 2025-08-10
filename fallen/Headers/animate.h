@@ -656,6 +656,13 @@
 #define	ANIM_WALK_STOP_CARRY_V			(ANIM_END+35)
 #define ANIM_HANDS_UP_LIE				(ANIM_END+36)
 
+#define ANIM_T1				(ANIM_END+37)
+#define ANIM_T2				(ANIM_END+38)
+#define ANIM_T3				(ANIM_END+39)
+#define ANIM_T4				(ANIM_END+40)
+#define ANIM_T5				(ANIM_END+41)
+#define ANIM_T6				(ANIM_END+42)
+
 #define ANIM_PZI_TEST					299
 
 
@@ -741,6 +748,7 @@
 #define ACTION_HUG_RIGHT			(50)
 #define ACTION_UNSIT				(51)
 #define ACTION_HANDSHAKE			(52)
+#define ACTION_ROPE_CLIMBING		(53)
 
 
 #define SUB_OBJECT_PELVIS			(0)

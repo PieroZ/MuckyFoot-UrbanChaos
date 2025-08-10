@@ -444,11 +444,45 @@ void HOOK_spin(
 	}
 }
 
+#include "GDisplay.h"
+
 void HOOK_release()
 {
+	//HOOK_point[0].dx = 0;
+	//HOOK_point[0].dy = 32000;
+	//HOOK_point[0].dz = 0;
 	ASSERT(HOOK_state == HOOK_STATE_SPINNING);
 
-	HOOK_state = HOOK_STATE_FLYING;
+
+	SLONG world_x;
+	SLONG world_y;
+	SLONG world_z;
+
+	RECT	client;
+
+	//extern	volatile HWND		hDDLibWindow;
+	GetClientRect(hDDLibWindow, &client);
+
+	float	hitx = float(MouseX) * float(DisplayWidth) / float(client.right - client.left);
+	float	hity = float(MouseY) * float(DisplayHeight) / float(client.bottom - client.top);
+
+	AENG_raytraced_position(
+		SLONG(hitx + 0.5f),
+		SLONG(hity + 0.5f),
+		//				MouseX,
+		//				MouseY,
+		&world_x,
+		&world_y,
+		&world_z);
+
+	HOOK_point[0].x = world_x  << 8;;
+	HOOK_point[0].y = world_y  << 8;;
+	HOOK_point[0].z = world_z  << 8;;
+
+	HOOK_process_points(1);
+
+
+	HOOK_state = HOOK_STATE_STILL;
 }
 
 

@@ -225,6 +225,7 @@
 #define PRIM_OBJ_WEAPON_SHOTGUN_FLASH 262
 #define PRIM_OBJ_WEAPON_AK47_FLASH		263
 #define PRIM_PZI_SILENCED_GUN_HAND		264
+#define PRIM_CUSTOM_SILENCER			244
 
 
 
@@ -401,6 +402,20 @@ struct	PrimFace4
 };
 #endif
 
+typedef struct
+{
+	UWORD Points[3];
+	float UV[3][2];
+	char TextureFile[256];
+} ObjFace3;
+
+typedef struct
+{
+	UWORD Points[4];
+	float UV[4][2];
+	char TextureFile[256];
+} ObjFace4;
+
 struct	PrimFace4PSX
 {
 	SWORD	TexturePage;
@@ -425,6 +440,20 @@ struct	PrimFace3PSX
 
 
 
+struct PZIPrimObject
+{
+	UWORD	StartPoint;
+	UWORD	EndPoint;
+	UWORD	StartFace4;
+	UWORD	EndFace4;
+	SWORD	StartFace3;
+	SWORD	EndFace3;
+
+	UBYTE   coltype;
+	UBYTE   damage;		// How this prim gets damaged
+	UBYTE   shadowtype;
+	UBYTE   flag;
+};
 
 struct	PrimObject
 {
@@ -439,6 +468,10 @@ struct	PrimObject
 	UBYTE   damage;		// How this prim gets damaged
 	UBYTE   shadowtype;
 	UBYTE   flag;
+
+	// PZI format used for obj files
+	//bool pziFormat;
+	//int wtf;
 };
 
 

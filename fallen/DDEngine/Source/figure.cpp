@@ -3155,7 +3155,7 @@ void FIGURE_draw_prim_tween(
 		p.M[1] = anim_info->OffsetY;
 		p.M[2] = anim_info->OffsetZ;
 
-		HIERARCHY_Get_Body_Part_Offset(&offset, &p,
+ 		HIERARCHY_Get_Body_Part_Offset(&offset, &p,
 									   parent_base_mat, parent_base_pos,
 									   parent_curr_mat, parent_curr_pos);
 		
@@ -6611,8 +6611,8 @@ extern int g_iCheatNumber;
 #if 1
 					FIGURE_draw_prim_tween(
 												//256,
-												255+(p_person->Draw.Tweened->PersonID>>5),
-												//255+(p_person->Genus.Person->EquippedWeaponId),
+												//255+(p_person->Draw.Tweened->PersonID>>5),
+												255+(p_person->Genus.Person->EquippedWeaponId),
 												FIGURE_dhpr_data.world_pos->M[0],
 												FIGURE_dhpr_data.world_pos->M[1],
 												FIGURE_dhpr_data.world_pos->M[2],

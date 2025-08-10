@@ -894,6 +894,9 @@
     <ClCompile Include="Source\PersonPZI.cpp" />
     <ClCompile Include="Source\bang.cpp" />
     <ClCompile Include="Source\briefing.cpp" />
+    <ClCompile Include="Source\ExtraAnims.cpp" />
+    <ClCompile Include="Source\ObjLoader.cpp" />
+    <ClCompile Include="Editor\Source\ResourceManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\america.h">
@@ -1755,6 +1758,9 @@
     <ClInclude Include="Source\DebugVars.h" />
     <ClInclude Include="Headers\AllToAnmConverter.h" />
     <ClInclude Include="Source\PersonPZI.h" />
+    <ClInclude Include="Source\ExtraAnims.h" />
+    <ClInclude Include="Headers\ObjLoader.h" />
+    <ClInclude Include="Headers\ResourceManager.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="DDLibrary\bitmap1.bmp">

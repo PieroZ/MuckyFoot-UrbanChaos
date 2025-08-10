@@ -14,12 +14,14 @@
 #include	"memory.h"
 #include "sound.h"
 #include "mav.h"
+#include "ResourceManager.h"
 
 #ifndef PSX
 #include "..\ddengine\headers\poly.h"
 #include "..\ddengine\headers\texture.h"
 #endif
 
+#include "ObjLoader.h"
 
 OB_Ob *OB_ob; //[OB_MAX_OBS];
 OB_workaround *OB_mapwho; //[OB_SIZE][OB_SIZE];
@@ -605,6 +607,45 @@ void	load_general_prims(void)
 	//
 	//  Stat Up's
 	//
+	
+	auto& res = ResourceManager::Get();
+
+	//std::vector<TriangleFace> triangleFaces;
+	//std::vector<QuadFace> quadFaces;
+	//std::vector<Material> materials;
+	std::string testObj = "3d-objs/shreko-mobile";
+	int primNo = 500;
+
+	// Parse the .mtl file first to load materials
+	parseMtlFile(testObj + ".mtl", res.materials);
+
+	// Parse the .obj file and associate faces with materials
+	parseObjFile(testObj + ".obj", res.materials, primNo, prim_objects);
+
+	testObj = "3d-objs/airship";
+	primNo = 499;
+
+	// Parse the .mtl file first to load materials
+	parseMtlFile(testObj + ".mtl", res.materials);
+
+	// Parse the .obj file and associate faces with materials
+	parseObjFile(testObj + ".obj", res.materials, primNo, prim_objects);
+
+ 	
+	//parseObjFile(testObj + ".obj", res.triangleFaces, res.quadFaces, res.materials, primNo, prim_objects);
+
+	//testObj = "3d-objs/gingerbread";
+	//primNo = 499;
+
+	//// Parse the .mtl file first to load materials
+	//parseMtlFile(testObj + ".mtl", res.materials);
+
+	//// Parse the .obj file and associate faces with materials
+	//parseObjFile(testObj + ".obj", res.triangleFaces, res.quadFaces, res.materials, primNo, prim_objects);
+
+	//po = &prim_objects[prim];
+
+
 	load_prim_object(71); 
 	load_prim_object(94); 
 	load_prim_object(81); 
@@ -685,6 +726,9 @@ void	load_general_prims(void)
 	load_prim_object(PRIM_OBJ_WEAPON_GUN_FLASH);
 	load_prim_object(PRIM_OBJ_WEAPON_SHOTGUN_FLASH);
 	load_prim_object(PRIM_OBJ_WEAPON_AK47_FLASH);
+
+
+	load_prim_object(PRIM_CUSTOM_SILENCER);
 }
 
 void	set_face_type(SLONG prim,SLONG type)
@@ -716,6 +760,7 @@ void OB_load_needed_prims()
 {
 	SLONG i;
 	SLONG j;
+	int AVAILABLE_PRIMS_COUNT = 256;
 
 #ifdef EDITOR
 	if (is_in_mission_editor) 
@@ -727,8 +772,8 @@ void OB_load_needed_prims()
 	else
 #endif
 	{
-		for (i = 1; i < OB_ob_upto; i++)
-		//for (i = 0; i < 256; i++)
+		//for (i = 1; i < OB_ob_upto; i++)
+		for (i = 0; i < AVAILABLE_PRIMS_COUNT; i++)
 		{
 			load_prim_object(i);
 			//load_prim_object(OB_ob[i].prim);

@@ -5,6 +5,7 @@
 #include	"..\headers\Sound.h"
 #include	"mfx.h"
 #include "GEdit.h"
+#include <string>
 
 #define	PAUSE_TIMEOUT			500
 #define	PAUSE					(1<<0)

@@ -1137,7 +1137,7 @@ extern	UBYTE	combo_display;
 			if(timer>0 && timer<100||
 				timer>350 && timer<500||
 				timer>700 && timer<850)
-
+				 
 				FONT2D_DrawString(kick,10,80);
 		}
 

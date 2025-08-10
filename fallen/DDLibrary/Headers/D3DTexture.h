@@ -114,6 +114,7 @@ class	D3DTexture
 		SLONG       ContainsAlpha;
 
 		HRESULT		LoadTextureTGA(CBYTE *tga_file,ULONG texid,BOOL bCanShrink=TRUE);
+		//HRESULT LoadTexturePNG(CBYTE* png_file, ULONG id, BOOL bCanShrink);
 
 		HRESULT		ChangeTextureTGA(CBYTE *tga_file);
 

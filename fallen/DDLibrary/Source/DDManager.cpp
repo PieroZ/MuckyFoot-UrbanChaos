@@ -939,18 +939,25 @@ void	D3DDeviceInfo::Destroy (void)
 
 void D3DDeviceInfo::CheckCaps(LPDIRECT3DDEVICE3 the_device)
 {
-	D3DDEVICEDESC	hw;
-	D3DDEVICEDESC	sw;
-	HRESULT			rc;
+	D3DDEVICEDESC hwCaps;
+	D3DDEVICEDESC swCaps;
+	HRESULT rc;
 
-	InitStruct(hw);
-	InitStruct(sw);
-	
-	rc = the_device->GetCaps(&hw, &sw);
-	if (FAILED(rc))	return;
-	
+	// Initialize the structures
+	InitStruct(hwCaps);
+	InitStruct(swCaps);
+
+	// Query the device capabilities
+	rc = the_device->GetCaps(&hwCaps, &swCaps);
+	if (FAILED(rc))
+	{
+		TRACE("Failed to get device capabilities\n");
+		return;
+	}
+
+	// Check for specific capabilities
 #ifndef TARGET_DC
-	if (hw.dpcTriCaps.dwTextureBlendCaps & D3DPTBLENDCAPS_MODULATEALPHA)
+	if (hwCaps.dpcTriCaps.dwTextureBlendCaps & D3DPTBLENDCAPS_MODULATEALPHA)
 	{
 		CanDoModulateAlpha = true;
 		TRACE("Card can do MODULATEALPHA\n");
@@ -961,7 +968,7 @@ void D3DDeviceInfo::CheckCaps(LPDIRECT3DDEVICE3 the_device)
 		TRACE("Card *cannot* do MODULATEALPHA\n");
 	}
 
-	if (hw.dpcTriCaps.dwDestBlendCaps & D3DPBLENDCAPS_INVSRCCOLOR)
+	if (hwCaps.dpcTriCaps.dwDestBlendCaps & D3DPBLENDCAPS_INVSRCCOLOR)
 	{
 		CanDoDestInvSourceColour = true;
 		TRACE("Card can do INVSRCCOLOR\n");
@@ -972,37 +979,25 @@ void D3DDeviceInfo::CheckCaps(LPDIRECT3DDEVICE3 the_device)
 		TRACE("Card *cannot* do INVSRCCOLOR\n");
 	}
 
-
-	if ((hw.dpcTriCaps.dwDestBlendCaps & D3DPBLENDCAPS_SRCCOLOR) &&
-		(hw.dpcTriCaps.dwSrcBlendCaps & D3DPBLENDCAPS_DESTCOLOR))
+	if ((hwCaps.dpcTriCaps.dwDestBlendCaps & D3DPBLENDCAPS_SRCCOLOR) &&
+		(hwCaps.dpcTriCaps.dwSrcBlendCaps & D3DPBLENDCAPS_DESTCOLOR))
 	{
 		CanDoAdamiLighting = true;
-		TRACE("Card can do ADAMI LIGHTING\n");
+		TRACE("Card can do Adami lighting\n");
 	}
 	else
 	{
 		CanDoAdamiLighting = false;
-		TRACE("Card *cannot* do ADAMI LIGHTING\n");
-	}
-
-	SLONG adami_lighting = ENV_get_value_number("Adami_lighting", -1, "Render");
-
-	if (adami_lighting == -1)
-	{
-		ENV_set_value_number("Adami_lighting", 1, "Render");
-
-		adami_lighting = 1;
-	}
-
-	if (adami_lighting == 0)
-	{
-		CanDoAdamiLighting = false;
-
-		TRACE("Overriding ADAMI LIGHTING\n");
+		TRACE("Card *cannot* do Adami lighting\n");
 	}
 #endif
 
+	// Query the maximum vertex count
+	DWORD maxVertexCount = hwCaps.dwMaxVertexCount ? hwCaps.dwMaxVertexCount : swCaps.dwMaxVertexCount;
+	TRACE("Maximum vertex count supported: %lu\n", maxVertexCount);
 
+	// Store the maximum vertex count in a member variable if needed
+	D3DFlags = maxVertexCount; // Example: Store it in D3DFlags or another member variable
 }
 
 // Notes:

@@ -138,7 +138,7 @@ BOOL			CUTSCENE_mouselook=0;
 BOOL			CUTSCENE_playback=0;
 BOOL			CUTSCENE_slomo=0;
 BOOL			CUTSCENE_need_keyboard=0;
-HTREEITEM		darcianim,roperanim,soundbase;
+HTREEITEM		darcianim,roperanim,thuganim, soundbase;
 int				CUTSCENE_slomo_ctr=SLOMO_RATE;
 UBYTE			CUTSCENE_fade_level=255;
 CBYTE			subtitle_str[255];
@@ -491,7 +491,7 @@ void CUTSCENE_remove(CSData* cutscene) {
 //-----------------------------------------------------
 
 
-/*
+
 SLONG	CUTSCENE_how_long_is_anim(SLONG who, SLONG anim)
 {
 	GameKeyFrame	*frame;
@@ -519,7 +519,7 @@ SLONG	CUTSCENE_how_long_is_anim(SLONG who, SLONG anim)
 
 }
 
-*/
+
 
 
 
@@ -632,20 +632,22 @@ void InitBrowser(HWND hWnd) {
 
 	browser->Add("Animations",0,0,-1,IM_SCENE_FOLDER);
 	darcianim=browser->Add("Darci's",0,1,-1,IM_SCENE_FOLDER);
-	LoadAllAnimNames("C:\\dev\\workspaces\\repo clones\\Clean-UrbanChaos\\MuckyFoot-UrbanChaos\\fallen\\Release\\roper.anm",browser,0);
+	LoadAllAnimNames("C:\\dev\\workspaces\\repo clones\\Clean-UrbanChaos\\MuckyFoot-UrbanChaos\\fallen\\Release\\darci1.anm",browser,0);
 	roperanim=browser->Add("Roper's",0,1,-1,IM_SCENE_FOLDER);
 	TCHAR buffer[MAX_PATH] = { 0 };
 	GetModuleFileName(NULL, buffer, MAX_PATH);
 	LoadAllAnimNames("C:\\dev\\workspaces\\repo clones\\Clean-UrbanChaos\\MuckyFoot-UrbanChaos\\fallen\\Release\\roper.anm",browser,1024);
-//	browser->Add("Tasks",0,0,-1,IM_SCENE_FOLDER);
+//	thuganim = browser->Add("Thug's", 0, 1, -1, IM_SCENE_FOLDER);
+//	LoadAllAnimNames("C:\\dev\\workspaces\\repo clones\\Clean-UrbanChaos\\MuckyFoot-UrbanChaos\\fallen\\Release\\rthug.anm",browser,2048);
+////	browser->Add("Tasks",0,0,-1,IM_SCENE_FOLDER);
 //	browser->Add("Go Here",0,1,8,IM_SCENE_ACTION);
 	browser->Add("Tools",0,0,-1,IM_SCENE_FOLDER);
 	browser->Add("Camera",0,1,9,IM_SCENE_CAMERA);
 	browser->Add("Loudspeaker",0,1,10,IM_SCENE_SPEAKER);
 	browser->Add("Subtitles",0,1,11,IM_SCENE_BUBBLE);
 	soundbase=browser->Add("Sound FX",0,0,-1,IM_SCENE_FOLDER);
-//	browser->AddDir("data\\sfx\\1622\\*.wav",true,0,1,2048,IM_SCENE_WAVE,IM_SCENE_FOLDER);
-	//ScanWavs(browser,"data\\sfx\\1622\\*.wav",true,0,1,2048,IM_SCENE_WAVE,IM_SCENE_FOLDER,"");
+	browser->AddDir("C:\\dev\\workspaces\\repo clones\\Clean-UrbanChaos\\MuckyFoot-UrbanChaos\\fallen\\Release\\data\\sfx\\1622\\*.wav",false,0,1,2048,IM_SCENE_WAVE,IM_SCENE_FOLDER);
+	ScanWavs(browser,"C:\\dev\\workspaces\\repo clones\\Clean-UrbanChaos\\MuckyFoot-UrbanChaos\\fallen\\Release\\data\\sfx\\1622\\*.wav",false,0,1,2048,IM_SCENE_WAVE,IM_SCENE_FOLDER,"");
 }
 
 /*
@@ -1281,7 +1283,7 @@ void DoHandleShit() {
 	}
 
 	speed=(GetKeyState(VK_CAPITAL)&1)?128:64;
-	if (GetAsyncKeyState(VK_CONTROL)&(1<<15)) speed=8;
+	if (GetAsyncKeyState(VK_CONTROL)&(1<<15)) speed=2;
 	if (Keys[KB_LEFT])	ofsX= speed;
 	if (Keys[KB_RIGHT])	ofsX=-speed;
 	if (Keys[KB_UP])	ofsZ= speed;
@@ -1984,7 +1986,9 @@ BOOL	CALLBACK	cuts_proc(HWND hWnd,UINT message,WPARAM wParam,LPARAM lParam)
 								p->index=browser->drag_item.lParam;
 								length=p->index;
 								while (length>1023) length-=1024;
-								length=/*CUTSCENE_*/how_long_is_anim(/*cutscene->editchannels[chan].thing->Genus.Person->AnimType,*/length);
+								//length=CUTSCENE_how_long_is_anim(cutscene->editchannels[chan].thing->Genus.Person->AnimType,length);
+								length =/*CUTSCENE_*/how_long_is_anim(/*cutscene->editchannels[chan].thing->Genus.Person->AnimType,*/length);
+
 								which=1;
 								p->pos=edit->thing->WorldPos;
 								p->angle=edit->thing->Draw.Tweened->Angle;
@@ -2076,13 +2080,23 @@ void	do_cutscene_setup(EventPoint *the_ep)
 
 	CEDIT_accel = LoadAccelerators(GEDIT_hinstance, MAKEINTRESOURCE(IDR_CEDIT_ACCELERATORS));
 
+
+	//clear_prims();
+	//init_draw_tweens();
+	//setup_people_anims();
+	//setup_extra_anims();
+	//setup_global_anim_array();
+	//record_prim_status();
 	// the animations aren't normally loaded in the editor
+	// 
+	// 
 	//ANIM_init();
 	//setup_anim_stuff();
-	//load_anim_system(&game_chunk[0],"darci1.all");
-	//load_anim_system(&game_chunk[2],"roper.all");
-	//load_anim_system(&game_chunk[3],"rthug.all");
-	//load_anim_system(&game_chunk[4],"roper2.all");
+	//setup_people_anims();
+	////load_anim_system(&game_chunk[0],"darci1.all");
+	////load_anim_system(&game_chunk[2],"roper.all");
+	////load_anim_system(&game_chunk[3],"rthug.all");
+	////load_anim_system(&game_chunk[4],"roper2.all");
 	//setup_global_anim_array();
 
 	//clear_prims();

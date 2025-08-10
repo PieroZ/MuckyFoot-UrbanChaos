@@ -67,7 +67,8 @@ static const int BAT_STATE_BANE_IDLE = 16;
 static const int BAT_STATE_BANE_ATTACK = 17;
 static const int BAT_STATE_BANE_START = 18;
 static const int BAT_STATE_TURRET_IDLE = 19;
-static const int BAT_STATE_NUMBER = 20;
+static const int BAT_STATE_TURRET_SHOOT = 20;
+static const int BAT_STATE_NUMBER = 21;
 
 
 #ifndef PSX
@@ -270,6 +271,9 @@ static const int BAT_ANIM_BALROG_TAKE_HIT = 11;
 static const int BAT_ANIM_BALROG_DIE = 12;
 
 
+static const int BAT_ANIM_TURRET_SCAN = 2;
+
+
 
 static const int BAT_ANIM_BANE_IDLE = 2;
 static const int BAT_ANIM_BANE_ATTACK = 3;
@@ -287,8 +291,8 @@ void BAT_set_anim(Thing* p_thing, SLONG anim)
 			{BAT_ANIM_GARGOYLE_FLY, BAT_ANIM_GARGOYLE_TAKE_HIT}
 		};
 
-		ASSERT(WITHIN(p_thing->Genus.Bat->type - 1, 0, 1));
-		ASSERT(WITHIN(-anim - 1, 0, 1));
+		/*ASSERT(WITHIN(p_thing->Genus.Bat->type - 1, 0, 1));
+		ASSERT(WITHIN(-anim - 1, 0, 1));*/
 
 		anim = generic_bat_anim[p_thing->Genus.Bat->type - 1][-anim - 1];
 	}
@@ -392,6 +396,10 @@ void BAT_set_anim_and_type(Thing* p_thing, SLONG anim, UBYTE type)
 	}
 
 	p_thing->Genus.Bat->flag &= ~(BAT_FLAG_SYNC_FX | BAT_FLAG_SYNC_FX2);
+
+
+	// Wow...
+	p_thing->Genus.Person->Flags2 |= FLAG2_PERSON_MORPHED;
 }
 
 
@@ -961,6 +969,10 @@ void BAT_change_state(Thing* p_thing)
 				}
 			}
 		}
+		else if (p_bat->type == BAT_TYPE_TURRET)
+		{
+
+		}
 #ifndef PSX
 		else
 		{
@@ -1461,6 +1473,65 @@ void BAT_balrog_slide_along(
 }
 
 
+void process_turret(Thing* p_thing)
+{
+	Bat* p_bat = p_thing->Genus.Bat;
+
+	Thing* first_player = NET_PERSON(0);
+
+	if (THING_dist_between(first_player, p_thing) < 0x600)
+	{
+		p_bat->target = THING_NUMBER(first_player);
+		//BAT_turn_to_target(p_thing);
+
+
+
+		if (there_is_a_los(
+			p_thing->WorldPos.X >> 8,
+			p_thing->WorldPos.Y + 0xc000 >> 8,
+			p_thing->WorldPos.Z >> 8,
+			first_player->WorldPos.X >> 8,
+			first_player->WorldPos.Y + 0x6000 >> 8,
+			first_player->WorldPos.Z >> 8,
+			0))
+		{
+
+			BAT_set_anim(p_thing, BAT_ANIM_TURRET_SCAN);
+
+			BAT_animate(p_thing);
+
+			return;
+			SPARK_Pinfo p1;
+			SPARK_Pinfo p2;
+
+			p1.type = SPARK_TYPE_LIMB;
+			p1.flag = 0;
+			p1.person = THING_NUMBER(p_thing);
+			p1.limb = 0;
+
+			p2.type = SPARK_TYPE_LIMB;
+			p2.flag = 0;
+			p2.person = THING_NUMBER(first_player);
+			p2.limb = SUB_OBJECT_HEAD;
+
+			SPARK_create(
+				&p1,
+				&p2,
+				50);
+
+			BAT_emit_fireball(p_thing);
+
+			/*if (first_player->State != STATE_DANGLING &&
+				first_player->State != STATE_JUMPING)
+			{
+				set_face_thing(
+					first_player,
+					p_thing);
+			}*/
+		}
+	}
+}
+
 //
 // Processes a bat thing.
 //
@@ -1518,6 +1589,12 @@ void BAT_normal(Thing* p_thing)
 	Bat* p_bat = p_thing->Genus.Bat; ;
 	;; ;;
 	Thing* p_target; ;;
+
+	if (p_bat->type == BAT_TYPE_TURRET)
+	{
+		process_turret(p_thing);
+		return;
+	}
 
 #ifndef PSX
 	// make some batty sounds. if we're not a gargoyle. or a balrog. or bane.
@@ -2657,7 +2734,7 @@ found_unused_bat:;
 			break;
 
 		case BAT_TYPE_TURRET:
-			p_bat->state = BAT_STATE_BANE_IDLE;
+			p_bat->state = BAT_STATE_TURRET_IDLE;
 			p_bat->substate = BAT_SUBSTATE_NONE;
 			p_bat->glow = 0x7f00;
 			p_thing->WorldPos.Y += 0x60 << 8;

@@ -2626,7 +2626,14 @@ extern	SLONG	save_psx;
 						shrink=4.0;
 					if(strcmp(fr->FileName,"bane.VUE")==0)
 						shrink=4.0;
+
+		
 					}
+
+					//if (strcmp(fr->FileName, "salsa.vue") == 0)
+					//{
+					//	shrink = 4.0;
+					//}
 
 					load_key_frame_chunks(test_chunk,fr->FileName,shrink, AnimList[0], animCount);
 					load_recenter_flags(test_chunk->ANMName);

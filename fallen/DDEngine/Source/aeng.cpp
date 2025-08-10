@@ -925,7 +925,7 @@ void AENG_world_line(
 		SLONG sort_to_front)
 {
 
-#ifdef DEBUG
+#ifdef NDEBUG
 #ifdef TARGET_DC
 	ASSERT ( FALSE );
 	return;
@@ -2635,7 +2635,7 @@ void AENG_draw_bangs()
 {
 	float u_mid;
 	float v_mid;
-#ifndef	DOG_POO
+#ifdef	DOG_POO
 	SLONG z;
 
 	BANG_Info *bi;
@@ -9984,8 +9984,15 @@ extern	void SKY_draw_poly_sky_old(float world_camera_x,float world_camera_y,floa
 
 				oi = OB_find(x,z);
 
+	/*			if (oi)
+				{
+					oi->prim = 500;
+				}*/
+
+
 				while(oi->prim)
 				{
+					//oi->prim = 500;
 					if (!(oi->flags & OB_FLAG_WAREHOUSE))
 					{
 						if (oi->prim == 133 || oi->prim == 235)

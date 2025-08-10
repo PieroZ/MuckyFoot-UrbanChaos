@@ -88,6 +88,7 @@ SAVE INGAME
 //#include	"prim_draw.h"
 #include	"memory.h"
 #include "DebugVars.h"
+#include "ExtraAnims.h"
 
 #include "../Headers/AllToAnmConverter.h"
 
@@ -981,7 +982,8 @@ void	setup_people_anims(void)
 	}
 
 	
-	load_anim_system(&game_chunk[ANIM_TYPE_PZI], "PROTOTYPE_DARCI1");
+	//load_anim_system(&game_chunk[ANIM_TYPE_PZI], "PROTOTYPE_DARCI1");
+	load_anim_system(&game_chunk[ANIM_TYPE_PZI], "salsa");
 
 
 
@@ -992,7 +994,7 @@ void	setup_people_anims(void)
 	append_anim_system(&game_chunk[ANIM_TYPE_ROPER], "police1.all", 200, 0);
 	append_anim_system(&game_chunk[ANIM_TYPE_CIV], "newciv.all", CIV_M_START, 1);
 	append_anim_system(&game_chunk[ANIM_TYPE_CIV], "newcivf.all", CIV_F_START, 1);
- 	//append_anim_system(&game_chunk[ANIM_TYPE_DARCI], "Troper.all", 297, 0); // <=== Custom animations
+ 	//append_anim_system(&game_chunk[ANIM_TYPE_DARCI], "PROTOTYPE_DARCI1.all", 297, 0); // <=== Custom animations
 
 extern SLONG	playing_combat_tutorial(void);
 extern	SLONG	playing_level(const CBYTE *name);
@@ -1039,22 +1041,57 @@ extern	SLONG	playing_level(const CBYTE *name);
 #endif
 #endif
 
-void	setup_additional_anims(void)
-{
-	int beta_animations_arr[] = { ANIM_BIKE_MOUNT, ANIM_BIKE_RIDE, ANIM_BIKE_LEAN_LEFT_FOOT,ANIM_BIKE_LEAN_RIGHT_FOOT, ANIM_BIKE_LEAN_LEFT, ANIM_BIKE_LEAN_RIGHT, ANIM_BIKE_LEAN };
-
-	if (game_chunk[ANIM_TYPE_PZI].ElementCount != 0)
-	{
-		for (int animId : beta_animations_arr)
-		{
-			global_anim_array[0][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
-			global_anim_array[1][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
-			global_anim_array[2][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
-			global_anim_array[3][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
-		}
-	}
-
-}
+//void	setup_additional_anims(void)
+//{
+//	//int beta_animations_arr[] = { ANIM_BIKE_MOUNT, ANIM_BIKE_RIDE, ANIM_BIKE_LEAN_LEFT_FOOT,ANIM_BIKE_LEAN_RIGHT_FOOT, ANIM_BIKE_LEAN_LEFT, ANIM_BIKE_LEAN_RIGHT, ANIM_BIKE_LEAN, ANIM_BATMAN, ANIM_GRAPPLING_HOOK_WINDUP, ANIM_GRAPPLING_HOOK_RELEASE, ANIM_GRAPPLING_HOOK_PICKUP };
+//
+//	//if (game_chunk[ANIM_TYPE_PZI].ElementCount != 0)
+//	//{
+//	//	for (int animId : beta_animations_arr)
+//	//	{
+//	//		global_anim_array[0][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
+//	//		global_anim_array[1][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
+//	//		global_anim_array[2][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
+//	//		global_anim_array[3][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
+//	//	}
+//	//}
+//	using namespace std;
+//	std::map<int, int> dance_move_to_anim_id;
+//	// ANIM_DANCE_BOOGIE
+//	// ANIM_DANCE_WOOGIE
+//	// ANIM_DANCE_HEADBANG
+//
+//	dance_move_to_anim_id[ANIM_BATMAN] = 1;
+//	dance_move_to_anim_id[ANIM_DANCE_BOOGIE] = 2;
+//	dance_move_to_anim_id[ANIM_DANCE_WOOGIE] = 3;
+//	dance_move_to_anim_id[ANIM_DANCE_HEADBANG] = 4;
+//
+//	// Get an iterator pointing to the first element in the
+//  // map
+//	std::map<int, int>::iterator it = dance_move_to_anim_id.begin();
+//	while (it != dance_move_to_anim_id.end())
+//	{
+//		global_anim_array[0][it->first] = game_chunk[ANIM_TYPE_PZI].AnimList[it->second];
+//		global_anim_array[1][it->first] = game_chunk[ANIM_TYPE_PZI].AnimList[it->second];
+//		global_anim_array[2][it->first] = game_chunk[ANIM_TYPE_PZI].AnimList[it->second];
+//		global_anim_array[3][it->first] = game_chunk[ANIM_TYPE_PZI].AnimList[it->second];
+//		++it;
+//	}
+//
+//	//int beta_animations_arr[] = { ANIM_BATMAN };
+//	//
+//	//if (game_chunk[ANIM_TYPE_PZI].ElementCount != 0)
+//	//{
+//	//	for (int animId : beta_animations_arr)
+//	//	{
+//	//		global_anim_array[0][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[1];
+//	//		global_anim_array[1][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[1];
+//	//		global_anim_array[2][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[1];
+//	//		global_anim_array[3][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[1];
+//	//	}
+//	//}
+//
+//}
 
 void	setup_global_anim_array(void)
 {
@@ -1077,7 +1114,6 @@ void	setup_global_anim_array(void)
 //		global_anim_array[7][c0]=game_chunk[ANIM_TYPE_DARCI].AnimList[c0];
 	}
 
-	setup_additional_anims();
 
 	//
 	// If people have their own anims, then set them up to use
@@ -1467,6 +1503,9 @@ void	setup_global_anim_array(void)
 //		for(c0=200;c0<300;c0++)
 //			global_anim_array[ANIM_TYPE_ROPER][c0]=game_chunk[ANIM_TYPE_ROPER].AnimList[c0];
 	}
+
+
+	setup_additional_anims(global_anim_array, game_chunk);
 }
 
 

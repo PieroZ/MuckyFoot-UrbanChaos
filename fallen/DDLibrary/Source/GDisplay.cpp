@@ -287,7 +287,7 @@ extern HINSTANCE	hGlobalThisInst;
 
 	SLONG fullscreenMode = ENV_get_value_number("fullscreen_mode", -1, "Render");
 
-	VideoRes = max(min(VideoRes, 5), 0);
+	VideoRes = max(min(VideoRes, 6), 0);
 
 	depth = 32;
 	switch (VideoRes)
@@ -298,6 +298,7 @@ extern HINSTANCE	hGlobalThisInst;
 	case 3:		width = 800; height = 600; break;
 	case 4:		width = 1024; height = 768; break;
 	case 5:		width = 1920; height = 1080; break;		// TODO: Investigate modern screen resolutions
+	case 6:		width = 2560; height = 1440; break;		// TODO: Investigate modern screen resolutions
 	}
 
 	if(flags&FLAGS_USE_3D)

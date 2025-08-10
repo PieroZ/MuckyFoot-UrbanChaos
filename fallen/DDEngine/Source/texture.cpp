@@ -23,6 +23,8 @@
 #include "drive.h"
 #include "..\headers\attract.h"
 #include "crinkle.h"
+#include "ResourceManager.h"
+
 #ifdef TARGET_DC
 #include "c:\fallen\ddlibrary\headers\GDisplay.h"
 #endif
@@ -41,6 +43,7 @@ CBYTE TEXTURE_prims_dir  [_MAX_PATH];
 CBYTE TEXTURE_inside_dir [_MAX_PATH];
 CBYTE TEXTURE_people_dir [_MAX_PATH];
 CBYTE TEXTURE_people_dir2[_MAX_PATH];
+CBYTE TEXTURE_custom_dir[_MAX_PATH];
 SLONG TEXTURE_set;
 
 
@@ -77,8 +80,9 @@ extern UWORD floor_texture_sizes[];
 #define TEXTURE_NORM_SQUARES 8
 #define	PEOPLE3_ALT				21*64
 #else
-#define TEXTURE_NUM_STANDARD (22 * 64)
-#define TEXTURE_MAX_TEXTURES (TEXTURE_NUM_STANDARD+160)
+#define TEXTURE_NUM_STANDARD (23 * 64)
+static const int TEXTURE_NUM_PZI_INCREASE = 1;
+#define TEXTURE_MAX_TEXTURES (TEXTURE_NUM_STANDARD+160 +TEXTURE_NUM_PZI_INCREASE )
 #define TEXTURE_NORM_SIZE    32
 #define TEXTURE_NORM_SQUARES 8
 #define	PEOPLE3_ALT				21*64
@@ -208,6 +212,7 @@ SLONG TEXTURE_page_ladshad;
 SLONG TEXTURE_page_meteor;
 SLONG TEXTURE_page_splash;
 SLONG TEXTURE_page_PZI_custom;
+SLONG TEXTURE_page_gingerbread_custom;
 
 
 
@@ -604,6 +609,7 @@ void TEXTURE_choose_set(SLONG number)
 	sprintf(TEXTURE_people_dir2, "server\\%s\\shared\\people2\\",textures);
 	sprintf(TEXTURE_world_dir,   "server\\%s\\world%d\\",textures, number);
 	sprintf(TEXTURE_shared_dir,  "server\\%s\\shared\\",textures, number);
+	sprintf(TEXTURE_custom_dir,  "server\\%s\\shared\\custom\\",textures);
 #else
 	sprintf(TEXTURE_inside_dir,  "u:\\urbanchaos\\%s\\world%d\\insides\\",textures, number);
 	sprintf(TEXTURE_prims_dir,   "u:\\urbanchaos\\%s\\shared\\prims\\",textures);
@@ -840,6 +846,12 @@ static void TEXTURE_load_page(SLONG page)
 		sprintf(name_res64, "%stex%03dhi.tga", TEXTURE_people_dir2, page-64*18);
 		sprintf(name_res128,"%stex%03dto.tga", TEXTURE_people_dir2, page-64*18);
 	}
+	// PZI: For now I am assuming that only 64 textures are used for PZI
+	else if (page < 64 * 23)
+	{
+		// Assume only hi res texture file
+		sprintf(name_res128, "%stex%03dhi.tga", TEXTURE_custom_dir, page - 64 * 22);
+	}
 	else
 	{
 		ASSERT(0);
@@ -1015,7 +1027,7 @@ static void TEXTURE_load_page(SLONG page)
 void TEXTURE_initialise_clumping(CBYTE *fname_level)
 {
 
-#ifdef TARGET_DC
+#ifdef TARGET_DCsss
 	const int clumping = 0;
 #else //#ifdef TARGET_DC
 
@@ -1063,6 +1075,76 @@ extern void SetLastClumpfile(char* file, size_t size);	// in GDisplay.cpp, horri
 	}
 }
 
+
+void TEXTURE_load_from_materials()
+{
+	auto& res = ResourceManager::Get(); // Get the singleton instance of ResourceManager
+
+	for (auto& material : res.materials)
+	{
+		if (material.mTextureFile.empty())
+		{
+			TRACE("Material '%s' has no texture file.\n", material.mName.c_str());
+			continue;
+		}
+		// Check if the texture is already loaded
+		if (material.mIsTextureLoaded)
+		{
+			TRACE("Texture '%s' is already loaded.\n", material.mTextureFile.c_str());
+			continue;
+		}
+
+		//// Check if the texture is already loaded
+		//bool textureAlreadyLoaded = false;
+		//for (int i = 0; i < TEXTURE_MAX_TEXTURES; ++i)
+		//{
+		//	if (TEXTURE_texture[i].Type != D3DTEXTURE_TYPE_UNUSED &&
+		//		strcmp(TEXTURE_texture[i].texture_name, material.mTextureFile.c_str()) == 0)
+		//	{
+		//		textureAlreadyLoaded = true;
+		//		break;
+		//	}
+		//}
+
+		//if (textureAlreadyLoaded)
+		//{
+		//	TRACE("Texture '%s' is already loaded.\n", material.mTextureFile.c_str());
+		//	continue;
+		//}
+
+		// Find an unused texture slot
+		int textureSlot = -1;
+		for (int i = 0; i < TEXTURE_MAX_TEXTURES; ++i)
+		{
+			if (TEXTURE_texture[i].Type == D3DTEXTURE_TYPE_UNUSED)
+			{
+				textureSlot = i;
+				break;
+			}
+		}
+
+		//if (textureSlot == -1)
+		//{
+		//	TRACE("No available texture slots for '%s'.\n", material.mTextureFile.c_str());
+		//	continue;
+		//}
+
+		// Load the texture
+		//static const int textureSlot = TEXTURE_MAX_TEXTURES - 1; // Use the last slot for test + simplicity
+
+		//HRESULT result = TEXTURE_texture[textureSlot].LoadTextureTGA(material.mTextureFile.c_str(), textureSlot);
+		HRESULT result = TEXTURE_texture[textureSlot].LoadTextureTGA(reinterpret_cast<CBYTE*>(const_cast<char*>(material.mTextureFile.c_str())), textureSlot);
+		if (FAILED(result))
+		{
+			TRACE("Failed to load texture '%s'.\n", material.mTextureFile.c_str());
+			continue;
+		}
+
+		// Mark the texture as loaded
+		material.mIsTextureLoaded = true;
+		TRACE("Successfully loaded texture '%s' into slot %d.\n", material.mTextureFile.c_str(), textureSlot);
+	}
+}
 
 
 void TEXTURE_load_needed(CBYTE*	fname_level,
@@ -1210,6 +1292,7 @@ extern void ATTRACT_loadscreen_draw(SLONG completion);
 	TEXTURE_page_snowflake		 = TEXTURE_NUM_STANDARD + 74;
 	TEXTURE_page_fade_MF         = TEXTURE_NUM_STANDARD + 75;
 	TEXTURE_page_PZI_custom      = TEXTURE_NUM_STANDARD + 76;
+	TEXTURE_page_gingerbread_custom = TEXTURE_NUM_STANDARD - 76;
 
 #ifdef TARGET_DC
 	TEXTURE_page_joypad_a		 = TEXTURE_NUM_STANDARD + 76;
@@ -1240,6 +1323,7 @@ extern void ATTRACT_loadscreen_draw(SLONG completion);
 #ifdef	NO_SERVER
 	#define TEXTURE_EXTRA_DIR "server\\textures\\extras\\"
 	#define TEXTURE_PEOPLE3_DIR "server\\textures\\shared\\people3\\"
+	#define TEXTURE_CUSTOM_DIR "server\\textures\\shared\\custom\\"
 #else
 	#define TEXTURE_EXTRA_DIR "u:\\urbanchaos\\textures\\extras\\"
 	#define TEXTURE_PEOPLE3_DIR "u:\\urbanchaos\\textures\\shared\\people3\\"
@@ -1426,7 +1510,10 @@ LOADED_THIS_MANY_TEXTURES(6);
 		TEXTURE_texture[TEXTURE_page_shadowoval  ].LoadTextureTGA(TEXTURE_EXTRA_DIR"shadow.tga",       TEXTURE_page_shadowoval);
 		TEXTURE_texture[TEXTURE_page_rubbish     ].LoadTextureTGA(TEXTURE_EXTRA_DIR"rubbish.tga",      TEXTURE_page_rubbish);
 		
-		TEXTURE_texture[TEXTURE_page_PZI_custom].LoadTextureTGA(TEXTURE_EXTRA_DIR"NewWeaponsIcons2.tga", TEXTURE_page_PZI_custom); 
+		//TEXTURE_texture[TEXTURE_page_PZI_custom].LoadTextureTGA(TEXTURE_EXTRA_DIR"NewWeaponsIcons2.tga", TEXTURE_page_PZI_custom); 
+		//TEXTURE_texture[TEXTURE_page_PZI_custom].LoadTextureTGA(TEXTURE_EXTRA_DIR"gingerbread.tga", TEXTURE_page_PZI_custom); 
+
+		//TEXTURE_texture[TEXTURE_page_gingerbread_custom].LoadTextureTGA(TEXTURE_CUSTOM_DIR"tex000hi.tga", TEXTURE_page_gingerbread_custom);
 
 		
 
@@ -1672,6 +1759,15 @@ LOADED_THIS_MANY_TEXTURES(4);
 		TEXTURE_load_page(18*64+5);
 		TEXTURE_load_page(18*64+37);
 LOADED_THIS_MANY_TEXTURES(4);
+
+	// PZI GINGERBREAD TEXTURE
+
+	for (int i = 0; i < 5; i++)
+	{
+		TEXTURE_load_page(22 * 64 + i);
+	}
+	//TEXTURE_load_page(64 * 22);
+	LOADED_THIS_MANY_TEXTURES(5);
 
 		for (i = 1; i < next_prim_face3; i++)
 		{
@@ -2153,6 +2249,11 @@ LPDIRECT3DTEXTURE2 TEXTURE_get_handle(SLONG page)
 #ifdef TARGET_DC
 	ASSERT(WITHIN(page, 0, TEXTURE_num_textures - 1));
 #endif
+
+	//if (!TEXTURE_texture[page].lp_Texture)
+	//{
+	//	TRACE("Texture at index %d is not loaded!\n", page);
+	//}
 	return TEXTURE_texture[page].GetD3DTexture();
 }
 

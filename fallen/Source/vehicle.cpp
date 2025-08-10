@@ -1648,7 +1648,7 @@ void VEH_collide_find_things(SLONG x, SLONG y, SLONG z, SLONG radius, SLONG igno
 
 		p_found =  TO_THING(found[i]);
 		
-		if (!p_found) return;
+		//if (!p_found) return;
 		if (!p_found->Class) return;
 
 

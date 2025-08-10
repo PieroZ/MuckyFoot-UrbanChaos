@@ -440,8 +440,11 @@ void	load_chunk_texture_info(KeyFrameChunk *the_chunk)
 		file_name[c0+4]	=	0;
 	}
 
+	TRACE("the_chunk->MultiObjectStart = %d\n", the_chunk->MultiObjectStart);
+	TRACE("the_chunk->MultiObjectEnd = %d\n", the_chunk->MultiObjectEnd);
 	for(multi=the_chunk->MultiObjectStart;multi<=the_chunk->MultiObjectEnd;multi++)
 	{
+		TRACE("multi = %d\n", multi);
 		if(count>0)
 		{
 			file_name[5]='1'+count-1;

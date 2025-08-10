@@ -17,6 +17,8 @@
 #include "polypoint.h"
 #include "fastprim.h"
 
+#include "ResourceManager.h"
+
 #define	POLY_FLAG_GOURAD		(1<<0)
 #define	POLY_FLAG_TEXTURED		(1<<1)
 #define	POLY_FLAG_MASKED		(1<<2)
@@ -538,264 +540,25 @@ NIGHT_Colour *MESH_draw_guts(
 		}
 	}
 
-	//
-	// The quads.
-	//
-
-	for (i = p_obj->StartFace4; i < p_obj->EndFace4; i++)
+	if (prim == 500 || prim == 499 /*0 && p_obj->pziFormat == 1*/)
 	{
-		p_f4 = &prim_faces4[i];
-
-		p0 = p_f4->Points[0] - sp;
-		p1 = p_f4->Points[1] - sp;
-		p2 = p_f4->Points[2] - sp;
-		p3 = p_f4->Points[3] - sp;
-		
-		ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
-		ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
-		ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));
-		ASSERT(WITHIN(p3, 0, POLY_buffer_upto - 1));
-
-		quad[0] = &POLY_buffer[p0];
-		quad[1] = &POLY_buffer[p1];
-		quad[2] = &POLY_buffer[p2];
-		quad[3] = &POLY_buffer[p3];
-
-		if (POLY_valid_quad(quad))
+		//TRACE(" p_obj->pziFormat = %d\n", p_obj->pziFormat);
+		auto& res = ResourceManager::Get();
+		if (res.primMeshes.count(prim))
 		{
-			if (p_f4->DrawFlags & POLY_FLAG_TEXTURED)
+			const Mesh& mesh = res.primMeshes[prim];
+
+			// We do the render the new way...
+			//TRACE("YOOHOO\n");
+			//for (i = p_obj->StartFace4; i < p_obj->EndFace4; i++)
+
+			for (auto&& quadFace : mesh.quadFaces)
 			{
-				/*
+				p0 = quadFace.mPointsIndex[0];
+				p1 = quadFace.mPointsIndex[1];
+				p2 = quadFace.mPointsIndex[2];
+				p3 = quadFace.mPointsIndex[3];
 
-				if(p_f4->FaceFlags&FACE_FLAG_ANIMATE)
-				{
-					struct	AnimTmap	*p_a;
-					SLONG	cur;
-					p_a=&anim_tmaps[p_f4->TexturePage];
-					cur=p_a->Current;
-
-					quad[0]->u = float(p_a->UV[cur][0][0] & 0x3f) * (1.0F / 32.0F);
-					quad[0]->v = float(p_a->UV[cur][0][1]       ) * (1.0F / 32.0F);
-
-					quad[1]->u = float(p_a->UV[cur][1][0]       ) * (1.0F / 32.0F);
-					quad[1]->v = float(p_a->UV[cur][1][1]       ) * (1.0F / 32.0F);
-
-					quad[2]->u = float(p_a->UV[cur][2][0]       ) * (1.0F / 32.0F);
-					quad[2]->v = float(p_a->UV[cur][2][1]       ) * (1.0F / 32.0F);
-
-					quad[3]->u = float(p_a->UV[cur][3][0]       ) * (1.0F / 32.0F);
-					quad[3]->v = float(p_a->UV[cur][3][1]       ) * (1.0F / 32.0F);
-
-					page   = p_a->UV[cur][0][0] & 0xc0;
-					page <<= 2;
-					page  |= p_a->Page[cur];
-				}
-				else
-				*/
-				{
-					quad[0]->u = float(p_f4->UV[0][0] & 0x3f) * (1.0F / 32.0F);
-					quad[0]->v = float(p_f4->UV[0][1]       ) * (1.0F / 32.0F);
-
-					quad[1]->u = float(p_f4->UV[1][0]       ) * (1.0F / 32.0F);
-					quad[1]->v = float(p_f4->UV[1][1]       ) * (1.0F / 32.0F);
-
-					quad[2]->u = float(p_f4->UV[2][0]       ) * (1.0F / 32.0F);
-					quad[2]->v = float(p_f4->UV[2][1]       ) * (1.0F / 32.0F);
-
-					quad[3]->u = float(p_f4->UV[3][0]       ) * (1.0F / 32.0F);
-					quad[3]->v = float(p_f4->UV[3][1]       ) * (1.0F / 32.0F);
-
-					page   = p_f4->UV[0][0] & 0xc0;
-					page <<= 2;
-					page  |= p_f4->TexturePage;
-					page+=FACE_PAGE_OFFSET;
-
- 					if (p_f4->FaceFlags & FACE_FLAG_TINT)
-					{
-						qc0 = quad[0]->colour;
-						qc1 = quad[1]->colour;
-						qc2 = quad[2]->colour;
-						qc3 = quad[3]->colour;
-										  
-						quad[0]->colour &= MESH_colour_and;
-						quad[1]->colour &= MESH_colour_and;
-						quad[2]->colour &= MESH_colour_and;
-						quad[3]->colour &= MESH_colour_and;
-
-						// quad[0]->colour = PolyPoint2D::ModulateD3DColours(qc0, MESH_colour_and);
-						// quad[1]->colour = PolyPoint2D::ModulateD3DColours(qc1, MESH_colour_and);
-						// quad[2]->colour = PolyPoint2D::ModulateD3DColours(qc2, MESH_colour_and);
-						// quad[3]->colour = PolyPoint2D::ModulateD3DColours(qc3, MESH_colour_and);
-					}
-
-					/*
-
-					if (prim == PRIM_OBJ_BIKE_BWHEEL && i - p_obj->StartFace4 == highlight)
-					{
-						quad[0]->colour = (GAME_TURN * 55);
-						quad[1]->colour = (GAME_TURN * 55);
-						quad[2]->colour = (GAME_TURN * 55);
-						quad[3]->colour = (GAME_TURN * 55);
-					}
-					*/
-				}
-
-				if (p_f4->FaceFlags & FACE_FLAG_WALKABLE)
-				{
-
-					quad[0]->colour = (GAME_TURN * 55);
-					quad[1]->colour = (GAME_TURN * 35);
-					quad[2]->colour = (GAME_TURN * 25);
-					quad[3]->colour = (GAME_TURN * 15);
-					POLY_add_quad(quad, POLY_PAGE_COLOUR, !(p_f4->DrawFlags & POLY_FLAG_DOUBLESIDED));
-				}
-				else
-
-				{
-//					POLY_add_quad(quad, page, !(p_f4->DrawFlags & POLY_FLAG_DOUBLESIDED));
-/*
-					page=i%5;
-					switch(page)
-					{
-						case	0:
-							page=873;
-							break;
-						case	1:
-							page=825;
-							break;
-						case	2:
-							page=824;
-							break;
-						case	3:
-							page=823;
-							break;
-						case	4:
-							page=872;
-							break;
-					}
-					page=872;
-*/
- 					POLY_add_quad(quad, page,!(p_f4->DrawFlags & POLY_FLAG_DOUBLESIDED));
-
-/*
-void POLY_add_line_tex_uv(POLY_Point *p1, POLY_Point *p2, float width1, float width2, SLONG page, UBYTE sort_to_front);
-					quad[0]->colour=0xffffff;
-					quad[1]->colour=0xffffff;
-					quad[2]->colour=0xffffff;
-					quad[3]->colour=0xffffff;
-					POLY_add_line_tex_uv(quad[0],quad[1],0.2,0.2,POLY_PAGE_COLOUR,0);
-					POLY_add_line_tex_uv(quad[1],quad[3],0.2,0.2,POLY_PAGE_COLOUR,0);
-					POLY_add_line_tex_uv(quad[3],quad[2],0.2,0.2,POLY_PAGE_COLOUR,0);
-					POLY_add_line_tex_uv(quad[2],quad[0],0.2,0.2,POLY_PAGE_COLOUR,0);
-*/
-				}
-
-				if (p_f4->FaceFlags & FACE_FLAG_TINT)
-				{
-					quad[0]->colour = qc0;
-					quad[1]->colour = qc1;
-					quad[2]->colour = qc2;
-					quad[3]->colour = qc3;
-				}
-			}
-			else
-			{
-				//ASSERT(0);
-
-				POLY_add_quad(quad, POLY_PAGE_COLOUR, !(p_f4->DrawFlags & POLY_FLAG_DOUBLESIDED));
-			}
-		}
-	}
-
-	//
-	// The triangles.
-	//
-
-	for (i = p_obj->StartFace3; i < p_obj->EndFace3; i++)
-	{
-		p_f3 = &prim_faces3[i];
-
-		p0 = p_f3->Points[0] - sp;
-		p1 = p_f3->Points[1] - sp;
-		p2 = p_f3->Points[2] - sp;
-		
-		ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
-		ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
-		ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));
-
-		tri[0] = &POLY_buffer[p0];
-		tri[1] = &POLY_buffer[p1];
-		tri[2] = &POLY_buffer[p2];
-
-		if (POLY_valid_triangle(tri))
-		{
-			if (p_f3->DrawFlags & POLY_FLAG_TEXTURED)
-			{
-				tri[0]->u = float(p_f3->UV[0][0] & 0x3f) * (1.0F / 32.0F);
-				tri[0]->v = float(p_f3->UV[0][1]       ) * (1.0F / 32.0F);
-												       
-				tri[1]->u = float(p_f3->UV[1][0]       ) * (1.0F / 32.0F);
-				tri[1]->v = float(p_f3->UV[1][1]       ) * (1.0F / 32.0F);
-												       
-				tri[2]->u = float(p_f3->UV[2][0]       ) * (1.0F / 32.0F);
-				tri[2]->v = float(p_f3->UV[2][1]       ) * (1.0F / 32.0F);
-
-				if (p_f3->FaceFlags & FACE_FLAG_TINT)
-				{
-					qc0 = tri[0]->colour;
-					qc1 = tri[1]->colour;
-					qc2 = tri[2]->colour;
-
-					tri[0]->colour = PolyPoint2D::ModulateD3DColours(qc0, MESH_colour_and);
-					tri[1]->colour = PolyPoint2D::ModulateD3DColours(qc1, MESH_colour_and);
-					tri[2]->colour = PolyPoint2D::ModulateD3DColours(qc2, MESH_colour_and);
-				}
-
-				page   = p_f3->UV[0][0] & 0xc0;
-				page <<= 2;
-				page  |= p_f3->TexturePage;
-				page+=FACE_PAGE_OFFSET;
-
-				POLY_add_triangle(tri, page, !(p_f3->DrawFlags & POLY_FLAG_DOUBLESIDED));
-
-				if (p_f3->FaceFlags & FACE_FLAG_TINT)
-				{
-					tri[0]->colour = qc0;
-					tri[1]->colour = qc1;
-					tri[2]->colour = qc2;
-				}
-			}
-			else
-			{
-				POLY_add_triangle(tri, POLY_PAGE_COLOUR, !(p_f3->DrawFlags & POLY_FLAG_DOUBLESIDED));
-			}
-		}
-	}
-
-	if(0)
-	if (prim == 122)
-	{
-		//
-		// The cinema screen. Find the screen and draw it backwards
-		// faded out to white
-		//
-
-		for (i = p_obj->StartFace4; i < p_obj->EndFace4; i++)
-		{
-			p_f4 = &prim_faces4[i];
-
-			page   = p_f4->UV[0][0] & 0xc0;
-			page <<= 2;
-			page  |= p_f4->TexturePage;
-		//	page+=FACE_PAGE_OFFSET;
-
-			if (page == 86)
-			{
-				p0 = p_f4->Points[2] - sp;
-				p1 = p_f4->Points[3] - sp;
-				p2 = p_f4->Points[0] - sp;
-				p3 = p_f4->Points[1] - sp;
-				
 				ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
 				ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
 				ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));
@@ -808,112 +571,173 @@ void POLY_add_line_tex_uv(POLY_Point *p1, POLY_Point *p2, float width1, float wi
 
 				if (POLY_valid_quad(quad))
 				{
-					quad[0]->u = float(p_f4->UV[0][0] & 0x3f) * (1.0F / 32.0F);
-					quad[0]->v = float(p_f4->UV[0][1]       ) * (1.0F / 32.0F);
+					quad[0]->u = quadFace.mUV[0][0];
+					quad[0]->v = quadFace.mUV[0][1];
 
-					quad[1]->u = float(p_f4->UV[1][0]       ) * (1.0F / 32.0F);
-					quad[1]->v = float(p_f4->UV[1][1]       ) * (1.0F / 32.0F);
+					quad[1]->u = quadFace.mUV[1][0];
+					quad[1]->v = quadFace.mUV[1][1];
 
-					quad[2]->u = float(p_f4->UV[2][0]       ) * (1.0F / 32.0F);
-					quad[2]->v = float(p_f4->UV[2][1]       ) * (1.0F / 32.0F);
+					quad[2]->u = quadFace.mUV[2][0];
+					quad[2]->v = quadFace.mUV[2][1];
 
-					quad[3]->u = float(p_f4->UV[3][0]       ) * (1.0F / 32.0F);
-					quad[3]->v = float(p_f4->UV[3][1]       ) * (1.0F / 32.0F);
+					quad[3]->u = quadFace.mUV[3][0];
+					quad[3]->v = quadFace.mUV[3][1];
 
-					quad[0]->specular |= (0x00888888 & ~POLY_colour_restrict);
-					quad[1]->specular |= (0x00888888 & ~POLY_colour_restrict);
-					quad[2]->specular |= (0x00888888 & ~POLY_colour_restrict);
-					quad[3]->specular |= (0x00888888 & ~POLY_colour_restrict);
+					quad[0]->colour = 0xFF0000;
+					quad[1]->colour = 0;
+					quad[2]->colour = 0;
+					quad[3]->colour = 0;
+					page = 500;
 
-					POLY_add_quad(quad, 86, TRUE);
+					POLY_add_quad(quad, page, 0);
 				}
 			}
+			for (auto&& triFace : mesh.triangleFaces)
+			{
+				p0 = triFace.mPointsIndex[0];
+				p1 = triFace.mPointsIndex[1];
+				p2 = triFace.mPointsIndex[2];
+
+				ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
+				ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
+				ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));
+
+				tri[0] = &POLY_buffer[p0];
+				tri[1] = &POLY_buffer[p1];
+				tri[2] = &POLY_buffer[p2];
+
+				if (POLY_valid_triangle(tri))
+				{
+					tri[0]->u = triFace.mUV[0][0];
+					tri[0]->v = triFace.mUV[0][1];
+
+					tri[1]->u = triFace.mUV[1][0];
+					tri[1]->v = triFace.mUV[1][1];
+
+					tri[2]->u = triFace.mUV[2][0];
+					tri[2]->v = triFace.mUV[2][1];
+
+					//tri[0]->u = 0;
+					//tri[0]->v = 0;
+
+					//tri[1]->u = 0;
+					//tri[1]->v = 1;
+
+					//tri[2]->u = 1;
+					//tri[2]->v = 0;
+
+
+		/*			tri[0]->colour = 0xFF0000;
+					tri[1]->colour = 0;
+					tri[2]->colour = 0;*/
+					page = POLY_PAGE_PZI_CUSTOM;
+					//res.materials[triFace.mMaterialIndex].mPage;
+					//page = 64*22;
+					page = res.materials[triFace.mMaterialIndex].mPage;
+					//page = 53;
+
+					POLY_add_triangle(tri, page, 0);
+				}
+			}
+			//for (auto&& quadPoint : quadFace.mPoints)
+			//{
+			///*	quadPoint = &POLY_buffer[quadPoint - sp];
+			//	ASSERT(WITHIN(quadPoint, 0, POLY_buffer_upto - 1));*/
+			//	// performance killer
+			//	/*TRACE("quadPoint.at(0) = %f \n", quadPoint.at(0));
+			//	TRACE("quadPoint.at(1) = %f \n", quadPoint.at(1));
+			//	TRACE("quadPoint.at(2) = %f \n", quadPoint.at(2));*/
+
+			//	p0 = p_f4->Points[0];
+			//	p1 = p_f4->Points[1];
+			//	p2 = p_f4->Points[2];
+			//	p3 = p_f4->Points[3];
+
+
+			//}
+
+		//for (i = p_obj->StartFace3; i < p_obj->EndFace3; i++)
+		//for (auto&& triFace : res.triangleFaces)
+		//{
+		//	//p_f3 = &prim_faces3[i];
+
+		//	p0 = triFace.mPointsIndex[0];
+		//	p1 = triFace.mPointsIndex[1];
+		//	p2 = triFace.mPointsIndex[2];
+
+		//	/*ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
+		//	ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
+		//	ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));*/
+
+		//	tri[0] = &POLY_buffer[p0];
+		//	tri[1] = &POLY_buffer[p1];
+		//	tri[2] = &POLY_buffer[p2];
+
+		//	tri[0]->colour = 0;
+		//	tri[1]->colour = 0;
+		//	tri[2]->colour = 0;
+		//	//if (POLY_valid_triangle(tri))
+		//	//{
+		//	//	POLY_add_triangle(tri, POLY_PAGE_COLOUR, !(p_f3->DrawFlags & POLY_FLAG_DOUBLESIDED));
+		//	//}
+
+		//	if (POLY_valid_triangle(tri))
+		//	{
+		//		if (p_f3->DrawFlags & POLY_FLAG_TEXTURED)
+		//		{
+		//			tri[0]->u = float(p_f3->UV[0][0]) * (1.0F / 32.0F);
+		//			tri[0]->v = float(p_f3->UV[0][1]) * (1.0F / 32.0F);
+
+		//			tri[1]->u = float(p_f3->UV[1][0]) * (1.0F / 32.0F);
+		//			tri[1]->v = float(p_f3->UV[1][1]) * (1.0F / 32.0F);
+
+		//			tri[2]->u = float(p_f3->UV[2][0]) * (1.0F / 32.0F);
+		//			tri[2]->v = float(p_f3->UV[2][1]) * (1.0F / 32.0F);
+
+		//			if (p_f3->FaceFlags & FACE_FLAG_TINT)
+		//			{
+		//				qc0 = tri[0]->colour;
+		//				qc1 = tri[1]->colour;
+		//				qc2 = tri[2]->colour;
+
+		//				tri[0]->colour = PolyPoint2D::ModulateD3DColours(qc0, MESH_colour_and);
+		//				tri[1]->colour = PolyPoint2D::ModulateD3DColours(qc1, MESH_colour_and);
+		//				tri[2]->colour = PolyPoint2D::ModulateD3DColours(qc2, MESH_colour_and);
+		//			}
+
+		//			page = p_f3->UV[0][0] & 0xc0;
+		//			page <<= 2;
+		//			page |= p_f3->TexturePage;
+		//			page += FACE_PAGE_OFFSET;
+		//			page = 500;
+
+		//			POLY_add_triangle(tri, page, !(p_f3->DrawFlags & POLY_FLAG_DOUBLESIDED));
+
+		//			if (p_f3->FaceFlags & FACE_FLAG_TINT)
+		//			{
+		//				tri[0]->colour = qc0;
+		//				tri[1]->colour = qc1;
+		//				tri[2]->colour = qc2;
+
+		//				tri[0]->colour = 0;
+		//				tri[1]->colour = 0;
+		//				tri[2]->colour = 0;
+		//			}
+		//		}
+		//		else
+		//		{
+		//			tri[0]->colour = 0;
+		//			tri[1]->colour = 0;
+		//			tri[2]->colour = 0;
+		//			POLY_add_triangle(tri, POLY_PAGE_COLOUR, !(p_f3->DrawFlags & POLY_FLAG_DOUBLESIDED));
+		//		}
+		//	}
+		//}
+
 		}
 	}
-
-	if (p_obj->flag & PRIM_FLAG_ENVMAPPED)
+	else
 	{
-		float nx;
-		float ny;
-		float nz;
-
-		float dx;
-		float dy;
-		float dz;
-
-		float comb[9];
-		float cam_matrix[9];
-
-		SLONG num_points = ep - sp;
-
-		extern float AENG_cam_yaw;
-		extern float AENG_cam_pitch;
-		extern float AENG_cam_roll;
-
-		MATRIX_calc(cam_matrix, AENG_cam_yaw, AENG_cam_pitch, AENG_cam_roll);
-		MATRIX_3x3mul(comb, cam_matrix, matrix);
-
-		//
-		// Environment map the van. Work out the uv coords at all the points.
-		//
-
-		if (crumple != -1)
-		{
-			for (i = 0; i < num_points; i++)
-			{
-				nx = prim_normal[sp + i].X * (2.0F / 256.0F);
-				ny = prim_normal[sp + i].Y * (2.0F / 256.0F);
-				nz = prim_normal[sp + i].Z * (2.0F / 256.0F);
-
-				MATRIX_MUL(
-					comb,
-					nx,
-					ny,
-					nz);
-
-				//dx = POLY_buffer[i].x;
-				//dy = POLY_buffer[i].y;
-				//dz = POLY_buffer[i].z;
-
-				POLY_buffer[i].u = (nx * 0.5F) + 0.5F;
-				POLY_buffer[i].v = (ny * 0.5F) + 0.5F;
-
-				POLY_buffer[i].colour |= 0xff000000;
-			}
-		}
-		else
-		{
-			UBYTE*	assign = car_assign;
-
-			for (i = 0; i < num_points; i++)
-			{
-				nx = prim_normal[sp + i].X * (2.0F / 256.0F);
-				ny = prim_normal[sp + i].Y * (2.0F / 256.0F);
-				nz = prim_normal[sp + i].Z * (2.0F / 256.0F);
-
-				nx -= float(MESH_car_crumples[car_crumples[*assign]][cv][*assign].dx) / 32;
-				ny -= float(MESH_car_crumples[car_crumples[*assign]][cv][*assign].dy) / 32;
-				nz -= float(MESH_car_crumples[car_crumples[*assign]][cv][*assign].dz) / 32;
-
-				MATRIX_MUL(
-					comb,
-					nx,
-					ny,
-					nz);
-
-				dx = POLY_buffer[i].x;
-				dy = POLY_buffer[i].y;
-				dz = POLY_buffer[i].z;
-
-				POLY_buffer[i].u = (nx * 0.5F) + 0.5F;
-				POLY_buffer[i].v = (ny * 0.5F) + 0.5F;
-
-				POLY_buffer[i].colour |= 0xff000000;
-			}
-		}
-		//
-		// Add the triangles and quads.
-		//
 
 		//
 		// The quads.
@@ -923,26 +747,163 @@ void POLY_add_line_tex_uv(POLY_Point *p1, POLY_Point *p2, float width1, float wi
 		{
 			p_f4 = &prim_faces4[i];
 
-			if (p_f4->FaceFlags & FACE_FLAG_ENVMAP)
+			p0 = p_f4->Points[0] - sp;
+			p1 = p_f4->Points[1] - sp;
+			p2 = p_f4->Points[2] - sp;
+			p3 = p_f4->Points[3] - sp;
+
+			ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
+			ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
+			ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));
+			ASSERT(WITHIN(p3, 0, POLY_buffer_upto - 1));
+
+			quad[0] = &POLY_buffer[p0];
+			quad[1] = &POLY_buffer[p1];
+			quad[2] = &POLY_buffer[p2];
+			quad[3] = &POLY_buffer[p3];
+
+			if (POLY_valid_quad(quad))
 			{
-				p0 = p_f4->Points[0] - sp;
-				p1 = p_f4->Points[1] - sp;
-				p2 = p_f4->Points[2] - sp;
-				p3 = p_f4->Points[3] - sp;
-				
-				ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
-				ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
-				ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));
-				ASSERT(WITHIN(p3, 0, POLY_buffer_upto - 1));
-
-				quad[0] = &POLY_buffer[p0];
-				quad[1] = &POLY_buffer[p1];
-				quad[2] = &POLY_buffer[p2];
-				quad[3] = &POLY_buffer[p3];
-
-				if (POLY_valid_quad(quad))
+				if (p_f4->DrawFlags & POLY_FLAG_TEXTURED)
 				{
-					POLY_add_quad(quad, POLY_PAGE_ENVMAP, !(p_f4->DrawFlags & POLY_FLAG_DOUBLESIDED));
+					/*
+
+					if(p_f4->FaceFlags&FACE_FLAG_ANIMATE)
+					{
+						struct	AnimTmap	*p_a;
+						SLONG	cur;
+						p_a=&anim_tmaps[p_f4->TexturePage];
+						cur=p_a->Current;
+
+						quad[0]->u = float(p_a->UV[cur][0][0] & 0x3f) * (1.0F / 32.0F);
+						quad[0]->v = float(p_a->UV[cur][0][1]       ) * (1.0F / 32.0F);
+
+						quad[1]->u = float(p_a->UV[cur][1][0]       ) * (1.0F / 32.0F);
+						quad[1]->v = float(p_a->UV[cur][1][1]       ) * (1.0F / 32.0F);
+
+						quad[2]->u = float(p_a->UV[cur][2][0]       ) * (1.0F / 32.0F);
+						quad[2]->v = float(p_a->UV[cur][2][1]       ) * (1.0F / 32.0F);
+
+						quad[3]->u = float(p_a->UV[cur][3][0]       ) * (1.0F / 32.0F);
+						quad[3]->v = float(p_a->UV[cur][3][1]       ) * (1.0F / 32.0F);
+
+						page   = p_a->UV[cur][0][0] & 0xc0;
+						page <<= 2;
+						page  |= p_a->Page[cur];
+					}
+					else
+					*/
+					{
+						quad[0]->u = float(p_f4->UV[0][0] & 0x3f) * (1.0F / 32.0F);
+						quad[0]->v = float(p_f4->UV[0][1]) * (1.0F / 32.0F);
+
+						quad[1]->u = float(p_f4->UV[1][0]) * (1.0F / 32.0F);
+						quad[1]->v = float(p_f4->UV[1][1]) * (1.0F / 32.0F);
+
+						quad[2]->u = float(p_f4->UV[2][0]) * (1.0F / 32.0F);
+						quad[2]->v = float(p_f4->UV[2][1]) * (1.0F / 32.0F);
+
+						quad[3]->u = float(p_f4->UV[3][0]) * (1.0F / 32.0F);
+						quad[3]->v = float(p_f4->UV[3][1]) * (1.0F / 32.0F);
+
+						page = p_f4->UV[0][0] & 0xc0;
+						page <<= 2;
+						page |= p_f4->TexturePage;
+						page += FACE_PAGE_OFFSET;
+
+						if (p_f4->FaceFlags & FACE_FLAG_TINT)
+						{
+							qc0 = quad[0]->colour;
+							qc1 = quad[1]->colour;
+							qc2 = quad[2]->colour;
+							qc3 = quad[3]->colour;
+
+							quad[0]->colour &= MESH_colour_and;
+							quad[1]->colour &= MESH_colour_and;
+							quad[2]->colour &= MESH_colour_and;
+							quad[3]->colour &= MESH_colour_and;
+
+							// quad[0]->colour = PolyPoint2D::ModulateD3DColours(qc0, MESH_colour_and);
+							// quad[1]->colour = PolyPoint2D::ModulateD3DColours(qc1, MESH_colour_and);
+							// quad[2]->colour = PolyPoint2D::ModulateD3DColours(qc2, MESH_colour_and);
+							// quad[3]->colour = PolyPoint2D::ModulateD3DColours(qc3, MESH_colour_and);
+						}
+
+						/*
+
+						if (prim == PRIM_OBJ_BIKE_BWHEEL && i - p_obj->StartFace4 == highlight)
+						{
+							quad[0]->colour = (GAME_TURN * 55);
+							quad[1]->colour = (GAME_TURN * 55);
+							quad[2]->colour = (GAME_TURN * 55);
+							quad[3]->colour = (GAME_TURN * 55);
+						}
+						*/
+					}
+
+					if (p_f4->FaceFlags & FACE_FLAG_WALKABLE)
+					{
+
+						quad[0]->colour = (GAME_TURN * 55);
+						quad[1]->colour = (GAME_TURN * 35);
+						quad[2]->colour = (GAME_TURN * 25);
+						quad[3]->colour = (GAME_TURN * 15);
+						POLY_add_quad(quad, POLY_PAGE_COLOUR, !(p_f4->DrawFlags & POLY_FLAG_DOUBLESIDED));
+					}
+					else
+
+					{
+						//					POLY_add_quad(quad, page, !(p_f4->DrawFlags & POLY_FLAG_DOUBLESIDED));
+						/*
+											page=i%5;
+											switch(page)
+											{
+												case	0:
+													page=873;
+													break;
+												case	1:
+													page=825;
+													break;
+												case	2:
+													page=824;
+													break;
+												case	3:
+													page=823;
+													break;
+												case	4:
+													page=872;
+													break;
+											}
+											page=872;
+						*/
+						POLY_add_quad(quad, page, !(p_f4->DrawFlags & POLY_FLAG_DOUBLESIDED));
+
+						/*
+						void POLY_add_line_tex_uv(POLY_Point *p1, POLY_Point *p2, float width1, float width2, SLONG page, UBYTE sort_to_front);
+											quad[0]->colour=0xffffff;
+											quad[1]->colour=0xffffff;
+											quad[2]->colour=0xffffff;
+											quad[3]->colour=0xffffff;
+											POLY_add_line_tex_uv(quad[0],quad[1],0.2,0.2,POLY_PAGE_COLOUR,0);
+											POLY_add_line_tex_uv(quad[1],quad[3],0.2,0.2,POLY_PAGE_COLOUR,0);
+											POLY_add_line_tex_uv(quad[3],quad[2],0.2,0.2,POLY_PAGE_COLOUR,0);
+											POLY_add_line_tex_uv(quad[2],quad[0],0.2,0.2,POLY_PAGE_COLOUR,0);
+						*/
+					}
+
+					if (p_f4->FaceFlags & FACE_FLAG_TINT)
+					{
+						quad[0]->colour = qc0;
+						quad[1]->colour = qc1;
+						quad[2]->colour = qc2;
+						quad[3]->colour = qc3;
+					}
+				}
+				else
+				{
+					//ASSERT(0);
+
+					POLY_add_quad(quad, POLY_PAGE_COLOUR, !(p_f4->DrawFlags & POLY_FLAG_DOUBLESIDED));
 				}
 			}
 		}
@@ -955,23 +916,264 @@ void POLY_add_line_tex_uv(POLY_Point *p1, POLY_Point *p2, float width1, float wi
 		{
 			p_f3 = &prim_faces3[i];
 
-			if (p_f3->FaceFlags & FACE_FLAG_ENVMAP)
+			p0 = p_f3->Points[0] - sp;
+			p1 = p_f3->Points[1] - sp;
+			p2 = p_f3->Points[2] - sp;
+
+			/*ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
+			ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
+			ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));*/
+
+			tri[0] = &POLY_buffer[p0];
+			tri[1] = &POLY_buffer[p1];
+			tri[2] = &POLY_buffer[p2];
+
+			if (POLY_valid_triangle(tri))
 			{
-				p0 = p_f3->Points[0] - sp;
-				p1 = p_f3->Points[1] - sp;
-				p2 = p_f3->Points[2] - sp;
-				
-				ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
-				ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
-				ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));
-
-				tri[0] = &POLY_buffer[p0];
-				tri[1] = &POLY_buffer[p1];
-				tri[2] = &POLY_buffer[p2];
-
-				if (POLY_valid_triangle(tri))
+				if (p_f3->DrawFlags & POLY_FLAG_TEXTURED)
 				{
-					POLY_add_triangle(tri, POLY_PAGE_ENVMAP, !(p_f3->DrawFlags & POLY_FLAG_DOUBLESIDED));
+					tri[0]->u = float(p_f3->UV[0][0] & 0x3f) * (1.0F / 32.0F);
+					tri[0]->v = float(p_f3->UV[0][1]) * (1.0F / 32.0F);
+
+					tri[1]->u = float(p_f3->UV[1][0]) * (1.0F / 32.0F);
+					tri[1]->v = float(p_f3->UV[1][1]) * (1.0F / 32.0F);
+
+					tri[2]->u = float(p_f3->UV[2][0]) * (1.0F / 32.0F);
+					tri[2]->v = float(p_f3->UV[2][1]) * (1.0F / 32.0F);
+
+					if (p_f3->FaceFlags & FACE_FLAG_TINT)
+					{
+						qc0 = tri[0]->colour;
+						qc1 = tri[1]->colour;
+						qc2 = tri[2]->colour;
+
+						tri[0]->colour = PolyPoint2D::ModulateD3DColours(qc0, MESH_colour_and);
+						tri[1]->colour = PolyPoint2D::ModulateD3DColours(qc1, MESH_colour_and);
+						tri[2]->colour = PolyPoint2D::ModulateD3DColours(qc2, MESH_colour_and);
+					}
+
+					page = p_f3->UV[0][0] & 0xc0;
+					page <<= 2;
+					page |= p_f3->TexturePage;
+					page += FACE_PAGE_OFFSET;
+
+					POLY_add_triangle(tri, page, !(p_f3->DrawFlags & POLY_FLAG_DOUBLESIDED));
+
+					if (p_f3->FaceFlags & FACE_FLAG_TINT)
+					{
+						tri[0]->colour = qc0;
+						tri[1]->colour = qc1;
+						tri[2]->colour = qc2;
+					}
+				}
+				else
+				{
+					POLY_add_triangle(tri, POLY_PAGE_COLOUR, !(p_f3->DrawFlags & POLY_FLAG_DOUBLESIDED));
+				}
+			}
+		}
+
+		if (0)
+			if (prim == 122)
+			{
+				//
+				// The cinema screen. Find the screen and draw it backwards
+				// faded out to white
+				//
+
+				for (i = p_obj->StartFace4; i < p_obj->EndFace4; i++)
+				{
+					p_f4 = &prim_faces4[i];
+
+					page = p_f4->UV[0][0] & 0xc0;
+					page <<= 2;
+					page |= p_f4->TexturePage;
+					//	page+=FACE_PAGE_OFFSET;
+
+					if (page == 86)
+					{
+						p0 = p_f4->Points[2] - sp;
+						p1 = p_f4->Points[3] - sp;
+						p2 = p_f4->Points[0] - sp;
+						p3 = p_f4->Points[1] - sp;
+
+						ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
+						ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
+						ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));
+						ASSERT(WITHIN(p3, 0, POLY_buffer_upto - 1));
+
+						quad[0] = &POLY_buffer[p0];
+						quad[1] = &POLY_buffer[p1];
+						quad[2] = &POLY_buffer[p2];
+						quad[3] = &POLY_buffer[p3];
+
+						if (POLY_valid_quad(quad))
+						{
+							quad[0]->u = float(p_f4->UV[0][0] & 0x3f) * (1.0F / 32.0F);
+							quad[0]->v = float(p_f4->UV[0][1]) * (1.0F / 32.0F);
+
+							quad[1]->u = float(p_f4->UV[1][0]) * (1.0F / 32.0F);
+							quad[1]->v = float(p_f4->UV[1][1]) * (1.0F / 32.0F);
+
+							quad[2]->u = float(p_f4->UV[2][0]) * (1.0F / 32.0F);
+							quad[2]->v = float(p_f4->UV[2][1]) * (1.0F / 32.0F);
+
+							quad[3]->u = float(p_f4->UV[3][0]) * (1.0F / 32.0F);
+							quad[3]->v = float(p_f4->UV[3][1]) * (1.0F / 32.0F);
+
+							quad[0]->specular |= (0x00888888 & ~POLY_colour_restrict);
+							quad[1]->specular |= (0x00888888 & ~POLY_colour_restrict);
+							quad[2]->specular |= (0x00888888 & ~POLY_colour_restrict);
+							quad[3]->specular |= (0x00888888 & ~POLY_colour_restrict);
+
+							POLY_add_quad(quad, 86, TRUE);
+						}
+					}
+				}
+			}
+
+		if (p_obj->flag & PRIM_FLAG_ENVMAPPED)
+		{
+			float nx;
+			float ny;
+			float nz;
+
+			float dx;
+			float dy;
+			float dz;
+
+			float comb[9];
+			float cam_matrix[9];
+
+			SLONG num_points = ep - sp;
+
+			extern float AENG_cam_yaw;
+			extern float AENG_cam_pitch;
+			extern float AENG_cam_roll;
+
+			MATRIX_calc(cam_matrix, AENG_cam_yaw, AENG_cam_pitch, AENG_cam_roll);
+			MATRIX_3x3mul(comb, cam_matrix, matrix);
+
+			//
+			// Environment map the van. Work out the uv coords at all the points.
+			//
+
+			if (crumple != -1)
+			{
+				for (i = 0; i < num_points; i++)
+				{
+					nx = prim_normal[sp + i].X * (2.0F / 256.0F);
+					ny = prim_normal[sp + i].Y * (2.0F / 256.0F);
+					nz = prim_normal[sp + i].Z * (2.0F / 256.0F);
+
+					MATRIX_MUL(
+						comb,
+						nx,
+						ny,
+						nz);
+
+					//dx = POLY_buffer[i].x;
+					//dy = POLY_buffer[i].y;
+					//dz = POLY_buffer[i].z;
+
+					POLY_buffer[i].u = (nx * 0.5F) + 0.5F;
+					POLY_buffer[i].v = (ny * 0.5F) + 0.5F;
+
+					POLY_buffer[i].colour |= 0xff000000;
+				}
+			}
+			else
+			{
+				UBYTE* assign = car_assign;
+
+				for (i = 0; i < num_points; i++)
+				{
+					nx = prim_normal[sp + i].X * (2.0F / 256.0F);
+					ny = prim_normal[sp + i].Y * (2.0F / 256.0F);
+					nz = prim_normal[sp + i].Z * (2.0F / 256.0F);
+
+					nx -= float(MESH_car_crumples[car_crumples[*assign]][cv][*assign].dx) / 32;
+					ny -= float(MESH_car_crumples[car_crumples[*assign]][cv][*assign].dy) / 32;
+					nz -= float(MESH_car_crumples[car_crumples[*assign]][cv][*assign].dz) / 32;
+
+					MATRIX_MUL(
+						comb,
+						nx,
+						ny,
+						nz);
+
+					dx = POLY_buffer[i].x;
+					dy = POLY_buffer[i].y;
+					dz = POLY_buffer[i].z;
+
+					POLY_buffer[i].u = (nx * 0.5F) + 0.5F;
+					POLY_buffer[i].v = (ny * 0.5F) + 0.5F;
+
+					POLY_buffer[i].colour |= 0xff000000;
+				}
+			}
+			//
+			// Add the triangles and quads.
+			//
+
+			//
+			// The quads.
+			//
+
+			for (i = p_obj->StartFace4; i < p_obj->EndFace4; i++)
+			{
+				p_f4 = &prim_faces4[i];
+
+				if (p_f4->FaceFlags & FACE_FLAG_ENVMAP)
+				{
+					p0 = p_f4->Points[0] - sp;
+					p1 = p_f4->Points[1] - sp;
+					p2 = p_f4->Points[2] - sp;
+					p3 = p_f4->Points[3] - sp;
+
+					ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
+					ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
+					ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));
+					ASSERT(WITHIN(p3, 0, POLY_buffer_upto - 1));
+
+					quad[0] = &POLY_buffer[p0];
+					quad[1] = &POLY_buffer[p1];
+					quad[2] = &POLY_buffer[p2];
+					quad[3] = &POLY_buffer[p3];
+
+					if (POLY_valid_quad(quad))
+					{
+						POLY_add_quad(quad, POLY_PAGE_ENVMAP, !(p_f4->DrawFlags & POLY_FLAG_DOUBLESIDED));
+					}
+				}
+			}
+
+			//
+			// The triangles.
+			//
+
+			for (i = p_obj->StartFace3; i < p_obj->EndFace3; i++)
+			{
+				p_f3 = &prim_faces3[i];
+
+				if (p_f3->FaceFlags & FACE_FLAG_ENVMAP)
+				{
+					p0 = p_f3->Points[0] - sp;
+					p1 = p_f3->Points[1] - sp;
+					p2 = p_f3->Points[2] - sp;
+
+					ASSERT(WITHIN(p0, 0, POLY_buffer_upto - 1));
+					ASSERT(WITHIN(p1, 0, POLY_buffer_upto - 1));
+					ASSERT(WITHIN(p2, 0, POLY_buffer_upto - 1));
+
+					tri[0] = &POLY_buffer[p0];
+					tri[1] = &POLY_buffer[p1];
+					tri[2] = &POLY_buffer[p2];
+
+					if (POLY_valid_triangle(tri))
+					{
+						POLY_add_triangle(tri, POLY_PAGE_ENVMAP, !(p_f3->DrawFlags & POLY_FLAG_DOUBLESIDED));
+					}
 				}
 			}
 		}

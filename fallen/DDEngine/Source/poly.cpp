@@ -1616,6 +1616,7 @@ void POLY_add_poly(POLY_Point** poly, SLONG poly_points, SLONG page)
 	clip_and = 0xFF;
 	for (ii = 0; ii < poly_points; ii++)
 	{
+		//TRACE("poly[ii]->clip %d, poly[ii]->MaybeValid() %d\n", poly[ii]->clip,poly[ii]->MaybeValid());
 		ASSERT(poly[ii]->MaybeValid());
 		clip_or |= poly[ii]->clip;
 		clip_and &= poly[ii]->clip;

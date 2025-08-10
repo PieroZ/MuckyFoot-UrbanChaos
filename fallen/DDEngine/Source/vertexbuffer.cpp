@@ -89,6 +89,24 @@ HRESULT VertexBuffer::Create(IDirect3D3* d3d, bool force_system, ULONG logsize)
 	desc.dwFVF = D3DFVF_TLVERTEX;
 	desc.dwNumVertices = 1 << logsize;
 
+	D3DDEVICEDESC deviceCaps;
+	ZeroMemory(&deviceCaps, sizeof(D3DDEVICEDESC));
+	deviceCaps.dwSize = sizeof(D3DDEVICEDESC);
+
+	//HRESULT hr = d3dDevice->GetCaps(&deviceCaps);
+	//if (FAILED(hr))
+	//{
+	//	TRACE("Failed to get device capabilities\n");
+	//	return hr;
+	//}
+
+	//// Check the maximum vertex count
+	//if ((1 << logsize) > deviceCaps.dwMaxVertexCount)
+	//{
+	//	TRACE("Requested vertex buffer size exceeds hardware limit: %lu\n", deviceCaps.dwMaxVertexCount);
+	//	return E_INVALIDARG;
+	//}
+
 	HRESULT	res = d3d->CreateVertexBuffer(&desc, &m_TheBuffer, 0, NULL);
 
 	if (FAILED(res))
@@ -236,7 +254,8 @@ void VertexBufferPool::Create(IDirect3D3* d3d, bool force_system)
 	static int	Allocations[16] = {0,0,0,0, 0,0,128,64,32,16, 8,4, 0,0,0,0};
 #else
 	//static int	Allocations[16] = {0,0,0,0, 0,0,128,64, 32,16,8,4, 0,0,0,0};	// total 48,000 vertices
-	static int Allocations[VertexBufferPoolConst] = {     0, 0, 0, 0, 0, 0, 64, 32, 32, 16, 8, 4, 2, 1, 0, 0};
+	//static int Allocations[VertexBufferPoolConst] = {     0, 0, 0, 0, 0, 0, 64, 32, 32, 16, 8, 4, 2, 1, 0, 0};
+	static int Allocations[VertexBufferPoolConst] = { 0, 0, 0, 0, 0, 0, 64, 32, 32, 16, 8, 4, 2, 1, 1, 1, 1, 1, 1, 1 };
 #endif
 
 	for (int i = 0; i < VertexBufferPoolConst; ++i)
@@ -328,7 +347,7 @@ void VertexBufferPool::CheckBuffers(ULONG logsize, bool time_critical)
 
 VertexBuffer* VertexBufferPool::GetBuffer(ULONG logsize)
 {
-	ASSERT(logsize < VertexBufferPoolConst);
+	//ASSERT(logsize < VertexBufferPoolConst);
 
 	if (!m_FreeList[logsize])
 	{

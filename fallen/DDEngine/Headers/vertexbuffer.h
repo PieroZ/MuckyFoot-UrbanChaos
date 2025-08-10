@@ -55,7 +55,7 @@ private:
 //
 // vertex buffer pool
 
-static const int VertexBufferPoolConst = 16;
+static const int VertexBufferPoolConst = 20;
 
 class VertexBufferPool
 {

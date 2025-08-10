@@ -63,7 +63,7 @@
 typedef struct
 {
 	CBYTE *name;	// Why not eh?
-	UBYTE  prim;
+	UWORD  prim;
 	UBYTE  group;
 
 } SPECIAL_Info;

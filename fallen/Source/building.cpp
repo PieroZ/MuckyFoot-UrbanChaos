@@ -10349,6 +10349,10 @@ void	copy_to_game_map(void)
 	{
 		//MAP2(x,z).Alt=edit_map[x][z].Y;
 		PAP_2HI(x,z).Alt=edit_map[x][z].Y;
+		if (edit_map[x][z].Y)
+		{
+			printf("dupa\n");
+		}
 	}
 #endif
 }

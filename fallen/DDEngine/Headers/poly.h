@@ -326,8 +326,8 @@ SLONG POLY_page_is_masked_self_illuminating(SLONG page);
 #define POLY_BUFFER_SIZE 768
 #define POLY_SHADOW_SIZE 512
 #else
-#define POLY_BUFFER_SIZE 8192
-#define POLY_SHADOW_SIZE 8192
+#define POLY_BUFFER_SIZE 81920
+#define POLY_SHADOW_SIZE 81920
 #endif
 
 extern POLY_Point POLY_buffer[POLY_BUFFER_SIZE];
@@ -445,7 +445,8 @@ void POLY_fadeout_buffer(void);
 #ifdef TARGET_DC
 #define POLY_NUM_PAGES (22*64+124)
 #else
-#define POLY_NUM_PAGES (22*64+111)	// 1508
+#define POLY_NUM_PAGES (23*64+111)	// 1508 // PZI: 1519
+//  1 344 for gingerbread
 #endif
 
 #ifdef TARGET_DC

@@ -56,6 +56,8 @@ void TEXTURE_load_needed(CBYTE*	fname_level,
 						 int iNumberTexturesProbablyLoaded = 0
 						 );
 
+void TEXTURE_load_from_materials();
+
 //
 // Loads the textures needed for the given prim object.
 //

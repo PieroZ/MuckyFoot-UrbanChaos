@@ -97,6 +97,7 @@
 #define FLAG2_PERSON_FAKE_WANDER		(1<<5)
 #define FLAG2_PERSON_HOME_IN_WAREHOUSE	(1<<6)	// This person's (HomeX,HomeZ) is inside a warehouse
 #define FLAG2_PERSON_CARRYING			(1<<7)	// This person's (HomeX,HomeZ) is inside a warehouse
+#define FLAG2_PERSON_MORPHED			(1<<8)	// This person's (HomeX,HomeZ) is inside a warehouse
 
 
 //---------------------------------------------------------------
@@ -238,10 +239,10 @@ typedef struct
 	UWORD	pcom_lookat_index;		// The index of what you are looking at
 
 	UWORD	Passenger;				// A linked list for passengers in a vehicle.
-	UBYTE	Flags2;
+	UWORD	Flags2;
 	UBYTE	SlideOdd;				// A counter for how many consecutive gameturns this person has slid along something that isn't a wall or fence.
 
-	//UBYTE EquippedWeaponId;
+	SBYTE EquippedWeaponId;
 
 // using BUILD_PSX means that it'll be commented out both on the PSX, *AND* when Mike builds 
 // PSX nads on his PC.
@@ -366,6 +367,8 @@ void	set_person_dead_normal(Thing *p_thing,Thing *p_aggressor,SLONG death_type,S
 SLONG   set_person_land_on_fence(Thing *p_person,SLONG wall,SLONG set_pos,SLONG while_walking=0);
 SLONG	set_person_kick_off_wall(Thing* p_person, SLONG col, SLONG set_pos);
 
+SLONG	set_limb_to_y(Thing* p_person, SLONG obj, SLONG y);
+
 //
 // Makes a person start/stop floating...
 //
@@ -414,6 +417,8 @@ SLONG person_is_lying_on_what(Thing *p_person);
 //
 
 void set_person_sit_down(Thing *p_person);
+
+void set_person_rope_climbing(Thing* p_person);
 
 
 //

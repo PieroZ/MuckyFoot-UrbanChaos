@@ -1899,7 +1899,7 @@ void DIRT_process(void)
 
 							//CreateGrenadeExplosion(dd->x << 8, dd->y << 8, dd->z << 8, NULL);
 
-							static bool justOncePls = true;
+							/*static bool justOncePls = true;
 
 							/*if (justOncePls)
 							{

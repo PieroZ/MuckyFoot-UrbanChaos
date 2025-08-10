@@ -4264,7 +4264,7 @@ void	import_tex(CBYTE *fname)
 	PrimPoint		pf[3];
 	struct		PrimFace3 pf3;
 	struct		PrimFace4 pf4;
-	SLONG 	count;
+	UWORD 	count;
 	SLONG	save_type;
 	SLONG	gx=0,gy=0,gz=0;
 	SLONG	remap_quad=0,remap_tri=0;
@@ -4286,12 +4286,12 @@ void	import_tex(CBYTE *fname)
 	handle	=	FileOpen(fname);
 	if(handle!=FILE_OPEN_ERROR)
 	{
-		FileRead(handle,(UBYTE*)&save_type,sizeof(save_type));
+		SLONG bytesRead = FileRead(handle,(UBYTE*)&save_type,sizeof(save_type));
 //		LogText(" IMPORT TEX save type=%d \n",save_type);
 		while(1)
 		{
 			
-			FileRead(handle,(UBYTE*)&count,sizeof(count));
+			bytesRead = FileRead(handle,(UBYTE*)&count,sizeof(count));
 			if(count==-1)
 				break;
 
@@ -4326,7 +4326,7 @@ void	import_tex(CBYTE *fname)
 				if(find_and_apply_to_quad(&pf[0],&pf4,gx,gy,gz))
 					remap_quad++;
 			}
-			FileRead(handle,(UBYTE*)&count,sizeof(count));
+			bytesRead = FileRead(handle,(UBYTE*)&count,sizeof(count));
 
 			for(c0=0;c0<count;c0++)
 			{

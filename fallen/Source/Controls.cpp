@@ -177,7 +177,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "wallshake", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -732,9 +732,8 @@ extern int AENG_detail_crinkles;
 
 					BAT_set_anim_and_type(darci, anim_id, 3);
 
-					darci->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
-					darci->Genus.Person->Action = ACTION_SIT_BENCH;
-
+				/*	darci->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
+					darci->Genus.Person->Action = ACTION_SIT_BENCH;*/
 				}
 				break;
 			case 45: // camtest
@@ -843,6 +842,78 @@ extern int AENG_detail_crinkles;
 						0,
 						0,
 						i, 0, 0, 0);
+				}
+				break;
+			case 52: //wallshake
+				if (allow_debug_keys)
+				{
+					//for (int i = 0; i < MAX_WALLS; ++i)
+					{
+						//dfacets[i].FacetFlags &= ~FACET_FLAG_UNCLIMBABLE;
+						//darci->Genus.Person->BurnIndex = 211;
+						//darci->Flags |= FLAGS_BURNING;
+						//darci->GotoX
+
+
+						Thing* p_person = NET_PERSON(0);
+						Thing* p_player = NET_PLAYER(0);
+
+						if (p_person == NULL)
+						{
+							continue;
+						}
+
+						/*		if (p_person->Genus.Person->Mode==PERSON_MODE_FIGHT && count_gang(p_person))
+								{
+									p_player->Genus.Player->Danger = 0;
+								}
+								else*/
+						{
+							//
+							// Fighting has priority
+							//
+
+							SLONG num_found = THING_find_sphere(
+								p_person->WorldPos.X >> 8,
+								p_person->WorldPos.Y >> 8,
+								p_person->WorldPos.Z >> 8,
+								0xc00,
+								THING_array,
+								THING_ARRAY_SIZE,
+								1 << CLASS_PERSON);
+
+							for (int j = 0; j < num_found; j++)
+							{
+								Thing* p_found = TO_THING(THING_array[j]);
+
+								if (p_found == p_person)
+								{
+									continue;
+								}
+
+								if (p_found->State == STATE_DEAD)
+								{
+									continue;
+								}
+
+								//
+								// Is this person dangerous to the player?
+								//
+			/*
+								if (p_found->Genus.Person->pcom_ai != PCOM_AI_CIV		&&
+									p_found->Genus.Person->pcom_ai != PCOM_AI_NONE		&&
+									p_found->Genus.Person->pcom_ai != PCOM_AI_BDISPOSER &&
+									p_found->Genus.Person->pcom_ai != PCOM_AI_DRIVER	&&
+									p_found->Genus.Person->pcom_ai != PCOM_AI_COP		&&
+									p_found->Genus.Person->pcom_ai != PCOM_AI_COP_DRIVER)
+			*/
+								if (am_i_a_thug(p_found))
+								{
+									p_found->Genus.Person->Flags |= FLAGS_BURNING;
+								}
+							}
+						}
+					}
 				}
 				break;
 		  }
@@ -5017,7 +5088,7 @@ extern	SLONG	FC_cam_height;
 				switch(angle)
 				{
 					case 0: 
-						alloc_special(SPECIAL_HEALTH, SPECIAL_SUBSTATE_NONE, wx+dx, wy + 0x10, wz+dz, 0);
+						alloc_special(SPECIAL_SILENCED_GUN, SPECIAL_SUBSTATE_NONE, wx+dx, wy + 0x10, wz+dz, 0);
 						break;
 					case 1: 
 						alloc_special(SPECIAL_BASEBALLBAT        , SPECIAL_SUBSTATE_NONE, wx+dx, wy,        wz+dz, 0); 
