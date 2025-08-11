@@ -592,82 +592,95 @@ static void SetupVoice(MFX_Voice* vptr, UWORD channel_id, ULONG wave, ULONG flag
 // set up voice after sample has loaded
 static void FinishLoading(MFX_Voice* vptr)
 {
-	MFX_Sample*	sptr = vptr->smp;
+	MFX_Sample* sptr = vptr->smp;
 
 	alGenSources(1, &vptr->handle);
+	ALenum err = alGetError();
 
-	if (vptr->handle)
+	if (err != AL_NO_ERROR || vptr->handle == 0) {
+		printf("FinishLoading: Failed to create OpenAL source for wave %lu (err=%s)\n",
+			vptr->wave, alGetString(err));
+		vptr->playing = false; 
+		return;
+	}
+
+	vptr->is3D &= sptr->is3D;
+	sptr->usecount++;
+	alSourcei(vptr->handle, AL_BUFFER, sptr->handle);
+	alSourcef(vptr->handle, AL_GAIN, Volumes[sptr->type]);
+
+	if (vptr->is3D)
 	{
-		vptr->is3D &= sptr->is3D;
-		sptr->usecount++;
-		alSourcei(vptr->handle, AL_BUFFER, sptr->handle);
-		alSourcef(vptr->handle, AL_GAIN, Volumes[sptr->type]);
-			
-		if (vptr->is3D)
-		{
-			alSourcei(vptr->handle, AL_DISTANCE_MODEL, AL_LINEAR_DISTANCE_CLAMPED);
-			alSourcef(vptr->handle, AL_REFERENCE_DISTANCE, MinDist * COORDINATE_UNITS * sptr->linscale);
-			alSourcef(vptr->handle, AL_MAX_DISTANCE, MaxDist * COORDINATE_UNITS * sptr->linscale);
-		}
-		else
-		{
-			alSourcei(vptr->handle, AL_SOURCE_SPATIALIZE_SOFT, AL_FALSE);
-			alSourcei(vptr->handle, AL_DIRECT_CHANNELS_SOFT, AL_TRUE);
-		}
+		alSourcei(vptr->handle, AL_DISTANCE_MODEL, AL_LINEAR_DISTANCE_CLAMPED);
+		alSourcef(vptr->handle, AL_REFERENCE_DISTANCE, MinDist * COORDINATE_UNITS * sptr->linscale);
+		alSourcef(vptr->handle, AL_MAX_DISTANCE, MaxDist * COORDINATE_UNITS * sptr->linscale);
+	}
+	else
+	{
+		alSourcei(vptr->handle, AL_SOURCE_SPATIALIZE_SOFT, AL_FALSE);
+		alSourcei(vptr->handle, AL_DIRECT_CHANNELS_SOFT, AL_TRUE);
 	}
 
 	MoveVoice(vptr);
+
 	if (vptr->ratemult != 1.0)
-	{
 		SetVoiceRate(vptr, vptr->ratemult);
-	}
 	if (vptr->gain != 1.0)
-	{
 		SetVoiceGain(vptr, vptr->gain);
-	}
+
 	if (vptr->playing)
-	{
 		PlayVoice(vptr);
-	}
 }
 
 static void PlayVoice(MFX_Voice* vptr)
 {
-	if (vptr->handle)
-	{
-		if (vptr->flags & MFX_LOOPED)
-		{
+	if (vptr->handle) {
+		if (vptr->flags & MFX_LOOPED) {
 			alSourcei(vptr->handle, AL_LOOPING, AL_TRUE);
 		}
 		alSourcePlay(vptr->handle);
+
+		ALenum err = alGetError();
+		if (err != AL_NO_ERROR) {
+			printf("OpenAL error after %s: %s\n", "alSourcePlay", alGetString(err));
+			TRACE("OpenAL error after %s: %s\n", "alSourcePlay", alGetString(err));
+		}
+
+		vptr->playing = true;
 	}
-	vptr->playing = true;
+	else {
+		vptr->playing = false;
+	}
 }
 
 static void MoveVoice(MFX_Voice* vptr)
 {
-	if (vptr->is3D)
-	{
-		float	x = vptr->x * COORDINATE_UNITS;
-		float	y = vptr->y * COORDINATE_UNITS;
-		float	z = vptr->z * COORDINATE_UNITS;
+    if (!vptr || vptr->handle == 0)
+        return;
 
-		ALfloat position[3];
-		if ((fabs(x - LX) < 0.5) && (fabs(y - LY) < 0.5) && (fabs(z - LZ) < 0.5))
-		{
-			// set exactly at the listener if within epsilon
-			position[0] = LX;
-			position[1] = LY;
-			position[2] = LZ;
-		}
-		else
-		{
-			position[0] = x;
-			position[1] = y;
-			position[2] = z;
-		}
-		alSourcefv(vptr->handle, AL_POSITION, position);
-	}
+    if (vptr->is3D)
+    {
+        float x = vptr->x * COORDINATE_UNITS;
+        float y = vptr->y * COORDINATE_UNITS;
+        float z = vptr->z * COORDINATE_UNITS;
+
+        ALfloat position[3];
+        if ((fabs(x - LX) < 0.5f) && (fabs(y - LY) < 0.5f) && (fabs(z - LZ) < 0.5f))
+        {
+            // set exactly at the listener if within epsilon
+            position[0] = LX;
+            position[1] = LY;
+            position[2] = LZ;
+        }
+        else
+        {
+            position[0] = x;
+            position[1] = y;
+            position[2] = z;
+        }
+
+        alSourcefv(vptr->handle, AL_POSITION, position);
+    }
 }
 
 static void SetVoiceRate(MFX_Voice* vptr, float mult)
@@ -798,7 +811,9 @@ static void TriggerPairedVoice(UWORD channel_id)
 	}
 
 	vptr->flags &= ~MFX_PAIRED_TRK2;
-	PlayVoice(vptr);
+	if (vptr->handle != 0) {
+		PlayVoice(vptr);
+	}
 }
 //TODO: Review memory leak due to OpenAL Usage
 static UBYTE PlayWave(UWORD channel_id, ULONG wave, ULONG flags, bool is3D, SLONG x, SLONG y, SLONG z, Thing* thing)
@@ -847,7 +862,9 @@ static UBYTE PlayWave(UWORD channel_id, ULONG wave, ULONG flags, bool is3D, SLON
 	MoveVoice(vptr);
 	if (!(flags & MFX_PAIRED_TRK2))
 	{
-		PlayVoice(vptr);
+		if (vptr->handle != 0) {
+			PlayVoice(vptr);
+		}
 	}
 	if (thing)
 	{
@@ -894,7 +911,9 @@ static UBYTE PlayTalk(char* filename, SLONG x, SLONG y, SLONG z)
 	}
 
 	MoveVoice(vptr);
-	PlayVoice(vptr);
+	if (vptr->handle != 0) {
+		PlayVoice(vptr);
+	}
 
 	return 1;
 }
@@ -1333,7 +1352,9 @@ void MFX_update()
 
 				// relocate and play
 				MoveVoice(vptr);
-				PlayVoice(vptr);
+				if (vptr->handle != 0) {
+					PlayVoice(vptr);
+				}
 				SetVoiceGain(vptr, qptr->gain);
 
 				// release queue element

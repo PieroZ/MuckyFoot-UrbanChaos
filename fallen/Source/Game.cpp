@@ -2458,7 +2458,7 @@ void	check_pows(void);
 				DOOR_process();
 
 #ifndef TARGET_DC
-				TRACE("Eway process\n");
+				//TRACE("Eway process\n");
 #endif
 
 				EWAY_process();

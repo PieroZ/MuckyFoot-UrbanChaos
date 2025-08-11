@@ -540,7 +540,7 @@ NIGHT_Colour *MESH_draw_guts(
 		}
 	}
 
-	if (prim == 500 || prim == 499 /*0 && p_obj->pziFormat == 1*/)
+	if (prim == 500 || prim == 499 || prim == 498 /*0 && p_obj->pziFormat == 1*/)
 	{
 		//TRACE(" p_obj->pziFormat = %d\n", p_obj->pziFormat);
 		auto& res = ResourceManager::Get();

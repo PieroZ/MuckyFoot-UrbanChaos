@@ -15,6 +15,7 @@
 #include "sound.h"
 #include "mav.h"
 #include "ResourceManager.h"
+#include <fstream>
 
 #ifndef PSX
 #include "..\ddengine\headers\poly.h"
@@ -602,34 +603,57 @@ extern BOOL is_in_mission_editor;
 #endif
 
 
+
+void loadModelsFromFile(const std::string& filePath) {
+	auto& res = ResourceManager::Get();
+
+	std::ifstream file(filePath);
+	if (!file) {
+		return;
+	}
+
+	std::string modelPath;
+	int primNo;
+	while (file >> modelPath >> primNo) {
+		// Najpierw plik .mtl
+		parseMtlFile(modelPath + ".mtl", res.materials);
+
+		// Potem plik .obj
+		parseObjFile(modelPath + ".obj", res.materials, primNo, prim_objects);
+	}
+}
+
+
 void	load_general_prims(void)
 {
 	//
 	//  Stat Up's
 	//
+
+	loadModelsFromFile("3d-objs/models.txt");
 	
-	auto& res = ResourceManager::Get();
+	//auto& res = ResourceManager::Get();
 
-	//std::vector<TriangleFace> triangleFaces;
-	//std::vector<QuadFace> quadFaces;
-	//std::vector<Material> materials;
-	std::string testObj = "3d-objs/shreko-mobile";
-	int primNo = 500;
+	////std::vector<TriangleFace> triangleFaces;
+	////std::vector<QuadFace> quadFaces;
+	////std::vector<Material> materials;
+	//std::string testObj = "3d-objs/shreko-mobile";
+	//int primNo = 500;
 
-	// Parse the .mtl file first to load materials
-	parseMtlFile(testObj + ".mtl", res.materials);
+	//// Parse the .mtl file first to load materials
+	//parseMtlFile(testObj + ".mtl", res.materials);
 
-	// Parse the .obj file and associate faces with materials
-	parseObjFile(testObj + ".obj", res.materials, primNo, prim_objects);
+	//// Parse the .obj file and associate faces with materials
+	//parseObjFile(testObj + ".obj", res.materials, primNo, prim_objects);
 
-	testObj = "3d-objs/airship";
-	primNo = 499;
+	//testObj = "3d-objs/airship";
+	//primNo = 499;
 
-	// Parse the .mtl file first to load materials
-	parseMtlFile(testObj + ".mtl", res.materials);
+	//// Parse the .mtl file first to load materials
+	//parseMtlFile(testObj + ".mtl", res.materials);
 
-	// Parse the .obj file and associate faces with materials
-	parseObjFile(testObj + ".obj", res.materials, primNo, prim_objects);
+	//// Parse the .obj file and associate faces with materials
+	//parseObjFile(testObj + ".obj", res.materials, primNo, prim_objects);
 
  	
 	//parseObjFile(testObj + ".obj", res.triangleFaces, res.quadFaces, res.materials, primNo, prim_objects);
