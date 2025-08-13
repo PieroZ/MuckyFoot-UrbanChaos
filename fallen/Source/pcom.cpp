@@ -10667,6 +10667,9 @@ void PCOM_process_default(Thing *p_person)
 			PCOM_process_getitem(p_person);
 			break;
 
+		case PCOM_AI_STATE_HUMANSHIELD:
+			break;
+
 		default:
 			ASSERT(0);
 			break;
@@ -15108,3 +15111,47 @@ void PCOM_make_driver_run_away(Thing *p_driver, Thing *p_scary)
 	}
 }
 
+void PCOM_start_humand_shield_sequence(
+	Thing* p_person,
+	Thing* p_victim)
+
+{
+	SLONG substate = PCOM_AI_SUBSTATE_TALK_ASK;
+
+	//PCOM_set_person_move_animation(p_person, ANIM_T6);
+	PCOM_set_person_move_animation(p_victim, ANIM_T6);
+
+	p_victim->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
+
+	p_victim->Genus.Person->pcom_ai_state = PCOM_AI_STATE_HUMANSHIELD;
+	p_victim->Genus.Person->pcom_ai_substate = PCOM_AI_SUBSTATE_NONE;
+
+
+
+
+	PCOM_set_person_move_animation(p_person, ANIM_T5);
+
+	p_person->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
+
+	p_person->Genus.Person->pcom_ai_state = PCOM_AI_STATE_HUMANSHIELD;
+	p_person->Genus.Person->pcom_ai_substate = PCOM_AI_SUBSTATE_NONE;
+
+
+	SLONG	dx, dy, dz, len;
+	SLONG dist = - 90;
+
+	GameCoord new_position;
+
+	dx = -(SIN(p_person->Draw.Tweened->Angle) * dist) >> 16;
+	dz = -(COS(p_person->Draw.Tweened->Angle) * dist) >> 16;
+
+	new_position.X = p_person->WorldPos.X + (dx << 8);
+	new_position.Y = p_person->WorldPos.Y;
+	new_position.Z = p_person->WorldPos.Z + (dz << 8);
+
+	move_thing_on_map(p_victim, &new_position);
+
+	p_victim->Draw.Tweened->Angle = (p_person->Draw.Tweened->Angle + 1024 + 1024) & 2047;
+
+
+}

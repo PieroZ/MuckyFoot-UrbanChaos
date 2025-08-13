@@ -177,7 +177,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "wallshake", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "wallshake", "mako", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -916,6 +916,16 @@ extern int AENG_detail_crinkles;
 					}
 				}
 				break;
+			case 53: // mako
+				if (allow_debug_keys)
+				{
+					darci->Genus.Person->PersonType = PERSON_THUG_RASTA;
+					darci->Genus.Person->AnimType = ANIM_TYPE_CIV;
+					darci->Draw.Tweened->TheChunk = &game_chunk[ANIM_TYPE_CIV];
+					darci->Draw.Tweened->MeshID = 0;
+					darci->Draw.Tweened->PersonID = 0;
+					set_person_idle(darci);
+				}
 		  }
 		  return;
 	  }
@@ -2323,6 +2333,42 @@ void	process_controls(void)
 
 		*/
 
+	}
+
+	static int prev_plus_pressed = 0; // 0 = not pressed, 1 = pressed
+
+	if (Keys[KB_PPLUS] && !prev_plus_pressed)
+	{
+		//PANEL_new_text(NULL, 400, "KB_PPLUS PRESSED!");
+
+		ULONG flag2 = FLAG2_PERSON_TEST;
+
+		UWORD index = PCOM_create_person(
+			PERSON_HOSTAGE,
+			0,
+			0,
+			PCOM_AI_CIV,
+			0,
+			2,
+			PCOM_MOVE_STILL,
+			0,
+			PCOM_BENT_LAZY,
+			0,
+			0,
+			0,
+			(darci->WorldPos.X) - (128 << 8) ,
+			darci->WorldPos.Y,
+			darci->WorldPos.Z ,
+			0, 
+			0,
+			0,
+			flag2);
+
+		prev_plus_pressed = 1; // remember that it’s now pressed
+	}
+	else if (!Keys[KB_PPLUS])
+	{
+		prev_plus_pressed = 0; // reset when key is released
 	}
 
 #ifndef TARGET_DC

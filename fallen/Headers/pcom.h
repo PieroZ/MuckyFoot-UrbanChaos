@@ -93,7 +93,8 @@
 #define PCOM_AI_STATE_HANDS_UP		25
 #define PCOM_AI_STATE_SUMMON		26
 #define PCOM_AI_STATE_GETITEM		27	// Going to pick up an item.
-#define PCOM_AI_STATE_NUMBER		28
+#define PCOM_AI_STATE_HUMANSHIELD	28	// Being a human shield for someone else.
+#define PCOM_AI_STATE_NUMBER		29
 
 #define PCOM_AI_SUBSTATE_NONE			0
 #define PCOM_AI_SUBSTATE_SUPRISED		1
@@ -385,5 +386,15 @@ SLONG PCOM_if_i_wanted_to_jump_how_fast_should_i_do_it(Thing *p_person);
 //
 
 SLONG	PCOM_call_cop_to_arrest_me(Thing *p_person,SLONG store_it);
+
+// PZI EXTRA FUNS
+
+//
+// Make the person face someone and do their talk to anim.
+//
+
+void PCOM_start_humand_shield_sequence(
+	Thing* p_person,
+	Thing* p_person_hostage);
 
 #endif

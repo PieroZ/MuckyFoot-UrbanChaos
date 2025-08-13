@@ -98,6 +98,7 @@
 #define FLAG2_PERSON_HOME_IN_WAREHOUSE	(1<<6)	// This person's (HomeX,HomeZ) is inside a warehouse
 #define FLAG2_PERSON_CARRYING			(1<<7)	// This person's (HomeX,HomeZ) is inside a warehouse
 #define FLAG2_PERSON_MORPHED			(1<<8)	// This person's (HomeX,HomeZ) is inside a warehouse
+#define FLAG2_PERSON_TEST				(1<<9)	// This person's (HomeX,HomeZ) is inside a warehouse
 
 
 //---------------------------------------------------------------

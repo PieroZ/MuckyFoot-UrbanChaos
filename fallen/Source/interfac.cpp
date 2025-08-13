@@ -1973,8 +1973,14 @@ extern	UBYTE	is_semtex;
 				Thing *p_person = TO_THING(use);
 
 				ASSERT(p_person->Class == CLASS_PERSON);
-				
-				if (p_person->Genus.Person->Flags & FLAG_PERSON_USEABLE)
+				if (p_person->Genus.Person->Flags2 & FLAG2_PERSON_TEST)
+				{
+					PANEL_new_text(NULL, 400, " FLAG2_PERSON_TEST PASSED !");
+					PCOM_start_humand_shield_sequence(p_thing, p_person);
+					return INPUT_MASK_ACTION;
+
+				}
+				else if (p_person->Genus.Person->Flags & FLAG_PERSON_USEABLE)
 				{
 					//
 					// Is this person doing something that can be interrupted?

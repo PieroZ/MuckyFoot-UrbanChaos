@@ -64,7 +64,7 @@ typedef struct
 	SWORD y;       
 	UBYTE x;
 	UBYTE z;
-	UWORD prim;
+	UBYTE prim;
 	UBYTE yaw;
 	UBYTE flags;
 	UBYTE InsideIndex;
