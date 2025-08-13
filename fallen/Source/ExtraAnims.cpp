@@ -28,15 +28,15 @@ void setup_additional_anims(GameKeyFrame* global_anim_array[4][450], struct Game
 	// ANIM_DANCE_HEADBANG
 
 	dance_move_to_anim_id[ANIM_BATMAN] = 1;
-	dance_move_to_anim_id[ANIM_DANCE_BOOGIE] = 3;
-	dance_move_to_anim_id[ANIM_DANCE_WOOGIE] = 6;
-	dance_move_to_anim_id[ANIM_DANCE_HEADBANG] = 5;
+	dance_move_to_anim_id[ANIM_DANCE_BOOGIE] = 1;
+	dance_move_to_anim_id[ANIM_DANCE_WOOGIE] = 1;
+	dance_move_to_anim_id[ANIM_DANCE_HEADBANG] = 1;
 
-	dance_move_to_anim_id[ANIM_T1] = 2;
-	dance_move_to_anim_id[ANIM_T2] = 4;
-	dance_move_to_anim_id[ANIM_T3] = 7;
-	dance_move_to_anim_id[ANIM_T4] = 8;
-	dance_move_to_anim_id[ANIM_T5] = 9;
+	dance_move_to_anim_id[ANIM_T1] =1;
+	dance_move_to_anim_id[ANIM_T2] =1;
+	dance_move_to_anim_id[ANIM_T3] =1;
+	dance_move_to_anim_id[ANIM_T4] =1;
+	dance_move_to_anim_id[ANIM_T5] =1;
 
 	// Get an iterator pointing to the first element in the
   // map

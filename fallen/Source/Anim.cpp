@@ -983,7 +983,7 @@ void	setup_people_anims(void)
 
 	
 	//load_anim_system(&game_chunk[ANIM_TYPE_PZI], "PROTOTYPE_DARCI1");
-	load_anim_system(&game_chunk[ANIM_TYPE_PZI], "salsa");
+	load_anim_system(&game_chunk[ANIM_TYPE_PZI], "traper");
 
 
 

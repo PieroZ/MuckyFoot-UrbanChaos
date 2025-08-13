@@ -1762,7 +1762,7 @@ LOADED_THIS_MANY_TEXTURES(4);
 
 	// PZI GINGERBREAD TEXTURE
 
-	for (int i = 0; i < 5; i++)
+	for (int i = 0; i < 10; i++)
 	{
 		TEXTURE_load_page(22 * 64 + i);
 	}
