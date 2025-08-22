@@ -15112,46 +15112,71 @@ void PCOM_make_driver_run_away(Thing *p_driver, Thing *p_scary)
 }
 
 void PCOM_start_humand_shield_sequence(
-	Thing* p_person,
+	Thing* p_assaulter,
 	Thing* p_victim)
 
 {
 	SLONG substate = PCOM_AI_SUBSTATE_TALK_ASK;
 
+
+	p_assaulter->Genus.Person->Target = THING_NUMBER(p_victim);
+	p_victim->Genus.Person->Target = THING_NUMBER(p_assaulter);
+
 	//PCOM_set_person_move_animation(p_person, ANIM_T6);
-	PCOM_set_person_move_animation(p_victim, ANIM_T6);
+	//PCOM_set_person_move_animation(p_victim, ANIM_T6);
+
+
+
+	turn_to_target(p_assaulter, FIND_DIR_FRONT);
+	//set_face_thing(p_assaulter, p_victim);
+
+	set_anim(p_victim, ANIM_T6);
 
 	p_victim->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
 
 	p_victim->Genus.Person->pcom_ai_state = PCOM_AI_STATE_HUMANSHIELD;
 	p_victim->Genus.Person->pcom_ai_substate = PCOM_AI_SUBSTATE_NONE;
+	// What is this for?
+	p_victim->Genus.Person->pcom_ai_arg = THING_NUMBER(p_assaulter);
+	//p_victim->Genus.Person->pcom_ai_counter = 0;
+	//p_victim->SubState = 
 
 
 
 
-	PCOM_set_person_move_animation(p_person, ANIM_T5);
+	//PCOM_set_person_move_animation(p_person, ANIM_T5);
 
-	p_person->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
 
-	p_person->Genus.Person->pcom_ai_state = PCOM_AI_STATE_HUMANSHIELD;
-	p_person->Genus.Person->pcom_ai_substate = PCOM_AI_SUBSTATE_NONE;
+	//p_assaulter->State = STATE_HOLDING_HUMAN_SHIELD;
+	p_assaulter->SubState = SUB_STATE_HUMAN_SHIELD_HOLD;
+	p_assaulter->Flags |= FLAG_PERSON_NON_INT_M;
+	p_assaulter->Genus.Person->Action = ACTION_HOLD_HUMAN_SHIELD;
 
+	set_anim(p_assaulter, ANIM_T5);
+
+
+
+	//p_person->Genus.Person->Flags |= FLAG_PERSON_NO_RETURN_TO_NORMAL;
+
+	//p_person->Genus.Person->pcom_ai_state = PCOM_AI_STATE_HUMANSHIELD;
+	//p_person->Genus.Person->pcom_ai_substate = PCOM_AI_SUBSTATE_NONE;
+	//p_victim->SubState = SUB_STATE_HUMAN_SHIELD_HOLD;
 
 	SLONG	dx, dy, dz, len;
-	SLONG dist = - 90;
+	SLONG dist = 90;
 
 	GameCoord new_position;
 
-	dx = -(SIN(p_person->Draw.Tweened->Angle) * dist) >> 16;
-	dz = -(COS(p_person->Draw.Tweened->Angle) * dist) >> 16;
+	dx = -(SIN(p_assaulter->Draw.Tweened->Angle) * dist) >> 16;
+	dz = -(COS(p_assaulter->Draw.Tweened->Angle) * dist) >> 16;
 
-	new_position.X = p_person->WorldPos.X + (dx << 8);
-	new_position.Y = p_person->WorldPos.Y;
-	new_position.Z = p_person->WorldPos.Z + (dz << 8);
+	new_position.X = p_assaulter->WorldPos.X + (dx << 8);
+	new_position.Y = p_assaulter->WorldPos.Y;
+	new_position.Z = p_assaulter->WorldPos.Z + (dz << 8);
 
 	move_thing_on_map(p_victim, &new_position);
 
-	p_victim->Draw.Tweened->Angle = (p_person->Draw.Tweened->Angle + 1024 + 1024) & 2047;
+	p_victim->Draw.Tweened->Angle = (p_assaulter->Draw.Tweened->Angle + 1024 + 1024) & 2047;
 
 
 }

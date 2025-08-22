@@ -5134,7 +5134,7 @@ extern	SLONG	FC_cam_height;
 				switch(angle)
 				{
 					case 0: 
-						alloc_special(SPECIAL_SILENCED_GUN, SPECIAL_SUBSTATE_NONE, wx+dx, wy + 0x10, wz+dz, 0);
+						alloc_special(SPECIAL_GUN, SPECIAL_SUBSTATE_NONE, wx+dx, wy + 0x10, wz+dz, 0);
 						break;
 					case 1: 
 						alloc_special(SPECIAL_BASEBALLBAT        , SPECIAL_SUBSTATE_NONE, wx+dx, wy,        wz+dz, 0); 

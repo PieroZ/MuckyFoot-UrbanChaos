@@ -6524,6 +6524,12 @@ extern int g_iCheatNumber;
 					else
 						hand=SUB_OBJECT_LEFT_HAND;
 
+					if (p_person->Draw.Tweened->CurrentAnim >= ANIM_T1)
+					{
+						hand = SUB_OBJECT_RIGHT_HAND;
+
+					}
+
 					if(iPartNumber==hand)
 					{
 						if(p_person->Draw.Tweened->Flags&DT_FLAG_GUNFLASH)

@@ -550,4 +550,10 @@ SLONG	person_get_scale(Thing *t);
 
 //---------------------------------------------------------------
 
+// PZI ADDS
+
+void substate_human_shield_hold(Thing* p_person);
+void set_person_execute_human_shield(Thing* p_person);
+void set_person_let_go_human_shield(Thing* p_person);
+
 #endif

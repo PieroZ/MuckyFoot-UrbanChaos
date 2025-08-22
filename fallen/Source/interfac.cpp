@@ -590,84 +590,90 @@ struct	ActionInfo	action_sit[]=
 	{0,0,0}
 };
 
+struct	ActionInfo	action_human_shield[] =
+{
+	{ACTION_KILL_HUMAN_SHIELD,0,INPUT_MASK_KICK},
+	{ACTION_LET_GO_HUMAN_SHIELD,0,INPUT_MASK_PUNCH},
+	{0,0,0}
+};
+
 struct	ActionInfo	*action_tree[]=
 {
 	action_idle,
-	action_walk,
-	action_run,
-	action_standing_jump,
-	action_standing_jump_grab,
-	action_running_jump,
-	action_dangling,
-	action_pull_up,
-	action_stand_relax,
-	action_grabbing_ledge,
-	0,
-	0,
-	0,
-	action_climbing, //13
-	action_fight,
-	action_fight,
-	action_idle,	// 16 action_idle_fight
-	action_cable,	// 17 action cable
-	0,
-	0,
-	action_dying, //dying 
-	0,
-	action_aim_gun,
-	action_shoot,	   // Shoot gun
-	0,				   // Gun Away
-	0,				   // Respawn
-	action_dead,	   // Dead
-	0, // 27 action_flip_left,				   // flip left
-	0, //action_flip_right,				   //flip right
-	action_idle,
-	0,
-	action_run_jump,
-	0,
-	0,
-	action_walk_back,
-	action_death_slide,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	action_grapple,
-	action_grapplee,
-	0,							// Enter vehicle
-	0,							// Inside vehicle
-	action_sit,							// Sit bench
-	action_hug_wall,							// hug wall
-	0,											// hug left
-	0,											//hug right
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
+action_walk,
+action_run,
+action_standing_jump,
+action_standing_jump_grab,
+action_running_jump,
+action_dangling,
+action_pull_up,
+action_stand_relax,
+action_grabbing_ledge,
+0,
+0,
+0,
+action_climbing, //13
+action_fight,
+action_fight,
+action_idle,	// 16 action_idle_fight
+action_cable,	// 17 action cable
+0,
+0,
+action_dying, //dying 
+0,
+action_aim_gun,
+action_shoot,	   // Shoot gun
+0,				   // Gun Away
+0,				   // Respawn
+action_dead,	   // Dead
+0, // 27 action_flip_left,				   // flip left
+0, //action_flip_right,				   //flip right
+action_idle,
+0,
+action_run_jump,
+0,
+0,
+action_walk_back,
+action_death_slide,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+action_grapple,
+action_grapplee,
+0,							// Enter vehicle
+0,							// Inside vehicle
+action_sit,							// Sit bench
+action_hug_wall,							// hug wall
+0,											// hug left
+0,											//hug right
+0,
+0,
+0,
+action_human_shield,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
 };
 
 //
@@ -2258,6 +2264,7 @@ SLONG	find_best_action_from_tree(SLONG action,ULONG input,ULONG *input_used)
 {
 	struct	ActionInfo *action_options;
 
+	//TRACE("find_best_action_from_tree action %d input %d\n", action, input);
 
 	action_options=action_tree[action];
 //	LogText(" FIND BEST current action %d input %x \n",action,input);
@@ -5092,6 +5099,13 @@ void set_person_unsit(Thing *p_person);
 				{
 					set_person_drop_down(p_person,PERSON_DROP_DOWN_OFF_FACE);
 				}
+				break;
+
+			case	ACTION_KILL_HUMAN_SHIELD:
+				set_person_execute_human_shield(p_person);
+				break;
+			case	ACTION_LET_GO_HUMAN_SHIELD:
+				set_person_let_go_human_shield(p_person);
 				break;
 		}
 

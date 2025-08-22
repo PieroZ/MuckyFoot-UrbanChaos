@@ -10335,6 +10335,11 @@ void	set_person_standing_jump(Thing *p_person)
 	if(p_person->SubState==SUB_STATE_SLIPPING)
 		return;
 
+	if (p_person->SubState == SUB_STATE_HUMAN_SHIELD_HOLD)
+	{
+		return;
+	}
+
 	//
 	// Is this person standing in front of a climbable fence? If so
 	// don't do a standing jump. Climb onto the fence.
@@ -12227,7 +12232,7 @@ void	fn_person_idle(Thing *p_person)
 
 	switch(p_person->SubState)
 	{
-		case	0:
+		case	SUB_STATE_FALLING_NORMAL:
 			//
 			// check to see if you should slip down the slope your idle on
 			//
@@ -12470,8 +12475,183 @@ void	fn_person_idle(Thing *p_person)
 			}
 
 			break;
-	}
 
+		case SUB_STATE_HUMAN_SHIELD_HOLD:
+			substate_human_shield_hold(p_person);
+			break;
+		case SUB_STATE_SIMPLE_ANIM:
+
+			//
+			// A simple animation (maybe a taunt) set of by PCOM_set_person_move_animation()
+			//
+
+			end = person_normal_animate(p_person);
+
+
+
+			if (end == 1)
+			{
+				if (p_person->Genus.Person->Flags & FLAG_PERSON_NO_RETURN_TO_NORMAL)
+				{
+					p_person->Genus.Person->Flags &= ~FLAG_PERSON_NO_RETURN_TO_NORMAL;
+
+					p_person->SubState = SUB_STATE_SIMPLE_ANIM_OVER;
+				}
+				else
+				{
+					if (p_person->Draw.Tweened->CurrentAnim == ANIM_VALVE_LOOP)
+					{
+						p_person->Genus.Person->Timer1--;
+						if (p_person->Genus.Person->Timer1 <= 0)
+							set_anim(p_person, ANIM_VALVE_END);
+					}
+					else
+					{
+						if (p_person->Draw.Tweened->CurrentAnim == ANIM_VALVE_END)
+							set_person_locked_idle_ready(p_person);
+						//							set_person_idle(p_person);
+						else
+							set_person_idle(p_person);
+					}
+				}
+			}
+
+			break;
+	}
+}
+
+void set_person_execute_human_shield(Thing* p_person)
+{
+	Thing* p_target = TO_THING(p_person->Genus.Person->Target);
+	//set_anim(p_person, ANIM_NECK_SNAP);
+
+	//set_anim(p_target, ANIM_DIE_KNECK);
+
+	locked_anim_change(p_person, 0, ANIM_NECK_SNAP);
+
+	//set_anim(p_person, ANIM_T1);
+
+	set_anim(p_target, ANIM_DIE_KNECK);
+
+
+	/*SLONG	dx, dy, dz, len;
+	SLONG dist = -50;
+
+	GameCoord new_position;
+
+	dx = -(SIN(p_person->Draw.Tweened->Angle) * dist) >> 16;
+	dz = -(COS(p_person->Draw.Tweened->Angle) * dist) >> 16;
+
+	new_position.X = p_person->WorldPos.X + (dx << 8);
+	new_position.Y = p_person->WorldPos.Y;
+	new_position.Z = p_person->WorldPos.Z + (dz << 8);
+
+	move_thing_on_map(p_target, &new_position);*/
+
+	//p_target->Draw.Tweened->Angle = (p_person->Draw.Tweened->Angle + 1024 + 1024) & 2047;
+
+	//set_grapple_pos(p_person, p_victim, 70, anim, grapple);
+	// 
+	// 
+	set_generic_person_state_function(p_person, STATE_FIGHTING);
+
+	set_generic_person_state_function(p_target, STATE_FIGHTING);
+	p_target->SubState = SUB_STATE_GRAPPLEE;
+	p_person->SubState = SUB_STATE_GRAPPLE;
+
+	SLONG dist = 70;
+	SLONG	dx, dy, dz, len;
+	SLONG	angle;
+
+	GameCoord new_position;
+
+	dx = -(SIN(p_person->Draw.Tweened->Angle) * dist) >> 16;
+	dz = -(COS(p_person->Draw.Tweened->Angle) * dist) >> 16;
+
+	new_position.X = p_person->WorldPos.X + (dx << 8);
+	new_position.Y = p_person->WorldPos.Y;
+	new_position.Z = p_person->WorldPos.Z + (dz << 8);
+
+	move_thing_on_map(p_target, &new_position);
+
+	p_target->Draw.Tweened->Angle = (p_person->Draw.Tweened->Angle + 1024 + 1024) & 2047;
+}
+
+void set_person_let_go_human_shield(Thing* p_person)
+{
+	Thing* p_target = TO_THING(p_person->Genus.Person->Target);
+	//set_anim(p_person, ANIM_NECK_SNAP);
+
+	//set_anim(p_target, ANIM_DIE_KNECK);
+
+	locked_anim_change(p_person, 0, ANIM_T1);
+
+	//set_anim(p_person, ANIM_T1);
+
+	set_anim(p_target, ANIM_T2);
+
+
+	SLONG	dx, dy, dz, len;
+	SLONG dist = 70;
+
+	GameCoord new_position;
+
+	dx = -(SIN(p_person->Draw.Tweened->Angle) * dist) >> 16;
+	dz = -(COS(p_person->Draw.Tweened->Angle) * dist) >> 16;
+
+	new_position.X = p_person->WorldPos.X + (dx << 8);
+	new_position.Y = p_person->WorldPos.Y;
+	new_position.Z = p_person->WorldPos.Z + (dz << 8);
+
+	move_thing_on_map(p_target, &new_position);
+
+	p_target->Draw.Tweened->Angle = (p_person->Draw.Tweened->Angle + 1024 + 1024) & 2047;
+
+	p_person->Genus.Person->Flags &= ~FLAG_PERSON_NO_RETURN_TO_NORMAL;
+
+	p_person->SubState = SUB_STATE_SIMPLE_ANIM;
+	p_target->SubState = SUB_STATE_SIMPLE_ANIM;
+
+	//set_grapple_pos(p_person, p_victim, 70, anim, grapple);
+	// 
+	// 
+	//set_generic_person_state_function(p_person, STATE_FIGHTING);
+
+	//set_generic_person_state_function(p_target, STATE_FIGHTING);
+	//p_target->SubState = SUB_STATE_GRAPPLEE;
+	//p_person->SubState = SUB_STATE_GRAPPLE;
+}
+void substate_human_shield_hold(Thing* p_person)
+{
+	SLONG end;
+	end = person_normal_animate(p_person);
+
+	/*Thing* p_attacker = TO_THING(p_person->Genus.Person->Target);
+
+	if (p_person->Genus.Person->Flags & FLAG_PERSON_REQUEST_JUMP)
+	{
+		p_person->Genus.Person->Flags &= ~FLAG_PERSON_REQUEST_JUMP;
+
+		set_anim(p_person, ANIM_NECK_SNAP);
+	}*/
+	/*if (end)
+	{
+		p_person->SubState = SUB_STATE_HUMAN_SHIELD_HOLD;
+		p_person->Genus.Person->Flags &= ~(FLAG_PERSON_NON_INT_M | FLAG_PERSON_NON_INT_C);
+		p_person->Genus.Person->Action = ACTION_IDLE;
+		p_person->Genus.Person->Mode = PERSON_MODE_IDLE;
+		p_person->Velocity = 0;
+		if (p_person->Genus.Person->PlayerID)
+		{
+			set_person_sidle(p_person);
+		}
+		else
+		{
+			set_generic_person_state_function(p_person, STATE_IDLE);
+			set_anim(p_person, ANIM_STAND_READY);
+			p_person->Draw.Tweened->Locked = 0;
+		}
+	}*/
 }
 
 void PCOM_set_person_ai_flee_person(Thing *p_person,Thing *p_scary);
@@ -16801,6 +16981,20 @@ extern	UBYTE	cheat;
 
 			break;
 
+		case	SUB_STATE_HUMAN_SHIELD_HOLD:
+		{
+			Thing* p_attacker = TO_THING(p_person->Genus.Person->Target);
+
+			if (p_person->Genus.Person->Flags & FLAG_PERSON_REQUEST_JUMP)
+			{
+				p_person->Genus.Person->Flags &= ~FLAG_PERSON_REQUEST_JUMP;
+
+				set_anim(p_person, ANIM_NECK_SNAP);
+			}
+
+			break;
+		}
+
 		default:
 			MSG_add("MOVEING unknow substate %d \n",p_person->SubState);
 			set_person_idle(p_person);
@@ -19537,7 +19731,7 @@ skip_animate:
 
 					if (p_attacker->SubState!=SUB_STATE_GRAPPLE_ATTACK)
 					{
-						SLONG escape_count = 23;
+						SLONG escape_count = 230;
 
 						if(p_person->Genus.Person->PlayerID)
 						{
@@ -19749,6 +19943,20 @@ skip_animate:
 
 				}
 				break;
+
+		//case	SUB_STATE_HUMAN_SHIELD_HOLD:
+		//{
+		//	Thing* p_attacker = TO_THING(p_person->Genus.Person->Target);
+
+		//	if (p_person->Genus.Person->Flags & FLAG_PERSON_REQUEST_JUMP)
+		//	{
+		//		p_person->Genus.Person->Flags &= ~FLAG_PERSON_REQUEST_JUMP;
+
+		//		set_anim(p_person, ANIM_NECK_SNAP);
+		//	}
+
+		//	break;
+		//}
 
 		default:
 			MSG_add("FIGHTING unknow substate %d \n",p_person->SubState);
