@@ -35,6 +35,7 @@
 #include "bat.h"
 #endif
 #include "PersonPZI.h"
+#include "config_extras.h"
 
 
 #ifdef TARGET_DC
@@ -3277,7 +3278,14 @@ SLONG	player_turn_left_right(Thing *p_thing,SLONG input)
 		// Note that skidding gets modified below as well.
 		// Normal running velocity = 30.
 		// Sprinting velocity = 52
-		SWORD wRunningMaxTurn = 70 - ( p_thing->Velocity );
+
+		std::int16_t baseTurnRate = 70;
+
+		if (ConfigExtras::getInstance().mCustomTurnRateEnabled)
+		{
+			baseTurnRate = ConfigExtras::getInstance().mCustomTurnRateValue;
+		}
+		SWORD wRunningMaxTurn = baseTurnRate - ( p_thing->Velocity );
 		ASSERT ( wRunningMaxTurn > 0 );
 		if ( wMaxTurn > wRunningMaxTurn )
 		{

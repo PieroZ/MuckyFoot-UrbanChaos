@@ -704,28 +704,27 @@ SLONG	DDModeInfo::GetBPP(void)
 
 //---------------------------------------------------------------
 
-HRESULT DDModeInfo::GetMode(SLONG *w,SLONG *h,SLONG *bpp,SLONG *refresh)
-{
+HRESULT DDModeInfo::GetMode(std::int32_t* w, std::int32_t* h, std::int32_t* bpp, std::int32_t* refresh) {
 	ASSERT(ddSurfDesc.dwSize == sizeof(ddSurfDesc));
 	ASSERT(ddSurfDesc.ddpfPixelFormat.dwSize == sizeof(ddSurfDesc.ddpfPixelFormat));
 
 	// Check that width is valid
-	if(!(ddSurfDesc.dwFlags & DDSD_WIDTH))
-		return	DDERR_GENERIC;
+	if (!(ddSurfDesc.dwFlags & DDSD_WIDTH))
+		return DDERR_GENERIC;
 
 	// Check that height is valid
-	if(!(ddSurfDesc.dwFlags & DDSD_HEIGHT))
-		return	DDERR_GENERIC;
+	if (!(ddSurfDesc.dwFlags & DDSD_HEIGHT))
+		return DDERR_GENERIC;
 
 	// Check that Pixel format is valid
-	if(!(ddSurfDesc.dwFlags & DDSD_PIXELFORMAT))
-		return	DDERR_GENERIC;
+	if (!(ddSurfDesc.dwFlags & DDSD_PIXELFORMAT))
+		return DDERR_GENERIC;
 
 	// Get Width, height, BPP
-	*w			=	(SLONG)ddSurfDesc.dwWidth;
-	*h			=	(SLONG)ddSurfDesc.dwHeight;
-	*bpp		=	(SLONG)ddSurfDesc.ddpfPixelFormat.dwRGBBitCount;
-	*refresh	=	0L;
+	*w = (std::int32_t)ddSurfDesc.dwWidth;
+	*h = (std::int32_t)ddSurfDesc.dwHeight;
+	*bpp = (std::int32_t)ddSurfDesc.ddpfPixelFormat.dwRGBBitCount;
+	*refresh = 0L;
 
 	// Success
 	return DD_OK;

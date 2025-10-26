@@ -15,6 +15,7 @@
 #include	<stdlib.h>
 #include	<stdarg.h>
 #include	<string.h>
+#include	<cstdint>
 
 // Library defines.
 #define	_MF_WINDOWS
@@ -97,19 +98,19 @@ extern	UBYTE				WorkScreenDepth,
 extern	SLONG				WorkScreenHeight,
 							WorkScreenPixelWidth,
 							WorkScreenWidth;
-extern SLONG				DisplayWidth,
+extern int32_t				DisplayWidth,
 							DisplayHeight,
 							DisplayBPP;
 
-SLONG			OpenDisplay(ULONG width, ULONG height, ULONG depth, ULONG flags);
-SLONG			SetDisplay(ULONG width,ULONG height,ULONG depth);
-SLONG			CloseDisplay(void);
-SLONG			ClearDisplay(UBYTE r,UBYTE g,UBYTE b);
-void			FadeDisplay(UBYTE mode);
-void			*LockWorkScreen(void);
-void			UnlockWorkScreen(void);
-void			ShowWorkScreen(ULONG flags);
-void			ClearWorkScreen(UBYTE colour);
+std::int32_t OpenDisplay(std::uint32_t width, std::uint32_t height, std::uint32_t depth, std::uint32_t flags);
+std::int32_t SetDisplay(std::uint32_t width, std::uint32_t height, std::uint32_t depth);
+std::int32_t CloseDisplay();
+std::int32_t ClearDisplay(std::uint8_t r, std::uint8_t g, std::uint8_t b);
+void FadeDisplay(std::uint8_t mode);
+void* LockWorkScreen();
+void UnlockWorkScreen();
+void ShowWorkScreen(std::uint32_t flags);
+void ClearWorkScreen(std::uint8_t colour);
 
 //---------------------------------------------------------------
 // Host

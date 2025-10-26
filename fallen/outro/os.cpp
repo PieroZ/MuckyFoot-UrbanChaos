@@ -3901,8 +3901,8 @@ void OS_hack(void)
 	// What's the screen res?
 	//
 
-	extern SLONG RealDisplayWidth;
-	extern SLONG RealDisplayHeight;
+	extern std::int32_t RealDisplayWidth;
+	extern std::int32_t RealDisplayHeight;
 
 	OS_screen_width  = float(RealDisplayWidth );
 	OS_screen_height = float(RealDisplayHeight);

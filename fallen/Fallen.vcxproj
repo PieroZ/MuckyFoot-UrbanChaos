@@ -98,7 +98,7 @@
       <StructMemberAlignment>Default</StructMemberAlignment>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <LanguageStandard_C>Default</LanguageStandard_C>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -1037,6 +1037,7 @@
     <ClInclude Include="DDLibrary\Headers\resource.h" />
     <ClInclude Include="DDLibrary\Headers\Tga.h" />
     <ClInclude Include="DDLibrary\Headers\WindProcs.h" />
+    <ClInclude Include="Headers\config_extras.h" />
     <ClInclude Include="Source\DebugVars.h" />
     <ClInclude Include="Editor\Headers\Alert.hpp" />
     <ClInclude Include="Editor\Headers\Anim.h" />

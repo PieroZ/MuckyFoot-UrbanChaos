@@ -75,7 +75,7 @@ class	DDModeInfo
 		SLONG			GetWidth(void);
 		SLONG			GetHeight(void);
 		SLONG			GetBPP(void);
-		HRESULT			GetMode(SLONG *w,SLONG *h,SLONG *bpp,SLONG *refresh);
+		HRESULT			GetMode(std::int32_t* w, std::int32_t* h, std::int32_t* bpp, std::int32_t* refresh);
 		BOOL			ModeSupported(D3DDeviceInfo *the_device);
 		BOOL			Match(SLONG w,SLONG h,SLONG bpp);
 		BOOL			Match(SLONG bpp);

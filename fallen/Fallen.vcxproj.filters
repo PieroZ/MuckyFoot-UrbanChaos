@@ -1755,6 +1755,7 @@
     <ClInclude Include="Source\DebugVars.h" />
     <ClInclude Include="Headers\AllToAnmConverter.h" />
     <ClInclude Include="Source\PersonPZI.h" />
+    <ClInclude Include="Headers\config_extras.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="DDLibrary\bitmap1.bmp">

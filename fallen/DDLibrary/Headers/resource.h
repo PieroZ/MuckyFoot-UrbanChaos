@@ -191,6 +191,10 @@
 #define IDC_STATIC_SELECT               1185
 #define IDC_GRAPHICS_OPTIONS            1187
 #define IDC_SOUND_OPTIONS               1188
+#define IDC_WINDOWED_MODE               1189
+#define IDC_SOUND_OPTIONS2              1190
+#define IDC_SHARP_SPRINTING_TURN        1191
+#define IDC_CUSTOM_TURN_RATE            1191
 #define IDC_TOOLBAR1                    1200
 #define ID_DISPLAY_DEVICES              40001
 #define ID_DISPLAY_MODES                40002
@@ -322,9 +326,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        202
+#define _APS_NEXT_RESOURCE_VALUE        204
 #define _APS_NEXT_COMMAND_VALUE         40156
-#define _APS_NEXT_CONTROL_VALUE         1189
+#define _APS_NEXT_CONTROL_VALUE         1192
 #define _APS_NEXT_SYMED_VALUE           104
 #endif
 #endif
