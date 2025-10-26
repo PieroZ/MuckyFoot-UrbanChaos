@@ -3288,6 +3288,15 @@ static void InitDialog(HWND hWnd) {
     {
         CheckDlgButton(hWnd, IDC_CUSTOM_TURN_RATE, BST_UNCHECKED);
     }
+
+    if (ENV_get_value_number("enable_clumps", -1, "TextureClumps") == 1)
+    {
+        CheckDlgButton(hWnd, IDC_CUSTOM_TEXTURES, BST_CHECKED);
+    }
+    else
+    {
+        CheckDlgButton(hWnd, IDC_CUSTOM_TEXTURES, BST_UNCHECKED);
+    }
 }
 
 static void FinishDialog(HWND hWnd) {
@@ -3338,6 +3347,14 @@ static void FinishDialog(HWND hWnd) {
         ENV_set_value_number("custom_turn_rate", 0, "Extra");
     }
 
+    if (IsDlgButtonChecked(hWnd, IDC_CUSTOM_TEXTURES) == BST_CHECKED)
+    {
+        ENV_set_value_number("enable_clumps", 1, "TextureClumps");
+    }
+    else
+    {
+        ENV_set_value_number("enable_clumps", 0, "TextureClumps");
+    }
 }
 
 static BOOL CALLBACK dlgproc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {

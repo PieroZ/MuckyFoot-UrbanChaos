@@ -1983,7 +1983,7 @@ inline void FillFacetPointsCommon(SLONG count, ULONG base_row, SLONG foundation,
 			// Add crinkle?
 			//
 extern int AENG_detail_crinkles;
-			if (AENG_detail_crinkles && (GAME_TURN & 0x20))
+			if (AENG_detail_crinkles)
 			{
 				if (page < 64 * 8)
 				{

@@ -1019,14 +1019,14 @@ void TEXTURE_initialise_clumping(CBYTE *fname_level)
 	const int clumping = 0;
 #else //#ifdef TARGET_DC
 
-	int	clumping = 1;
+	int	load_textures_directly = ENV_get_value_number("enable_clumps", 0, "TextureClumps");
 
 #endif //#else //#ifdef TARGET_DC
 
 	
 extern void SetLastClumpfile(char* file, size_t size);	// in GDisplay.cpp, horrible bodge
 
-	if (1||!clumping)
+	if (load_textures_directly)
 	{
 		// load textures directly
 		IndividualTextures = true;

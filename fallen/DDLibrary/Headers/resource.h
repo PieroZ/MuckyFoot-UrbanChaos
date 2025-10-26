@@ -193,8 +193,9 @@
 #define IDC_SOUND_OPTIONS               1188
 #define IDC_WINDOWED_MODE               1189
 #define IDC_SOUND_OPTIONS2              1190
-#define IDC_SHARP_SPRINTING_TURN        1191
 #define IDC_CUSTOM_TURN_RATE            1191
+#define IDC_CUSTOM_TURN_RATE2           1193
+#define IDC_CUSTOM_TEXTURES             1193
 #define IDC_TOOLBAR1                    1200
 #define ID_DISPLAY_DEVICES              40001
 #define ID_DISPLAY_MODES                40002
