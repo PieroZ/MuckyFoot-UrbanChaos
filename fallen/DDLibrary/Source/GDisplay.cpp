@@ -17,6 +17,8 @@
 #include "panel.h"
 #include "..\headers\game.h"
 
+#include "config_extras.h"
+
 //
 // From mfx_miles.h...
 //
@@ -3297,6 +3299,15 @@ static void InitDialog(HWND hWnd) {
     {
         CheckDlgButton(hWnd, IDC_CUSTOM_TEXTURES, BST_UNCHECKED);
     }
+
+    if (ENV_get_value_number("mouse_input", 0, "Extra") == 1)
+    {
+        CheckDlgButton(hWnd, IDC_MOUSE_INPUT, BST_CHECKED);
+    }
+    else
+    {
+        CheckDlgButton(hWnd, IDC_MOUSE_INPUT, BST_UNCHECKED);
+    }
 }
 
 static void FinishDialog(HWND hWnd) {
@@ -3355,6 +3366,20 @@ static void FinishDialog(HWND hWnd) {
     {
         ENV_set_value_number("enable_clumps", 0, "TextureClumps");
     }
+
+    if (IsDlgButtonChecked(hWnd, IDC_MOUSE_INPUT) == BST_CHECKED)
+    {
+        ENV_set_value_number("mouse_input", 1, "Extra");
+    }
+    else
+    {
+        ENV_set_value_number("mouse_input", 0, "Extra");
+    }
+
+
+    ConfigExtras::getInstance().Update();
+    
+    ShowCursor(FALSE);
 }
 
 static BOOL CALLBACK dlgproc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {

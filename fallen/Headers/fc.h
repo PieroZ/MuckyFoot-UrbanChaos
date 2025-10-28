@@ -110,6 +110,8 @@ SLONG FC_can_see_person(SLONG cam, Thing *p_person);
 //
 
 void FC_position_for_lookaround(SLONG cam, SLONG pitch);
+void FC_position_for_lookaround_v2(SLONG cam, SLONG pitch, SLONG yaw);
+
 
 
 //

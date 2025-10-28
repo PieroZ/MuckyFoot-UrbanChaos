@@ -5825,6 +5825,11 @@ extern DWORD m_dwSizeOfQueue;
 		//sprintf(text, " HI YOUTUBE ! ");
 
 
+		//extern	volatile SLONG		MouseDX, MouseDY;
+
+		//sprintf(text, "MouseDX = %ld MouseDY = %ld", MouseDX, MouseDY);
+
+
 		//FONT2D_DrawString(
 		//	text,
 		//	51,
@@ -5842,6 +5847,32 @@ extern DWORD m_dwSizeOfQueue;
 		//	256,
 		//	POLY_PAGE_FONT2D,
 		//	0);
+
+//		int sx = 50, sy = 50, cam = 0;
+//		char text[256];
+//		FC_Cam* fc = &FC_cam[cam];
+//		int line = 0;
+//
+//#define DRAW_LINE(fmt, ...) \
+//		do { \
+//			sprintf(text, fmt, __VA_ARGS__); \
+//			/* shadow */ \
+//			FONT2D_DrawString(text, sx + 1, sy + 1 + line * 12, 0x000000, 256, POLY_PAGE_FONT2D, 0); \
+//			/* main */ \
+//			FONT2D_DrawString(text, sx    , sy     + line * 12, 0x00ff00, 256, POLY_PAGE_FONT2D, 0); \
+//			line++; \
+//		} while(0)
+//
+//		DRAW_LINE("CAM %d focus=%p in_wh=%d yaw=%d", cam, (void*)fc->focus, fc->focus_in_warehouse, fc->focus_yaw);
+//		DRAW_LINE("focus_xyz=(%d,%d,%d)", fc->focus_x, fc->focus_y, fc->focus_z);
+//		DRAW_LINE("pos=(%d,%d,%d) want=(%d,%d,%d)", fc->x, fc->y, fc->z, fc->want_x, fc->want_y, fc->want_z);
+//		DRAW_LINE("d=(%d,%d,%d) yaw=%d pitch=%d roll=%d", fc->dx, fc->dy, fc->dz, fc->yaw, fc->pitch, fc->roll);
+//		DRAW_LINE("want_yaw=%d want_pitch=%d want_roll=%d", fc->want_yaw, fc->want_pitch, fc->want_roll);
+//		DRAW_LINE("lens=%d toonear=%d rotate=%d nobehind=%d lookabove=%d shake=%d", fc->lens, fc->toonear, fc->rotate, fc->nobehind, fc->lookabove, fc->shake);
+//		DRAW_LINE("cam_dist=%d cam_height=%d smooth=%d", fc->cam_dist, fc->cam_height, fc->smooth_transition);
+//		DRAW_LINE("toonear_dist=%d toonear_pos=(%d,%d,%d) y=%d p=%d r=%d", fc->toonear_dist, fc->toonear_x, fc->toonear_y, fc->toonear_z, fc->toonear_yaw, fc->toonear_pitch, fc->toonear_roll);
+//
+//#undef DRAW_LINE
 
 	}
 

@@ -93,7 +93,6 @@ DWORD m_dwFogTableDebugFogTableMode = D3DFOG_NONE;
 #define	INPUT_JOYPAD	1
 
 SLONG	input_mode=0;
-SLONG	mouse_input=0;
 SLONG	analogue=0;
 
 
@@ -4730,7 +4729,7 @@ ULONG	old_apply_button_input(struct Thing* p_player, struct Thing* p_person, ULO
 
 	}
 #ifndef PSX	
-	if ((input & INPUT_MOVEMENT_MASK) || (mouse_input && MouseDX))
+	if ((input & INPUT_MOVEMENT_MASK) || (ConfigExtras::getInstance().mMouseInput && MouseDX))
 #else
 	if ((input & INPUT_MOVEMENT_MASK))
 #endif
@@ -5267,7 +5266,7 @@ void set_person_unsit(Thing *p_person);
 
 	}
 #ifndef PSX	
-	if((input&INPUT_MOVEMENT_MASK) ||(mouse_input &&MouseDX))
+	if((input&INPUT_MOVEMENT_MASK) ||(ConfigExtras::getInstance().mMouseInput &&MouseDX))
 #else
 	if((input&INPUT_MOVEMENT_MASK))
 #endif
@@ -8235,7 +8234,7 @@ ULONG	apply_button_input_first_person(Thing *p_player, Thing *p_person,ULONG inp
 		}
 
 #ifndef PSX
-		if(mouse_input)
+		if(ConfigExtras::getInstance().mMouseInput)
 		{
 			if(MouseDY)
 			{

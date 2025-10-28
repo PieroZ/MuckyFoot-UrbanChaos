@@ -108,7 +108,7 @@ extern	SLONG	analogue;
 
 static bool  look_mode = false;
 static SLONG cam_yaw = 0;     // 0–2047
-static SLONG cam_pitch = 1024;  // 1024 = level; range: 768–1280
+static SLONG cam_pitch = 1024;  // 1024 = poziom; zakres: 768–1280
 
 #ifndef TARGET_DC
 SLONG NIGHT_specular_enable = FALSE;

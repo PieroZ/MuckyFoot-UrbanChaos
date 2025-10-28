@@ -280,6 +280,7 @@
     <ClCompile Include="DDEngine\Source\Quaternion.cpp" />
     <ClCompile Include="DDEngine\Source\ray.cpp" />
     <ClCompile Include="DDEngine\Source\renderstate.cpp" />
+    <ClCompile Include="DDEngine\Source\save_selector.cpp" />
     <ClCompile Include="DDEngine\Source\shape.cpp" />
     <ClCompile Include="DDEngine\Source\sky.cpp" />
     <ClCompile Include="DDEngine\Source\smap.cpp" />
@@ -964,6 +965,7 @@
     <ClInclude Include="..\MFStdLib\Headers\StdMaths.h" />
     <ClInclude Include="..\MFStdLib\Headers\StdMem.h" />
     <ClInclude Include="..\MFStdLib\Headers\StdMouse.h" />
+    <ClInclude Include="DDEngine\Headers\save_selector.h" />
     <ClInclude Include="Headers\AllToAnmConverter.h" />
     <ClInclude Include="DDEngine\Headers\aa.h" />
     <ClInclude Include="DDEngine\Headers\aeng.h" />

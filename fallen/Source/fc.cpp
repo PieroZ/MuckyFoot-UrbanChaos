@@ -935,7 +935,7 @@ void FC_setup_initial_camera(SLONG cam)
 			fc->focus_z + dz + dz + dz >> 8,
 			LOS_FLAG_IGNORE_SEETHROUGH_FENCE_FLAG))
 	{
-		fc->x = fc->want_x = fc->focus_x + dx + dx + dx;
+ 		fc->x = fc->want_x = fc->focus_x + dx + dx + dx;
 		fc->y = fc->want_y = fc->focus_y + 0xa000;
 		fc->z = fc->want_z = fc->focus_z + dz + dz + dz;
 	}
@@ -2049,13 +2049,42 @@ SLONG FC_can_see_person(SLONG cam, Thing *p_person)
 		}
 	}
 
-	fc->x = old_fc_x;
+ 	fc->x = old_fc_x;
 	fc->y = old_fc_y;
 	fc->z = old_fc_z;
 
 	return TRUE;
 }
 #endif
+
+
+void FC_position_for_lookaround_v2(SLONG cam, SLONG pitch, SLONG yaw)
+{
+	ASSERT(WITHIN(cam, 0, FC_MAX_CAMS - 1));
+
+	FC_Cam* fc = &FC_cam[cam];
+	SLONG vector[3];
+
+	FMATRIX_vector(
+		vector,
+		yaw,
+		pitch);
+
+#ifdef	PSX_NOT_REALLY
+	fc->want_x = fc->focus_x + (vector[0] >> 2);
+	fc->want_y = fc->focus_y + 0xb000 + (vector[1] >> 2);
+	fc->want_z = fc->focus_z + (vector[2] >> 2);
+#else
+	int keep_camera_above_ground_constant = 0xb000;
+
+	fc->want_x = fc->focus_x + (vector[0] * 3 >> 2);
+	fc->want_y = fc->focus_y + keep_camera_above_ground_constant + (vector[1] * 3 >> 2);
+	fc->want_z = fc->focus_z + (vector[2] * 3 >> 2);
+#endif
+
+	/*fc->toonear      = TRUE;
+	fc->toonear_dist = 0x90000;*/
+}
 
 void FC_position_for_lookaround(SLONG cam, SLONG pitch)
 {
@@ -2079,8 +2108,8 @@ void FC_position_for_lookaround(SLONG cam, SLONG pitch)
 	fc->want_z = fc->focus_z          + (vector[2] * 3 >> 2);
 #endif
 
-	fc->toonear      = TRUE;
-	fc->toonear_dist = 0x90000;
+	/*fc->toonear      = TRUE;
+	fc->toonear_dist = 0x90000;*/
 }
 
 

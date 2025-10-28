@@ -18,6 +18,12 @@
 #include "frontend.h"
 #endif
 
+
+#include <vector>
+#include <string>
+#include <algorithm>
+
+#include "save_selector.h"
 //
 // Externs
 //
@@ -35,7 +41,8 @@ extern void	process_things_tick(SLONG frame_rate_independant);
 #define GAMEMENU_MENU_TYPE_WON      2
 #define GAMEMENU_MENU_TYPE_LOST     3
 #define GAMEMENU_MENU_TYPE_SURE     4
-#define GAMEMENU_MENU_TYPE_NUMBER   5
+#define GAMEMENU_MENU_TYPE_SAVES    5
+#define GAMEMENU_MENU_TYPE_NUMBER   6
 
 SLONG GAMEMENU_menu_type;
 SLONG GAMEMENU_menu_selection;
@@ -78,6 +85,17 @@ SLONG GAMEMENU_wait;
 CBYTE *GAMEMENU_level_lost_reason;
 
 
+// Input helpers already exist elsewhere in the project.
+// We reference LastKey and the ASCII tables used elsewhere.
+extern UBYTE InkeyToAscii[];
+extern UBYTE InkeyToAsciiShift[];
+
+static bool s_save_rename_mode = false;
+static char s_rename_buf[_MAX_PATH] = { 0 };
+static int  s_rename_len = 0;          // current length of edit buffer
+static int  s_rename_slot = 0;         // 0-based slot being edited
+static int  s_rename_blink = 0;        // blink counter
+
 
 #ifdef TARGET_DC
 bool bDontShowThePauseScreen = FALSE;
@@ -101,9 +119,9 @@ GAMEMENU_Menu GAMEMENU_menu[GAMEMENU_MENU_TYPE_NUMBER] =
 	{X_GAME_PAUSED, X_RESUME_LEVEL, X_SAVE_GAME, X_LOAD_GAME, X_RESTART_LEVEL, X_ABANDON_GAME},
 	{X_LEVEL_COMPLETE},
 	{X_LEVEL_LOST, X_RESTART_LEVEL,  X_ABANDON_GAME},
-	{X_ARE_YOU_SURE, X_OKAY, X_CANCEL}
+	{X_ARE_YOU_SURE, X_OKAY, X_CANCEL},
+	{X_EMPTY, X_EMPTY, X_EMPTY, X_EMPTY, X_EMPTY, X_EMPTY}
 };
-
 
 
 //
@@ -122,6 +140,11 @@ void GAMEMENU_initialise(SLONG menu)
 		GAMEMENU_menu_selection = 1;
 
 		ResetSmoothTicks();
+	}
+	else if (menu == GAMEMENU_MENU_TYPE_SAVES)
+	{
+		// For the saves menu, always start at the first option.
+		GAMEMENU_menu_selection = 1;
 	}
 	else
 	{
@@ -378,6 +401,51 @@ extern DIDeviceInfo *primary_device;
 			// Control the menu.
 			//
 
+			if (GAMEMENU_menu_type == GAMEMENU_MENU_TYPE_SAVES && s_save_rename_mode)
+			{
+				// Consume keyboard input for renaming.
+				// Backspace
+				if (Keys[KB_BS])
+				{
+					Keys[KB_BS] = 0;
+					if (s_rename_len > 0)
+					{
+						s_rename_buf[--s_rename_len] = '\0';
+					}
+				}
+
+				// Cancel with ESC
+				if (Keys[KB_ESC])
+				{
+					Keys[KB_ESC] = 0;
+					s_save_rename_mode = false; // discard edits
+				}
+
+				// Confirm with Enter - will be handled below in the Enter handler (keep logic there),
+				// but we also want to avoid normal menu Enter processing swallowing it twice.
+				// Character input: use LastKey and shift state. LastKey is cleared by other parts of engine;
+				// we consume it here and append mapped char if printable.
+				if (LastKey)
+				{
+					UBYTE ch = (Keys[KB_LSHIFT] || Keys[KB_RSHIFT]) ? InkeyToAsciiShift[LastKey] : InkeyToAscii[LastKey];
+					LastKey = 0;
+
+					// Accept only printable ASCII (space..~). You can expand if you want.
+					if (ch >= 32 && ch <= 126 && s_rename_len + 1 < (int)sizeof(s_rename_buf))
+					{
+						s_rename_buf[s_rename_len++] = (char)ch;
+						s_rename_buf[s_rename_len] = '\0';
+					}
+				}
+
+				// advance blink
+				s_rename_blink = (s_rename_blink + 1) & 31;
+
+				// while renaming we don't process normal menu navigation - just return 'do nothing' for now.
+				// Note: don't 'return' from GAMEMENU_process here; let the rest of the function continue to drawing.
+			}
+
+
 #ifdef TARGET_DC
 			if ( Keys[KB_UP] || ( input & INPUT_MASK_FORWARDS ) )
 #else
@@ -449,8 +517,72 @@ extern DIDeviceInfo *primary_device;
 
 				MFX_play_stereo(1,S_MENU_CLICK_END,MFX_REPLACE);
 
-				switch(GAMEMENU_menu[GAMEMENU_menu_type].word[GAMEMENU_menu_selection])
+				
+				if (GAMEMENU_menu_type == GAMEMENU_MENU_TYPE_SAVES)
 				{
+					// If we're already in rename mode and press Enter, commit rename.
+					if (s_save_rename_mode)
+					{
+						// s_rename_slot holds 0-based index of slot being edited
+						// If blank, treat as cancel.
+						if (s_rename_len > 0)
+						{
+							// Ensure we have a function that renames the save on disk and updates the list.
+							// Returns true on success.
+							if (SaveSelector::getInstance().RenameSave(s_rename_slot, std::string(s_rename_buf)))
+							{
+								// refresh cached names
+								SaveSelector::getInstance().RefreshList();
+							}
+							else
+							{
+								// Optionally: play error sound / show message (not implemented here).
+							}
+						}
+						// leave rename mode
+						s_save_rename_mode = false;
+						s_rename_len = 0;
+						s_rename_buf[0] = '\0';
+					}
+					else
+					{
+						// Enter rename mode for the currently selected slot (menu_selection is 1..N)
+						s_save_rename_mode = true;
+						s_rename_slot = GAMEMENU_menu_selection - 1;
+						if (s_rename_slot < 0) s_rename_slot = 0;
+
+						// Initialize edit buffer with existing base filename (without extension).
+						std::vector<std::string> tmp = SaveSelector::getInstance().mSaveNames;
+						if (s_rename_slot < (int)tmp.size())
+						{
+							const std::string& full = tmp[s_rename_slot];
+							// Strip extension if any
+							std::string base = full;
+							size_t dot = base.find_last_of('.');
+							if (dot != std::string::npos)
+								base.resize(dot);
+							strncpy(s_rename_buf, base.c_str(), sizeof(s_rename_buf) - 1);
+							s_rename_buf[sizeof(s_rename_buf) - 1] = '\0';
+							s_rename_len = (int)strlen(s_rename_buf);
+						}
+						else
+						{
+							s_rename_buf[0] = '\0';
+							s_rename_len = 0;
+						}
+					}
+
+					// Clear the enter key so it doesn't propagate.
+					Keys[KB_ENTER] = 0;
+					Keys[KB_SPACE] = 0;
+					Keys[KB_PENTER] = 0;
+				}
+
+				else
+				{
+
+					switch (GAMEMENU_menu[GAMEMENU_menu_type].word[GAMEMENU_menu_selection])
+					{
 					case NULL:
 						return GAMEMENU_DO_NEXT_LEVEL;
 
@@ -474,8 +606,8 @@ extern DIDeviceInfo *primary_device;
 
 #ifndef TARGET_DC
 					case X_SAVE_GAME:
-						MEMORY_quick_save();
-						GAMEMENU_initialise(GAMEMENU_MENU_TYPE_NONE);
+						//MEMORY_quick_save();
+						GAMEMENU_initialise(GAMEMENU_MENU_TYPE_SAVES);
 						break;
 
 					case X_LOAD_GAME:
@@ -489,6 +621,7 @@ extern DIDeviceInfo *primary_device;
 					default:
 						ASSERT(0);
 						break;
+					}
 				}
 			}
 		}
@@ -563,7 +696,7 @@ void GAMEMENU_draw()
 #endif
 
 	MENUFONT_fadein_line(GAMEMENU_fadein_x);
-	MENUFONT_fadein_draw(320, 100, 255, XLAT_str(GAMEMENU_menu[GAMEMENU_menu_type].word[0]));
+	//MENUFONT_fadein_draw(320, 100, 255, XLAT_str(GAMEMENU_menu[GAMEMENU_menu_type].word[0]));
 
 	bool bDrawMainPartOfMenu = TRUE;
 
@@ -581,8 +714,7 @@ void GAMEMENU_draw()
 			// MENUFONT_fadein_draw(320, 120, 255, GAMEMENU_level_lost_reason);
 		}
 	}
-	else
-	if (GAMEMENU_menu_type == GAMEMENU_MENU_TYPE_WON)
+	else if (GAMEMENU_menu_type == GAMEMENU_MENU_TYPE_WON)
 	{
 		//
 		// draw the stats
@@ -591,6 +723,76 @@ void GAMEMENU_draw()
 extern void ScoresDraw(void);	// From attract
 
 		ScoresDraw();
+	}
+	else if (GAMEMENU_menu_type == GAMEMENU_MENU_TYPE_SAVES)
+	{
+		//std::vector<std::string> saves = SaveSelector::getInstance().mSaveNames;
+
+		//for (int slot = 0; slot < saves.size(); ++slot)
+		//{
+		//	const char* text = saves[slot].c_str();
+		//	// menu selection uses 1..n, so map slot 0 -> selection 1
+		//	UBYTE fade = (GAMEMENU_menu_selection == (slot + 1)) ? 255 : 128;
+		//	MENUFONT_fadein_draw(
+		//		320,
+		//		115 + (slot + 1) * 40,
+		//		fade,
+		//		(CBYTE*)text);
+		//}
+
+		//POLY_frame_draw(FALSE, FALSE);
+		//return;
+
+		std::vector<std::string> saves = SaveSelector::getInstance().mSaveNames;
+
+		std::vector<std::string> savesNoExt;
+		for (const auto& name : saves) {
+			savesNoExt.push_back(name.substr(0, name.size() - 4));
+		}
+
+		// ensure exactly 5 slots shown (pad with "EMPTY" if needed)
+		while (savesNoExt.size() < 5) savesNoExt.emplace_back("EMPTY");
+		if (savesNoExt.size() > 5) savesNoExt.resize(5);
+
+		for (int slot = 0; slot < (int)savesNoExt.size(); ++slot)
+		{
+			// Build displayed text: if renaming this slot, show edit buffer + cursor.
+			CBYTE display[_MAX_PATH];
+			if (s_save_rename_mode && slot == s_rename_slot)
+			{
+				// Compose with extension kept from original (if any)
+				std::string ext;
+				const std::string& orig = SaveSelector::getInstance().mSaveNames.size() > (size_t)slot
+					? SaveSelector::getInstance().mSaveNames[slot]
+					: std::string(".wag");
+				size_t dot = orig.find_last_of('.');
+				if (dot != std::string::npos)
+					ext = orig.substr(dot); // includes the dot
+				else
+					ext = ".wag";
+
+				// Cursor
+				bool blinkOn = (s_rename_blink & 16) != 0;
+				snprintf(display, sizeof(display), "%s%s", s_rename_buf, (blinkOn ? "_" : " "));
+
+				// If you want to show the extension in parentheses: strcat(display, ext.c_str());
+			}
+			else
+			{
+				strncpy(display, savesNoExt[slot].c_str(), sizeof(display) - 1);
+				display[sizeof(display) - 1] = '\0';
+			}
+
+			UBYTE fade = (GAMEMENU_menu_selection == (slot + 1)) ? 255 : 128;
+			MENUFONT_fadein_draw(
+				320,
+				115 + (slot + 1) * 40,
+				fade,
+				(CBYTE*)display);
+		}
+
+		POLY_frame_draw(FALSE, FALSE);
+		return;
 	}
 #ifdef TARGET_DC
 	else

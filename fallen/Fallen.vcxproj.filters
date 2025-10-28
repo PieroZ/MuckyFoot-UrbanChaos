@@ -894,6 +894,7 @@
     <ClCompile Include="Source\PersonPZI.cpp" />
     <ClCompile Include="Source\bang.cpp" />
     <ClCompile Include="Source\briefing.cpp" />
+    <ClCompile Include="DDEngine\Source\save_selector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\america.h">
@@ -1756,6 +1757,7 @@
     <ClInclude Include="Headers\AllToAnmConverter.h" />
     <ClInclude Include="Source\PersonPZI.h" />
     <ClInclude Include="Headers\config_extras.h" />
+    <ClInclude Include="DDEngine\Headers\save_selector.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="DDLibrary\bitmap1.bmp">
