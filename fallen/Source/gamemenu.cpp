@@ -90,7 +90,6 @@ CBYTE *GAMEMENU_level_lost_reason;
 extern UBYTE InkeyToAscii[];
 extern UBYTE InkeyToAsciiShift[];
 
-static bool s_save_rename_mode = false;
 static char s_rename_buf[_MAX_PATH] = { 0 };
 static int  s_rename_len = 0;          // current length of edit buffer
 static int  s_rename_slot = 0;         // 0-based slot being edited
@@ -401,7 +400,7 @@ extern DIDeviceInfo *primary_device;
 			// Control the menu.
 			//
 
-			if (GAMEMENU_menu_type == GAMEMENU_MENU_TYPE_SAVES && s_save_rename_mode)
+			if (GAMEMENU_menu_type == GAMEMENU_MENU_TYPE_SAVES && SaveSelector::getInstance().mTypingSaveName)
 			{
 				// Consume keyboard input for renaming.
 				// Backspace
@@ -418,7 +417,7 @@ extern DIDeviceInfo *primary_device;
 				if (Keys[KB_ESC])
 				{
 					Keys[KB_ESC] = 0;
-					s_save_rename_mode = false; // discard edits
+					SaveSelector::getInstance().mTypingSaveName = false; // discard edits
 				}
 
 				// Confirm with Enter - will be handled below in the Enter handler (keep logic there),
@@ -521,7 +520,7 @@ extern DIDeviceInfo *primary_device;
 				if (GAMEMENU_menu_type == GAMEMENU_MENU_TYPE_SAVES)
 				{
 					// If we're already in rename mode and press Enter, commit rename.
-					if (s_save_rename_mode)
+					if (SaveSelector::getInstance().mTypingSaveName)
 					{
 						// s_rename_slot holds 0-based index of slot being edited
 						// If blank, treat as cancel.
@@ -539,15 +538,83 @@ extern DIDeviceInfo *primary_device;
 								// Optionally: play error sound / show message (not implemented here).
 							}
 						}
+
+
+
+						std::string fname = SaveSelector::getInstance().mSaveNames[s_rename_slot];
+
+						// If slot is EMPTY, create a default filename
+						if (fname == "EMPTY")
+						{
+							char buf[64];
+							sprintf(buf, "save_%d.wag", s_rename_slot + 1);
+							fname = buf;
+							// create the file entry in the index so UI shows it next time
+							SaveSelector::getInstance().RenameSave(s_rename_slot, fname.c_str());
+						}
+
+						// Build full path and perform the actual save
+						std::string fullPath = std::string("data\\saves\\") + fname;
+						MEMORY_quick_save((CBYTE*)fullPath.c_str());
+
+						// Close the saves menu and return to normal game menu
+						GAMEMENU_initialise(GAMEMENU_MENU_TYPE_NONE);
+
+						// consume the key presses
+						Keys[KB_ENTER] = 0;
+						Keys[KB_SPACE] = 0;
+						Keys[KB_PENTER] = 0;
+
 						// leave rename mode
-						s_save_rename_mode = false;
+						SaveSelector::getInstance().mTypingSaveName = false;
 						s_rename_len = 0;
 						s_rename_buf[0] = '\0';
+					}
+					else if (SaveSelector::getInstance().mLoadMode)
+					{
+						// Load mode: Enter loads the selected save slot immediately.
+						int slot = GAMEMENU_menu_selection - 1;
+						if (slot < 0) slot = 0;
+
+						// Ensure the list is current
+						SaveSelector::getInstance().RefreshList();
+
+						// Clamp to available slots
+						if (slot >= (int)SaveSelector::getInstance().mSaveNames.size())
+							slot = (int)SaveSelector::getInstance().mSaveNames.size() - 1;
+
+						std::string fname = SaveSelector::getInstance().mSaveNames[slot];
+
+						// If slot empty, do nothing (or optionally create/notify)
+						if (fname != "EMPTY")
+						{
+							std::string fullPath = std::string("data\\saves\\") + fname;
+							// Use new loader that accepts a filename (copies into quicksave and calls loader).
+							if (MEMORY_quick_load((CBYTE*)fullPath.c_str()))
+							{
+								// loaded successfully - close menu and resume
+								SaveSelector::getInstance().mLoadMode = false;
+								GAMEMENU_initialise(GAMEMENU_MENU_TYPE_NONE);
+
+								// ensure keys consumed
+								Keys[KB_ENTER] = 0;
+								Keys[KB_SPACE] = 0;
+								Keys[KB_PENTER] = 0;
+							}
+							else
+							{
+								// load failed - optional: play error sound / message
+							}
+						}
+						else
+						{
+							// nothing to load from EMPTY slot - optional feedback
+						}
 					}
 					else
 					{
 						// Enter rename mode for the currently selected slot (menu_selection is 1..N)
-						s_save_rename_mode = true;
+						SaveSelector::getInstance().mTypingSaveName = true;
 						s_rename_slot = GAMEMENU_menu_selection - 1;
 						if (s_rename_slot < 0) s_rename_slot = 0;
 
@@ -607,14 +674,17 @@ extern DIDeviceInfo *primary_device;
 #ifndef TARGET_DC
 					case X_SAVE_GAME:
 						//MEMORY_quick_save();
+						SaveSelector::getInstance().mLoadMode = false;
 						GAMEMENU_initialise(GAMEMENU_MENU_TYPE_SAVES);
 						break;
 
 					case X_LOAD_GAME:
-						if (!MEMORY_quick_load())
+						SaveSelector::getInstance().mLoadMode = true;
+						GAMEMENU_initialise(GAMEMENU_MENU_TYPE_SAVES);
+						/*if (!MEMORY_quick_load())
 						{
 							return GAMEMENU_DO_RESTART;
-						}
+						}*/
 						break;
 #endif
 
@@ -747,6 +817,7 @@ extern void ScoresDraw(void);	// From attract
 
 		std::vector<std::string> savesNoExt;
 		for (const auto& name : saves) {
+			if(name != "EMPTY")
 			savesNoExt.push_back(name.substr(0, name.size() - 4));
 		}
 
@@ -758,7 +829,7 @@ extern void ScoresDraw(void);	// From attract
 		{
 			// Build displayed text: if renaming this slot, show edit buffer + cursor.
 			CBYTE display[_MAX_PATH];
-			if (s_save_rename_mode && slot == s_rename_slot)
+			if (SaveSelector::getInstance().mTypingSaveName && slot == s_rename_slot)
 			{
 				// Compose with extension kept from original (if any)
 				std::string ext;

@@ -3263,14 +3263,14 @@ void MEMORY_quick_init()
 	MEMORY_quick_avaliable = FALSE;
 }
 
-void MEMORY_quick_save()
+void MEMORY_quick_save(const CBYTE* filename)
 {
 	SLONG i;
 	UBYTE padding_byte;
 	SLONG check = 666;
 	SLONG checksum;
 
-	FILE *handle = MF_Fopen(MEMORY_QUICK_FNAME, "wb");
+	FILE *handle = MF_Fopen((CBYTE*)filename, "wb");
 
 	if (!handle)
 	{
@@ -3456,14 +3456,14 @@ SLONG MEMORY_quick_load_available(void)
 }
 
 
-SLONG MEMORY_quick_load()
+SLONG MEMORY_quick_load(const CBYTE* filename)
 {
 	SLONG i;
 	UBYTE padding_byte;
 	SLONG check = 666;
 	SLONG checksum;
 
-	FILE *handle = MF_Fopen(MEMORY_QUICK_FNAME, "rb");
+	FILE *handle = MF_Fopen((CBYTE*)filename, "rb");
 
 	if (!handle)
 	{

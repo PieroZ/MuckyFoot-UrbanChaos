@@ -88,10 +88,10 @@ extern	struct	RoofFace4	*roof_faces4;
 // Quick load\save
 //
 
+SLONG MEMORY_quick_load(const CBYTE* filename);
+void  MEMORY_quick_save(const CBYTE* filename);
+
 void  MEMORY_quick_init(void);
-
-void  MEMORY_quick_save(void);
-
 SLONG MEMORY_quick_load_available(void);
 SLONG MEMORY_quick_load          (void);
 

@@ -1,21 +1,26 @@
+
 #pragma once
 
-#include <cstdint>
-#include <string>
 #include <vector>
+#include <string>
 
-struct SaveSelector
+class SaveSelector
 {
-	SaveSelector();
-	SaveSelector(const SaveSelector&) = delete;
-	void operator=(const SaveSelector&) = delete;
+public:
+    static SaveSelector& getInstance();
+    SaveSelector();
 
-	static SaveSelector& getInstance();
+    // Refresh the internal list of save filenames (with extension).
+    void RefreshList();
 
-	void RefreshList();
-	bool RenameSave(int index, const std::string& newBaseName);
+    // Rename (or create) a save at slot `index` (0-based). `newBaseName` is the new base name
+    // (without extension preferred). Returns true on success.
+    bool RenameSave(int index, const std::string& newBaseName);
 
+    // Public cache of save filenames (with extension), sized/padded by RefreshList().
+    std::vector<std::string> mSaveNames;
+	bool mTypingSaveName = false;
 
-	std::uint8_t mSelectedIndex = 0;
-	std::vector<std::string> mSaveNames;
+    // When true, the SAVES menu is in "load" mode (selecting a slot loads).
+    bool mLoadMode = false;
 };

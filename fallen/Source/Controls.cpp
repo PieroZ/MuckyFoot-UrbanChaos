@@ -99,6 +99,7 @@ extern ControllerPacket PAD_Input1,PAD_Input2;
 #endif
 
 #include "config_extras.h"
+#include "save_selector.h"
 
 
 extern	SLONG	am_i_a_thug(Thing *p_person);
@@ -2186,6 +2187,11 @@ void	process_controls(void)
 	SLONG z;
 
 	Thing *darci = NET_PERSON(0);
+
+	if (SaveSelector::getInstance().mTypingSaveName)
+	{
+		return;
+	}
 
 	/*
 
