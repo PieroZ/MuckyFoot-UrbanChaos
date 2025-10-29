@@ -589,7 +589,6 @@ extern DIDeviceInfo *primary_device;
 						if (fname != "EMPTY")
 						{
 							std::string fullPath = std::string("data\\saves\\") + fname;
-							// Use new loader that accepts a filename (copies into quicksave and calls loader).
 							if (MEMORY_quick_load((CBYTE*)fullPath.c_str()))
 							{
 								// loaded successfully - close menu and resume

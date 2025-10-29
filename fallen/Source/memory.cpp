@@ -3302,26 +3302,76 @@ void MEMORY_quick_save(const CBYTE* filename)
 	//}
 
 
+	//for (i = 0; save_table[i].Point; i++)
+	//{
+	//	mt = &save_table[i];
+
+	//	//if (mt->Name == "players" /*|| mt->Name == "net_plyr" || mt->Name == "players"*/)
+	//	{
+	//		fwrite(*mt->Point, mt->StructSize, mt->Maximum, handle);
+	//		
+	//	}
+
+	//	//if (fwrite(mt->Point, mt->StructSize, mt->Maximum, handle) != (unsigned)mt->Maximum)
+	//	//{
+	//	//	goto file_error;
+	//	//}
+	//	//else
+	//	//{
+	//	//	fflush(handle);
+	//	//	//fprintf(analysisData, "%s,%d,%d\n", mt->Name, mt->StructSize, mt->Maximum);
+	//	//}
+	//}
+	// 
+	// 
+
+	//
+	// Convert runtime pointers to indices so the on-disk data is
+	// valid across a restart / reload where addresses change.
+	//
+	convert_pointers_to_index();
+
+	//
+	// Go through the memory table and save all arrays.
+	//
+
 	for (i = 0; save_table[i].Point; i++)
 	{
 		mt = &save_table[i];
 
-		//if (mt->Name == "players" /*|| mt->Name == "net_plyr" || mt->Name == "players"*/)
+		// Determine how many elements we actually want to write for this table.
+		SLONG count;
+		if (mt->CountL)
 		{
-			fwrite(*mt->Point, mt->StructSize, mt->Maximum, handle);
-			
+			// If CountL is present it stores the active count (not including Extra).
+			count = *mt->CountL;
+			if (mt->Extra)
+				count += mt->Extra;
+		}
+		else if (mt->CountW)
+		{
+			count = *mt->CountW;
+			if (mt->Extra)
+				count += mt->Extra;
+		}
+		else
+		{
+			// Static arrays or tables without CountL/CountW use Maximum.
+			count = mt->Maximum;
 		}
 
-		//if (fwrite(mt->Point, mt->StructSize, mt->Maximum, handle) != (unsigned)mt->Maximum)
-		//{
-		//	goto file_error;
-		//}
-		//else
-		//{
-		//	fflush(handle);
-		//	//fprintf(analysisData, "%s,%d,%d\n", mt->Name, mt->StructSize, mt->Maximum);
-		//}
+		// Sanity clamp: don't write more elements than the memory table knows about.
+		if (count > mt->Maximum)
+			count = mt->Maximum;
+
+		// First write the count so load can read the exact number.
+		if (fwrite(&count, sizeof(SLONG), 1, handle) != 1) goto file_error;
+
+		// Now write the block of elements.
+		if (fwrite(*mt->Point, mt->StructSize, count, handle) != (unsigned)count) goto file_error;
 	}
+
+
 	//MF_Fclose(handle);
 	//return;
 
@@ -3435,11 +3485,16 @@ void MEMORY_quick_save(const CBYTE* filename)
 
 	MF_Fclose(handle);
 
+	// Restore runtime pointers back so the running game continues to use valid pointer values in-memory.
+	convert_index_to_pointers();
+
 	MEMORY_quick_avaliable = TRUE;
 
 	return;
 
-  file_error:;
+file_error:;
+	// Restore runtime pointers back so the running game continues to use valid pointer values in-memory.
+	convert_index_to_pointers();
 
 	MF_Fclose(handle);
 
@@ -3486,18 +3541,67 @@ SLONG MEMORY_quick_load(const CBYTE* filename)
 
 	MemTable *mt;
 
+	//for (i = 0; save_table[i].Point; i++)
+	//{
+	//	mt = &save_table[i];
+	//	
+	//	//if (mt->Name == "players" /*|| mt->Name == "net_plyr" || mt->Name == "players"*/)
+	//	{
+	//		fread(*mt->Point, mt->StructSize, mt->Maximum, handle);
+
+	//	}
+
+	//	//if (fread(mt->Point, mt->StructSize, mt->Maximum, handle) != (unsigned)mt->Maximum) goto file_error;
+	//}
+	// 
+	
+
 	for (i = 0; save_table[i].Point; i++)
 	{
 		mt = &save_table[i];
-		
-		//if (mt->Name == "players" /*|| mt->Name == "net_plyr" || mt->Name == "players"*/)
-		{
-			fread(*mt->Point, mt->StructSize, mt->Maximum, handle);
 
+		// Read the count that was stored during save.
+		SLONG count;
+		if (fread(&count, sizeof(SLONG), 1, handle) != 1) goto file_error;
+
+		// Sanity: clamp count to avoid overruns of the allocated buffer.
+		if (count < 0) goto file_error;
+		if (count > mt->Maximum)
+		{
+			// If file contains more elements than our current allocation,
+			// clamp to mt->Maximum to avoid memory corruption.
+			// (Better: detect and fail explicitly, but clamp to be safer.)
+			count = mt->Maximum;
 		}
 
-		//if (fread(mt->Point, mt->StructSize, mt->Maximum, handle) != (unsigned)mt->Maximum) goto file_error;
+		// Read the exact number of elements written.
+		if (fread(*mt->Point, mt->StructSize, count, handle) != (unsigned)count) goto file_error;
+
+		// Update session counts so later code that relies on CountL/CountW sees the right values.
+		if (mt->CountL)
+		{
+			SLONG extra = mt->Extra ? mt->Extra : 0;
+			*mt->CountL = count - extra;
+			if (*mt->CountL < 0) *mt->CountL = 0;
+		}
+		else if (mt->CountW)
+		{
+			SLONG extra = mt->Extra ? mt->Extra : 0;
+			*mt->CountW = count - extra;
+			if (*mt->CountW < 0) *mt->CountW = 0;
+		}
+		else
+		{
+			// Static table: reflect the read count in Maximum so later clamps etc. are consistent.
+			mt->Maximum = count;
+		}
 	}
+
+	// Rebuild runtime pointers from the indices that were stored on-disk.
+	convert_index_to_pointers();
+
+
+
 	//MF_Fclose(handle);
 	//return 1;
 
