@@ -23,7 +23,7 @@ extern SLONG				*CosTable,
 extern SLONG				Proportions[];
 
 SLONG						Arctan(SLONG X,SLONG Y);
-SLONG						Root(SLONG square);
+std::int64_t Root(std::int64_t square);
 
 static inline SLONG			Hypotenuse(SLONG x,SLONG y)	
 {											

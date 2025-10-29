@@ -4076,7 +4076,8 @@ static void do_car_input(Thing *p_thing)
 	if ((veh->VelX || veh->VelZ) && (veh->Skid < SKID_START))
 	{
 		SLONG	ax,az;		// acceleration
-		SLONG	vx,vz,vv;	// velocity
+		SLONG	vx,vz;	// velocity
+		std::int64_t vv;
 		SLONG	av;			// |v x a|
 
 		// get acceleration
@@ -4086,7 +4087,7 @@ static void do_car_input(Thing *p_thing)
 		// get normalized velocity
 		vx = veh->VelX;
 		vz = veh->VelZ;
-		vv = vx*vx + vz*vz;
+		vv = (int64_t)vx * vx + (int64_t)vz * vz;
 		if (vv)
 		{
 			// get speed
