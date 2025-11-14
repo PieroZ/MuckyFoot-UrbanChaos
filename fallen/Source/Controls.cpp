@@ -100,6 +100,7 @@ extern ControllerPacket PAD_Input1,PAD_Input2;
 
 #include "config_extras.h"
 #include "save_selector.h"
+#include "free_roam_camera.h"
 
 
 extern	SLONG	am_i_a_thug(Thing *p_person);
@@ -185,7 +186,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -851,6 +852,45 @@ extern int AENG_detail_crinkles;
 						0,
 						0,
 						i, 0, 0, 0);
+				}
+				break;
+			case 52: //pitch
+				if (allow_debug_keys)
+				{
+					i = atoi(ptr);
+					int cam = 0;
+					FC_Cam* fc = &FC_cam[cam];
+					fc->focus->WorldPos.Y += i;
+				}
+				break;
+			case 53: //dpitch
+				if (allow_debug_keys)
+				{
+					i = atoi(ptr);
+					//int cam = 0;
+					//FC_Cam* fc = &FC_cam[cam];
+					//fc->z = i >> 8;
+
+					FreeRoamCamera& frc = FreeRoamCamera::GetInstance();
+
+					frc.PositionZ = frc.PositionZ + i >> 8;
+					//fc->want_pitch -= i;
+				}
+				break;
+			case 54: //freeroam
+				if (allow_debug_keys)
+				{
+					FreeRoamCamera& frc = FreeRoamCamera::GetInstance();
+					frc.CopyFromFC(&FC_cam[0]);
+					frc.IsActive = !frc.IsActive;
+					if (frc.IsActive)
+					{
+						CONSOLE_text("Free roam enabled");
+					}
+					else
+					{
+						CONSOLE_text("Free roam disabled");
+					}
 				}
 				break;
 		  }
@@ -2228,34 +2268,51 @@ void	process_controls(void)
 	// Mouse look (GTA3-like)
   	if (ConfigExtras::getInstance().mMouseInput)
 	{
-		if (!look_mode)
+		if (FreeRoamCamera::GetInstance().IsActive)
 		{
-			look_mode = true;
-			ShowCursor(FALSE);
+			auto& cam = FreeRoamCamera::GetInstance();
+
+			SLONG dx = MouseDX;
+			SLONG dy = -MouseDY;
+
 			RecenterMouse();
 
-			cam_yaw = FC_cam[darci->Genus.Person->PlayerID - 1].focus_yaw;
+			SLONG mouse_sensitivity = 40;
+
+			cam.Yaw = (cam.Yaw - dx * mouse_sensitivity);
+			cam.Pitch = (cam.Pitch + dy * mouse_sensitivity);
 		}
+		else if (0)
+		{
+			if (!look_mode)
+			{
+				look_mode = true;
+				ShowCursor(FALSE);
+				RecenterMouse();
 
-		SLONG dx = MouseDX/4;
-		SLONG dy = -MouseDY;
+				cam_yaw = FC_cam[darci->Genus.Person->PlayerID - 1].focus_yaw;
+			}
 
-		RecenterMouse();
+			SLONG dx = MouseDX / 4;
+			SLONG dy = -MouseDY;
 
-		SLONG sens_x = 4;
-		SLONG sens_y = 4;
+			RecenterMouse();
 
-		cam_yaw = (cam_yaw - dx * sens_x) & 2047;
-		cam_pitch = (cam_pitch + dy * sens_y) & 2047;
+			SLONG sens_x = 4;
+			SLONG sens_y = 4;
 
-		if (cam_pitch < 768)  cam_pitch = 768;   
-		if (cam_pitch > 1280) cam_pitch = 1280;  
+			cam_yaw = (cam_yaw - dx * sens_x) & 2047;
+			cam_pitch = (cam_pitch + dy * sens_y) & 2047;
 
-		FC_position_for_lookaround_v2(
-			darci->Genus.Person->PlayerID - 1,
-			cam_pitch,
-			cam_yaw
-		);
+			if (cam_pitch < 768)  cam_pitch = 768;
+			/*if (cam_pitch > 1280) cam_pitch = 1280;  */
+
+			FC_position_for_lookaround_v2(
+				darci->Genus.Person->PlayerID - 1,
+				cam_pitch,
+				cam_yaw
+			);
+		}
 	}
 	else if (look_mode)
 	{
@@ -2308,24 +2365,6 @@ void	process_controls(void)
 		*/
 
 	}
-
-#ifndef TARGET_DC
-	if (Keys[KB_D])
-	{
-		Keys[KB_D] = 0;
-
-		SLONG is_there_room_behind_person(Thing *p_person, SLONG hit_from_behind);
-
-		if (is_there_room_behind_person(darci, FALSE))
-		{
-			PANEL_new_text(NULL, 400, "There is room behind Darci");
-		}
-
-		//set_person_recoil(darci, ANIM_HIT_FRONT_HI, 0);
-		//set_person_dead(darci, NULL, PERSON_DEATH_TYPE_LEG_SWEEP, 0, 0);
-	}
-#endif //#ifndef TARGET_DC
-
 
 //	PANEL_new_text(NULL, 2000, "abcdefghijk lmnopqr stuvwxyz ABCDEFG HIJKLMNO PQRSTUVWXYZ 0123456789 !\"£$%^ &*(){} []<>\\/:;'@ #~?-=+.,");
 //	PANEL_new_text(NULL, 2000, "a-b-c-d-e-f-g  h-i-j-k-l-m-n");
@@ -2548,23 +2587,6 @@ void	process_controls(void)
 
 			}
 		}
-#ifndef	NDEBUG
-		SLONG is_there_room_behind_person(Thing *p_person, SLONG hit_from_behind);
-
-		if (Keys[KB_U])
-		{
-			Keys[KB_U] = 0;
-
-			if (is_there_room_behind_person(darci, FALSE))
-			{
-				PANEL_new_text(darci, 1000, "Enough room behind me.");
-			}
-			else
-			{
-				PANEL_new_text(darci, 1000, "No room behind me.");
-			}
-		}
-#endif
 	}
 #endif //#ifndef TARGET_DC
 

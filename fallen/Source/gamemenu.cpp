@@ -119,7 +119,7 @@ GAMEMENU_Menu GAMEMENU_menu[GAMEMENU_MENU_TYPE_NUMBER] =
 	{X_LEVEL_COMPLETE},
 	{X_LEVEL_LOST, X_RESTART_LEVEL,  X_ABANDON_GAME},
 	{X_ARE_YOU_SURE, X_OKAY, X_CANCEL},
-	{X_EMPTY, X_EMPTY, X_EMPTY, X_EMPTY, X_EMPTY, X_EMPTY}
+	{X_SAVE_GAME, X_EMPTY, X_EMPTY, X_EMPTY, X_EMPTY, X_EMPTY}
 };
 
 
@@ -765,7 +765,7 @@ void GAMEMENU_draw()
 #endif
 
 	MENUFONT_fadein_line(GAMEMENU_fadein_x);
-	//MENUFONT_fadein_draw(320, 100, 255, XLAT_str(GAMEMENU_menu[GAMEMENU_menu_type].word[0]));
+	MENUFONT_fadein_draw(320, 100, 255, XLAT_str(GAMEMENU_menu[GAMEMENU_menu_type].word[0]));
 
 	bool bDrawMainPartOfMenu = TRUE;
 

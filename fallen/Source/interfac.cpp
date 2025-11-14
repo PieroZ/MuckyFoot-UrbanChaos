@@ -36,6 +36,8 @@
 #endif
 #include "PersonPZI.h"
 #include "config_extras.h"
+#include "free_roam_camera.h"
+#include "helper_utils.h"
 
 
 #ifdef TARGET_DC
@@ -7900,136 +7902,292 @@ extern SLONG Wadmenu_MuckyTime;
 	}
 #else // remap_keyboard
 
-	if(type&INPUT_TYPE_KEY)
+	if (type & INPUT_TYPE_KEY)
 	{
-
-#ifdef TARGET_DC
-		ASSERT ( FALSE );
-#else //#ifdef TARGET_DC
-
-		if(Keys[keybrd_button_use[KEYBRD_BUTTON_FORWARDS]])
+		if (FreeRoamCamera::GetInstance().IsActive)
 		{
-			input|=INPUT_MASK_FORWARDS;
-		}
+			auto& cam = FreeRoamCamera::GetInstance();
+			// tuning:
+			const float speed = 10000.0f;          // units per second
+			const float sprintMultiplier = 4.0f; // ShiftFlag?
 
-		if(Keys[keybrd_button_use[KEYBRD_BUTTON_BACK]])
-			input|=INPUT_MASK_BACKWARDS;
+			// convert yaw/pitch to radians if stored as 0..2047
+			const bool anglesIn2048 = true; 
+			float yawRad = 0.0f, pitchRad = 0.0f;
+			if (anglesIn2048)
+			{
+				const float RAD_SCALE = 2.0f * 3.14159265358979323846f / 2048.0f;
+				yawRad = (float)(cam.Yaw) * RAD_SCALE;
+				pitchRad = (float)(cam.Pitch) * RAD_SCALE;
 
-		if(Keys[keybrd_button_use[KEYBRD_BUTTON_LEFT]])
-		{
-			if(ShiftFlag)
-				input|=INPUT_MASK_STEP_LEFT;
+				yawRad = FixedAngleToRadians(cam.Yaw);
+				pitchRad = FixedAngleToRadians(cam.Pitch);
+			}
 			else
-				input|=INPUT_MASK_LEFT;
-		}
+			{
+				yawRad = cam.Yaw;   
+				pitchRad = cam.Pitch; 
+			}
 
-		if(Keys[keybrd_button_use[KEYBRD_BUTTON_RIGHT]])
-		{
-			if(ShiftFlag)
-				input|=INPUT_MASK_STEP_RIGHT;
+			// forward vector
+			const float cosP = cosf(pitchRad);
+			const float fx = sinf(yawRad) * cosP;
+			const float fz = cosf(yawRad) * cosP;
+			const float fy = sinf(pitchRad); 
+
+			// right vector (camera right)
+			const float rx = cosf(yawRad);
+			const float rz = -sinf(yawRad);
+			const float ry = 0.0f; // keep horizontal strafing
+
+			// compute move speed
+			float moveAmount = speed;
+			if (ShiftFlag) moveAmount *= sprintMultiplier;
+
+			// accumulate in floats
+			float posX = (float)cam.PositionX;
+			float posY = (float)cam.PositionY;
+			float posZ = (float)cam.PositionZ;
+
+			if (Keys[keybrd_button_use[KEYBRD_BUTTON_FORWARDS]])
+			{
+				posX += fx * moveAmount;
+				posY += fy * moveAmount;
+				posZ += fz * moveAmount;
+			}
+			if (Keys[keybrd_button_use[KEYBRD_BUTTON_BACK]])
+			{
+				posX -= fx * moveAmount;
+				posY -= fy * moveAmount;
+				posZ -= fz * moveAmount;
+			}
+			if (Keys[keybrd_button_use[KEYBRD_BUTTON_LEFT]])
+			{
+				posX -= rx * moveAmount;
+				posZ -= rz * moveAmount;
+			}
+			if (Keys[keybrd_button_use[KEYBRD_BUTTON_RIGHT]])
+			{
+				posX += rx * moveAmount;
+				posZ += rz * moveAmount;
+			}
+			static bool t_was_down = false;
+			if (Keys[KB_T])
+			{
+				if (!t_was_down)
+				{
+					// key went from up -> down: trigger one rotation
+					cam.Roll += 131072;
+					t_was_down = true;
+				}
+			}
 			else
-				input|=INPUT_MASK_RIGHT;
+			{
+				// key is up: reset edge detector
+				t_was_down = false;
+			}
+
+			static bool y_was_down = false;
+			if (Keys[KB_Y])
+			{
+				if (!y_was_down)
+				{
+					// key went from up -> down: trigger one rotation
+					cam.Pitch += 131072;
+					y_was_down = true;
+				}
+			}
+			else
+			{
+				// key is up: reset edge detector
+				y_was_down = false;
+			}
+
+			static bool u_was_down = false;
+			if (Keys[KB_U])
+			{
+				if (!u_was_down)
+				{
+					// key went from up -> down: trigger one rotation
+					cam.Yaw += 131072;
+					u_was_down = true;
+				}
+			}
+			else
+			{
+				// key is up: reset edge detector
+				u_was_down = false;
+			}
+
+
+
+			cam.PositionX = (SLONG)roundf(posX);
+			cam.PositionY = (SLONG)roundf(posY);
+			cam.PositionZ = (SLONG)roundf(posZ);
 		}
-
-		if(Keys[keybrd_button_use[JOYPAD_BUTTON_SELECT]])
-			input|=INPUT_MASK_SELECT;
-
-		if(Keys[KB_F5])
+		else
 		{
-			input|=INPUT_MASK_CAMERA;
-			input&=~INPUT_MASKM_CAM_TYPE;
-			input|=INPUT_MASKM_CAM1;
-			Keys[KB_F5]=0;
-		}
-		if(Keys[KB_F6])
-		{
-			input|=INPUT_MASK_CAMERA;
-			input&=~INPUT_MASKM_CAM_TYPE;
-			input|=INPUT_MASKM_CAM2;
-			Keys[KB_F6]=0;
-		}
-		if(Keys[KB_F7])
-		{
-			input|=INPUT_MASK_CAMERA;
-			input&=~INPUT_MASKM_CAM_TYPE;
-			input|=INPUT_MASKM_CAM3;
-			Keys[KB_F7]=0;
-		}
 
-		/*
-		if(Keys[KB_F8])
-		{
-			input|=INPUT_MASK_CAMERA;
-			input&=~INPUT_MASKM_CAM_TYPE;
-			input|=INPUT_MASKM_CAM4;
-			Keys[KB_F8]=0;
-		}
-		*/
+			if (Keys[keybrd_button_use[KEYBRD_BUTTON_FORWARDS]])
+			{
+				if (FreeRoamCamera::GetInstance().IsActive)
+				{
+					FreeRoamCamera::GetInstance().PositionZ += 10000;
+				}
+				else
+				{
+					input |= INPUT_MASK_FORWARDS;
+				}
+			}
 
-		if (Keys[keybrd_button_use[JOYPAD_BUTTON_CAMERA]])
-		{
-			Keys[keybrd_button_use[JOYPAD_BUTTON_CAMERA]] = 0;
-			input|=INPUT_MASK_CAM_BEHIND;
-		}
+			if (Keys[keybrd_button_use[KEYBRD_BUTTON_BACK]])
+			{
+				if (FreeRoamCamera::GetInstance().IsActive)
+				{
+					FreeRoamCamera::GetInstance().PositionZ -= 10000;
+				}
+				else
+				{
+					input |= INPUT_MASK_BACKWARDS;
+				}
+			}
 
-		if (Keys[keybrd_button_use[JOYPAD_BUTTON_CAM_LEFT]]) 
-		{
-			Keys[JOYPAD_BUTTON_CAM_LEFT] = 0;
-			input|=INPUT_MASK_CAM_LEFT;
-		}
-		if (Keys[keybrd_button_use[JOYPAD_BUTTON_CAM_RIGHT]]) 
-		{
-			Keys[keybrd_button_use[JOYPAD_BUTTON_CAM_RIGHT]] = 0;
-			input|=INPUT_MASK_CAM_RIGHT;
-		}
+			if (Keys[keybrd_button_use[KEYBRD_BUTTON_LEFT]])
+			{
+				if (FreeRoamCamera::GetInstance().IsActive)
+				{
+					FreeRoamCamera::GetInstance().PositionX += 10000;
+				}
+				else
+				{
+					if (ShiftFlag)
+						input |= INPUT_MASK_STEP_LEFT;
+					else
+						input |= INPUT_MASK_LEFT;
+				}
+			}
 
-		if(Keys[keybrd_button_use[JOYPAD_BUTTON_JUMP]])
-			input|=INPUT_MASK_JUMP;
+			if (Keys[keybrd_button_use[KEYBRD_BUTTON_RIGHT]])
+			{
+				if (FreeRoamCamera::GetInstance().IsActive)
+				{
+					FreeRoamCamera::GetInstance().PositionX -= 10000;
+				}
+				else
+				{
+					if (ShiftFlag)
+						input |= INPUT_MASK_STEP_RIGHT;
+					else
+						input |= INPUT_MASK_RIGHT;
+				}
+			}
 
-		if (Keys[keybrd_button_use[KEYBRD_HANDSHAKE]])
-			input |= INPUT_MASK_HANDSHAKE;
+			if (Keys[keybrd_button_use[JOYPAD_BUTTON_SELECT]])
+				input |= INPUT_MASK_SELECT;
 
-		if(Keys[keybrd_button_use[JOYPAD_BUTTON_PUNCH]])
-		{
-			input|=INPUT_MASK_PUNCH;
-		}
-		if(Keys[keybrd_button_use[JOYPAD_BUTTON_KICK]])
-		{
-			MSG_add(" HARDWARE KICK");
-			input|=INPUT_MASK_KICK;
-		}
+			if (Keys[KB_F5])
+			{
+				input |= INPUT_MASK_CAMERA;
+				input &= ~INPUT_MASKM_CAM_TYPE;
+				input |= INPUT_MASKM_CAM1;
+				Keys[KB_F5] = 0;
+			}
+			if (Keys[KB_F6])
+			{
+				input |= INPUT_MASK_CAMERA;
+				input &= ~INPUT_MASKM_CAM_TYPE;
+				input |= INPUT_MASKM_CAM2;
+				Keys[KB_F6] = 0;
+			}
+			if (Keys[KB_F7])
+			{
+				input |= INPUT_MASK_CAMERA;
+				input &= ~INPUT_MASKM_CAM_TYPE;
+				input |= INPUT_MASKM_CAM3;
+				Keys[KB_F7] = 0;
+			}
 
-		if(Keys[keybrd_button_use[JOYPAD_BUTTON_ACTION]])
-		{
-			input|=INPUT_MASK_ACTION;
-		}
+			/*
+			if(Keys[KB_F8])
+			{
+				input|=INPUT_MASK_CAMERA;
+				input&=~INPUT_MASKM_CAM_TYPE;
+				input|=INPUT_MASKM_CAM4;
+				Keys[KB_F8]=0;
+			}
+			*/
 
-		if(Keys[keybrd_button_use[KEYBRD_BUTTON_TEST]])
-		{
-			input|= INPUT_MASK_TEST;
-		}
+			if (Keys[keybrd_button_use[JOYPAD_BUTTON_CAMERA]])
+			{
+				Keys[keybrd_button_use[JOYPAD_BUTTON_CAMERA]] = 0;
+				input |= INPUT_MASK_CAM_BEHIND;
+			}
 
-		/*
+			if (Keys[keybrd_button_use[JOYPAD_BUTTON_CAM_LEFT]])
+			{
+				Keys[JOYPAD_BUTTON_CAM_LEFT] = 0;
+				input |= INPUT_MASK_CAM_LEFT;
+			}
+			if (Keys[keybrd_button_use[JOYPAD_BUTTON_CAM_RIGHT]])
+			{
+				Keys[keybrd_button_use[JOYPAD_BUTTON_CAM_RIGHT]] = 0;
+				input |= INPUT_MASK_CAM_RIGHT;
+			}
 
-		// Take out the V key?!
+			if (Keys[keybrd_button_use[JOYPAD_BUTTON_JUMP]])
+			{
+				if (FreeRoamCamera::GetInstance().IsActive)
+				{
+					FreeRoamCamera::GetInstance().PositionY += 10000;
+				}
+				else
+				{
+					input |= INPUT_MASK_JUMP;
+				}
+			}
 
-		if(Keys[keybrd_button_use[JOYPAD_BUTTON_MOVE]])
-		{
-			input|=INPUT_MASK_MOVE;
-		}
-		*/
+			if (Keys[keybrd_button_use[KEYBRD_HANDSHAKE]])
+				input |= INPUT_MASK_HANDSHAKE;
 
-		if (Keys[keybrd_button_use[KEYBRD_BUTTON_FORWARDS]])
-		{
-//			input |= INPUT_MASK_FORWARD;
-			input |= INPUT_MASK_MOVE;
-		}
+			if (Keys[keybrd_button_use[JOYPAD_BUTTON_PUNCH]])
+			{
+				input |= INPUT_MASK_PUNCH;
+			}
+			if (Keys[keybrd_button_use[JOYPAD_BUTTON_KICK]])
+			{
+				MSG_add(" HARDWARE KICK");
+				input |= INPUT_MASK_KICK;
+			}
+
+			if (Keys[keybrd_button_use[JOYPAD_BUTTON_ACTION]])
+			{
+				input |= INPUT_MASK_ACTION;
+			}
+
+			if (Keys[keybrd_button_use[KEYBRD_BUTTON_TEST]])
+			{
+				input |= INPUT_MASK_TEST;
+			}
+
+			/*
+
+			// Take out the V key?!
+
+			if(Keys[keybrd_button_use[JOYPAD_BUTTON_MOVE]])
+			{
+				input|=INPUT_MASK_MOVE;
+			}
+			*/
+
+			if (Keys[keybrd_button_use[KEYBRD_BUTTON_FORWARDS]])
+			{
+				//			input |= INPUT_MASK_FORWARD;
+				input |= INPUT_MASK_MOVE;
+			}
 #endif //#else //#ifdef TARGET_DC
-
+		}
 	}
 
-
-#endif // remap_keyboard
 
 	//
 	// Sometimes, while a cutscene is playing, Simon wants Darci to stop moving.

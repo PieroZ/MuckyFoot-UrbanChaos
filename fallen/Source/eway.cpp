@@ -4289,7 +4289,7 @@ ANNOYINGSCRIBBLECHECK;
 		// Accelerate towards our next waypoint.
 		//
 
-		#define EWAY_CAM_ACCEL_SPEED (EWAY_cam_speed >> 3)
+		const int EWAY_CAM_ACCEL_SPEED = EWAY_cam_speed >> 3;
 
 		dx = (dx * EWAY_CAM_ACCEL_SPEED) / dist;
 		dy = (dy * EWAY_CAM_ACCEL_SPEED) / dist;

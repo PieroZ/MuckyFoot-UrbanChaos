@@ -965,6 +965,8 @@
     <ClInclude Include="..\MFStdLib\Headers\StdMaths.h" />
     <ClInclude Include="..\MFStdLib\Headers\StdMem.h" />
     <ClInclude Include="..\MFStdLib\Headers\StdMouse.h" />
+    <ClInclude Include="DDEngine\Headers\free_roam_camera.h" />
+    <ClInclude Include="DDEngine\Headers\helper_utils.h" />
     <ClInclude Include="DDEngine\Headers\save_selector.h" />
     <ClInclude Include="Headers\AllToAnmConverter.h" />
     <ClInclude Include="DDEngine\Headers\aa.h" />

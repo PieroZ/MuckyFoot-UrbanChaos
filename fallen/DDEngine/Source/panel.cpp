@@ -20,6 +20,7 @@
 #include	"sound_id.h"
 #include	"pcom.h"
 #include	"env.h"
+#include "helper_utils.h"
 
 #ifdef TARGET_DC
 #include "target.h"
@@ -2534,7 +2535,7 @@ void PANEL_new_widescreen()
 	extern float POLY_screen_clip_top;
 	extern float POLY_screen_clip_bottom;
 
-	POLY_screen_clip_top    = 0.0F;
+ 	POLY_screen_clip_top    = 0.0F;
 	POLY_screen_clip_bottom = float(DisplayHeight);
 
 	//
@@ -4396,22 +4397,27 @@ void PANEL_last()
 		return;
 	}
 
+	static bool was_in_cutscene = false;
 	if (EWAY_stop_player_moving())
 	{
 		//
 		// There is a widescreen cutscene playing.
 		//
-
+		was_in_cutscene = true;
 		PANEL_new_widescreen();
 
 		return;
 	}
-	else
+	else 
 	{
-		PANEL_wide_top_person     = NULL;
-		PANEL_wide_bot_person     = NULL;
+		if (was_in_cutscene) {
+			the_display.ClearViewport();
+			was_in_cutscene = false;
+		}
+		PANEL_wide_top_person = NULL;
+		PANEL_wide_bot_person = NULL;
 		PANEL_wide_top_is_talking = FALSE;
-		PANEL_wide_text[0]        = '\000';
+		PANEL_wide_text[0] = '\000';
 	}
 
 	//
@@ -5813,7 +5819,7 @@ extern DWORD m_dwSizeOfQueue;
 	extern SLONG FARFACET_num_squares_drawn;
 
 	{
-		CBYTE text[64];
+		//CBYTE text[64];
 
 		//sprintf(text, "FARFACET squares drawn: %d", FARFACET_num_squares_drawn);
 
@@ -5848,11 +5854,11 @@ extern DWORD m_dwSizeOfQueue;
 		//	POLY_PAGE_FONT2D,
 		//	0);
 
-//		int sx = 50, sy = 50, cam = 0;
-//		char text[256];
-//		FC_Cam* fc = &FC_cam[cam];
-//		int line = 0;
-//
+		int sx = 50, sy = 50, cam = 0;
+		char text[256];
+		FC_Cam* fc = &FC_cam[cam];
+		int line = 0;
+
 //#define DRAW_LINE(fmt, ...) \
 //		do { \
 //			sprintf(text, fmt, __VA_ARGS__); \
@@ -5866,7 +5872,7 @@ extern DWORD m_dwSizeOfQueue;
 //		DRAW_LINE("CAM %d focus=%p in_wh=%d yaw=%d", cam, (void*)fc->focus, fc->focus_in_warehouse, fc->focus_yaw);
 //		DRAW_LINE("focus_xyz=(%d,%d,%d)", fc->focus_x, fc->focus_y, fc->focus_z);
 //		DRAW_LINE("pos=(%d,%d,%d) want=(%d,%d,%d)", fc->x, fc->y, fc->z, fc->want_x, fc->want_y, fc->want_z);
-//		DRAW_LINE("d=(%d,%d,%d) yaw=%d pitch=%d roll=%d", fc->dx, fc->dy, fc->dz, fc->yaw, fc->pitch, fc->roll);
+//		DRAW_LINE("d=(%d,%d,%d) yaw=%f pitch=%f roll=%f", fc->dx, fc->dy, fc->dz, FixedAngleToDegrees(fc->yaw), FixedAngleToDegrees(fc->pitch), FixedAngleToDegrees(fc->roll));
 //		DRAW_LINE("want_yaw=%d want_pitch=%d want_roll=%d", fc->want_yaw, fc->want_pitch, fc->want_roll);
 //		DRAW_LINE("lens=%d toonear=%d rotate=%d nobehind=%d lookabove=%d shake=%d", fc->lens, fc->toonear, fc->rotate, fc->nobehind, fc->lookabove, fc->shake);
 //		DRAW_LINE("cam_dist=%d cam_height=%d smooth=%d", fc->cam_dist, fc->cam_height, fc->smooth_transition);

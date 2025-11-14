@@ -1758,6 +1758,8 @@
     <ClInclude Include="Source\PersonPZI.h" />
     <ClInclude Include="Headers\config_extras.h" />
     <ClInclude Include="DDEngine\Headers\save_selector.h" />
+    <ClInclude Include="DDEngine\Headers\free_roam_camera.h" />
+    <ClInclude Include="DDEngine\Headers\helper_utils.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="DDLibrary\bitmap1.bmp">

@@ -91,6 +91,8 @@
 #include "DCLowLevel.h"
 #include "es.h"
 #include "..\..\Source\DebugVars.h"
+#include "free_roam_camera.h"
+
 
 #ifdef TARGET_DC
 #include <shsgintr.h>
@@ -16257,7 +16259,13 @@ void AENG_draw(SLONG draw_3d)
 		// If there is a cut-scene camera...
 		//
 
-		if (EWAY_grab_camera(
+		// free camera mode
+		if (FreeRoamCamera::GetInstance().IsActive)
+		{
+			warehouse = 0;
+			FreeRoamCamera::GetInstance().CopyToFC(fc);
+		}
+		else if (EWAY_grab_camera(
 				&fc->x,
 				&fc->y,
 				&fc->z,
