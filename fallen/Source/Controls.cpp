@@ -72,6 +72,8 @@
 #include	"DebugVars.h"
 #include	"PersonPZI.h"
 
+#include "BreakTimer.h"
+
 #include "NGamut.h"
 
 #ifndef		PSX
@@ -877,7 +879,8 @@ extern int AENG_detail_crinkles;
 					//fc->want_pitch -= i;
 				}
 				break;
-			case 54: //freeroam
+				// freeroam toggle (inside your input handling / switch where case 54 is)
+			case 54: // freeroam
 				if (allow_debug_keys)
 				{
 					FreeRoamCamera& frc = FreeRoamCamera::GetInstance();
@@ -885,6 +888,8 @@ extern int AENG_detail_crinkles;
 					frc.IsActive = !frc.IsActive;
 					if (frc.IsActive)
 					{
+						// Initialize smoothing targets so the camera doesn't snap/flip on enable
+						frc.InitFreeRoamTargetsFromCurrent();
 						CONSOLE_text("Free roam enabled");
 					}
 					else
@@ -2265,22 +2270,45 @@ void	process_controls(void)
 
 //	if (Keys[KB_D])
 
-	// Mouse look (GTA3-like)
-  	if (ConfigExtras::getInstance().mMouseInput)
+	const float mouseSensitivity = 45.0025f; // interpreted as units-per-pixel (keep same unit as cam angles)
+	const float smoothingSpeed = 12.0f;     // larger = snappier, smaller = more smoothing
+	const float maxPitch = 1.48352986f;     // ~85 degrees in radians
+
+	if (ConfigExtras::getInstance().mMouseInput)
 	{
 		if (FreeRoamCamera::GetInstance().IsActive)
 		{
 			auto& cam = FreeRoamCamera::GetInstance();
 
-			SLONG dx = MouseDX;
-			SLONG dy = -MouseDY;
+			// read raw mouse deltas as floats (ensure MouseDX/MouseDY are per-frame raw deltas)
+			float dx = static_cast<float>(MouseDX);
+			float dy = -static_cast<float>(MouseDY);
 
+			// recenter AFTER reading deltas (if you need to recenter)
 			RecenterMouse();
 
-			SLONG mouse_sensitivity = 40;
+			// update targets using the same units as cam.Pitch/Yaw
+			cam.targetYaw -= dx * mouseSensitivity;
+			cam.targetPitch += dy * mouseSensitivity;
 
-			cam.Yaw = (cam.Yaw - dx * mouse_sensitivity);
-			cam.Pitch = (cam.Pitch + dy * mouse_sensitivity);
+			//// clamp pitch to avoid gimbal flip
+			//if (cam.targetPitch > maxPitch) cam.targetPitch = maxPitch;
+			//if (cam.targetPitch < -maxPitch) cam.targetPitch = -maxPitch;
+
+			if (cam.targetYaw > PI) cam.targetYaw -= 2.0f * PI;
+			if (cam.targetYaw < -PI) cam.targetYaw += 2.0f * PI;
+
+			// frame delta time (use your engine's dt)
+			float dt = GetDeltaTimeSeconds();
+
+			// exponential smoothing (frame-rate independent)
+			float alpha = 1.0f - expf(-smoothingSpeed * dt);
+			cam.smoothYaw = cam.smoothYaw + (cam.targetYaw - cam.smoothYaw) * alpha;
+			cam.smoothPitch = cam.smoothPitch + (cam.targetPitch - cam.smoothPitch) * alpha;
+
+			// write smoothed values back to the camera angles
+			cam.Yaw = cam.smoothYaw;
+			cam.Pitch = cam.smoothPitch;
 		}
 		else if (0)
 		{

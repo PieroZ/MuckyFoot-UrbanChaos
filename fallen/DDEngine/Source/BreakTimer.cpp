@@ -46,6 +46,35 @@ float StopStopwatch()
 	return secs;
 }
 
+// Returns frame delta time in seconds. Call once per frame.
+// Uses the same high resolution timer helpers already in this file.
+float GetDeltaTimeSeconds()
+{
+	// Use the fine timer helpers in this translation unit.
+	static bool initialized = false;
+	static ULONG prev = 0;
+	static ULONG freq = 0;
+
+	if (!initialized)
+	{
+		freq = GetFineTimerFreq();
+		prev = GetFineTimerValue();
+		initialized = true;
+		// On first call return a reasonable default (approx 1/60s).
+		return 1.0f / 60.0f;
+	}
+
+	ULONG now = GetFineTimerValue();
+	// Unsigned subtraction correctly handles wrap.
+	ULONG diff = now - prev;
+	prev = now;
+
+	// Defensive: if freq is zero for some reason, avoid division by zero.
+	if (freq == 0) return 0.0f;
+
+	return float(diff) / float(freq);
+}
+
 #ifdef BREAKTIMER
 
 const size_t MAX_BREAK = 64;

@@ -32,3 +32,4 @@ extern void BreakFrame();
 
 extern void StartStopwatch();
 extern float StopStopwatch();
+extern float GetDeltaTimeSeconds();

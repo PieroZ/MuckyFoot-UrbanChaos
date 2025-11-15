@@ -1,3 +1,4 @@
+
 #include "game.h"
 #include "..\headers\cam.h"
 #include "..\headers\statedef.h"
@@ -29,6 +30,8 @@
 #define	VERSION_NTSC	1
 #endif
 
+
+#include "overlay.h"
 extern	void	add_damage_text(SWORD x,SWORD y,SWORD z,CBYTE *text);
 
 
@@ -1011,6 +1014,10 @@ void	OVERLAY_handle(void)
 			PANEL_draw_buffered();
 #endif
 			OVERLAY_draw_gun_sights();
+
+			// Draw our crosshair
+			PANEL_draw_crosshair();
+
 			OVERLAY_draw_enemy_health();
 		}
 	}
@@ -1610,4 +1617,159 @@ void	init_overlay(void)
 //	memset((UBYTE*)beacons,0,sizeof(struct	Beacon)*MAX_BEACON);
 	memset((UBYTE*)panel_enemy,0,sizeof(struct	TrackEnemy)*MAX_TRACK);
 
+}
+
+//void PANEL_draw_crosshair(void)
+//{
+//	// centre
+//	const int cx = DisplayWidth / 2;
+//	const int cy = DisplayHeight / 2;
+//
+//	// Crosshair appearance
+//	CBYTE* ch = "+";
+//	const int colour = 0x00FFFFFF; // ARGB or RGB depends on engine; try 0x00FFFFFF or 0xFFFFFFFF
+//	const int maxWidth = 256;     // same as other calls you have seen
+//	const int fontPage = POLY_PAGE_FONT2D; // reuse existing font page
+//	const int flags = 0;          // whatever flags you normally pass
+//
+//	// measure offset: FONT2D has no measure helper here, so offset by a few pixels
+//	// If you have a measure function, use it. This centers approximately.
+//	const int x = cx - 4;  // tweak -4/-5 to perfectly center for your font
+//	const int y = cy - 6;  // tweak -6/-7 to perfectly center vertically
+//    
+//
+//	// Draw a shadow for contrast (same pattern used elsewhere)
+//	FONT2D_DrawString(ch, x + 1, y + 1, 0x000000, maxWidth, fontPage, flags);
+//	// main glyph
+//	FONT2D_DrawString(ch, x, y, colour, maxWidth, fontPage, flags);
+//}
+
+
+// --- Added: helper to find target under crosshair and updated crosshair draw ---
+// Returns the first Thing* hit by projecting the player's view from the eye
+// forward. Steps forward in increments and probes a small sphere for things.
+// max_range_blocks is in world "blocks" (1 block == 1<<8 units). step/search
+// radius are in the same world units (>>8).
+static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SLONG step = 64, SLONG search_radius = 64)
+{
+	Thing* darci = NET_PERSON(0);
+	if (!darci) return NULL;
+
+	// Eye position in world units (>>8 used throughout engine)
+	SLONG ex = darci->WorldPos.X >> 8;
+	SLONG ey = (darci->WorldPos.Y >> 8) + 96; // eye offset approx; tweak if needed
+	SLONG ez = darci->WorldPos.Z >> 8;
+
+	// Yaw from player (0..2047)
+	UWORD yaw = darci->Draw.Tweened->Angle & 2047;
+
+	SLONG max_range = max_range_blocks << 8;
+
+	// Types we care about when checking crosshair hits
+	ULONG collide_types = (1 << CLASS_PERSON) | (1 << CLASS_BARREL) | (1 << CLASS_VEHICLE) | (1 << CLASS_SPECIAL);
+
+#define MAX_HIT_FOUND 16
+	UWORD found[MAX_HIT_FOUND];
+
+	for (SLONG dist = step; dist <= max_range; dist += step)
+	{
+		// COS/SIN return fixed-point (1<<16) scaled values in this codebase.
+		SLONG wx = ex + ((COS(yaw) * dist) >> 16);
+		SLONG wz = ez + ((SIN(yaw) * dist) >> 16);
+		SLONG wy = ey;
+
+		// Find nearby things around this sample point
+		SLONG num = THING_find_sphere(
+			wx, wy, wz,
+			search_radius,
+			found,
+			MAX_HIT_FOUND,
+			collide_types);
+
+		for (SLONG i = 0; i < num; i++)
+		{
+			Thing* p_found = TO_THING(found[i]);
+
+			// ignore self and dead things
+			if (p_found == darci) continue;
+			if (p_found->State == STATE_DEAD) continue;
+
+			// visibility tests: persons use can_a_see_b, non-people use a LOS test
+			BOOL vis = FALSE;
+			if (p_found->Class == CLASS_PERSON)
+			{
+				if (can_a_see_b(darci, p_found))
+					vis = TRUE;
+			}
+			else
+			{
+				// There are several LOS helper variants used around the codebase.
+				// Use the same parameters guns.cpp used for non-person los checks.
+				if (there_is_a_los(
+					darci->WorldPos.X >> 8,
+					(darci->WorldPos.Y + 0x6000) >> 8,
+					darci->WorldPos.Z >> 8,
+					p_found->WorldPos.X >> 8,
+					(p_found->WorldPos.Y + 0x3000) >> 8,
+					p_found->WorldPos.Z >> 8,
+					LOS_FLAG_IGNORE_PRIMS))
+				{
+					vis = TRUE;
+				}
+			}
+
+			if (vis)
+			{
+				// First visible thing along the projection -> return it
+				return p_found;
+			}
+		}
+	}
+
+	return NULL;
+}
+
+void PANEL_draw_crosshair(void)
+{
+	// centre
+	const int cx = DisplayWidth / 2;
+	const int cy = DisplayHeight / 2;
+
+	// Crosshair appearance
+	CBYTE* ch = "+";
+	// default colour (white)
+	const int colour_default = 0x00FFFFFF;
+	// highlight colour when a target sits under the crosshair
+	const int colour_target = 0x00FF0000;
+	const int maxWidth = 256;     // same as other calls you have seen
+	const int fontPage = POLY_PAGE_FONT2D; // reuse existing font page
+	const int flags = 0;          // whatever flags you normally pass
+
+	// measure offset: FONT2D has no measure helper here, so offset by a few pixels
+	// If you have a measure function, use it. This centers approximately.
+	const int x = cx - 4;  // tweak -4/-5 to perfectly center for your font
+	const int y = cy - 6;  // tweak -6/-7 to perfectly center vertically
+
+	// Determine whether a visible target exists under the crosshair.
+	Thing* target = OVERLAY_find_target_under_crosshair(8, 64, 64);
+
+	if (target && target->Class == CLASS_VEHICLE)
+	{
+		extern void VEH_reduce_health(
+			Thing * p_car,
+			Thing * p_person,
+			SLONG  damage);
+
+		Thing* darci = NET_PERSON(0);
+		VEH_reduce_health(target, darci, 5);
+		target->Genus.Vehicle->Siren = 1;
+	}
+
+	// Choose colour based on whether we have a target
+	const int colour = target ? colour_target : colour_default;
+
+	// Draw a shadow for contrast (same pattern used elsewhere)
+	FONT2D_DrawString(ch, x + 1, y + 1, 0x000000, maxWidth, fontPage, flags);
+	// main glyph
+	FONT2D_DrawString(ch, x, y, colour, maxWidth, fontPage, flags);
 }
