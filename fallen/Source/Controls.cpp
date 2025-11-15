@@ -886,6 +886,10 @@ extern int AENG_detail_crinkles;
 					FreeRoamCamera& frc = FreeRoamCamera::GetInstance();
 					frc.CopyFromFC(&FC_cam[0]);
 					frc.IsActive = !frc.IsActive;
+
+					frc.PositionX = darci->WorldPos.X;
+					frc.PositionY = darci->WorldPos.Y  + (96 << 8);
+					frc.PositionZ = darci->WorldPos.Z;
 					if (frc.IsActive)
 					{
 						// Initialize smoothing targets so the camera doesn't snap/flip on enable

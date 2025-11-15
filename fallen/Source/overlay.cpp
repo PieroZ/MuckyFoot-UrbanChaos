@@ -1644,6 +1644,8 @@ void	init_overlay(void)
 //	FONT2D_DrawString(ch, x, y, colour, maxWidth, fontPage, flags);
 //}
 
+#include "free_roam_camera.h"
+#include "helper_utils.h"
 
 // Returns the first Thing* hit by projecting the player's view from the eye
 // forward. Steps forward in increments and probes a small sphere for things.
@@ -1654,68 +1656,92 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 	Thing* darci = NET_PERSON(0);
 	if (!darci) return NULL;
 
-	// Eye position in world units (>>8 used throughout engine)
-	SLONG ex = darci->WorldPos.X >> 8;
-	SLONG ey = (darci->WorldPos.Y >> 8) + 96; // approximate eye height; tweak if necessary
-	SLONG ez = darci->WorldPos.Z >> 8;
+	SLONG ex, ey, ez; // start position
+	float yaw_rad = 0.0f;
+	float pitch_rad = 0.0f;
 
-	// Yaw from player (0..2047)
-	UWORD yaw = darci->Draw.Tweened->Angle & 2047;
+	FreeRoamCamera& frc = FreeRoamCamera::GetInstance();
+	const float FIXED_TO_RAD = (2.0f * 3.14159265358979323846f) / (2048.0f * 256.0f);
+	const float TWO_PI = 6.28318530717958647692f;
+	UWORD player_yaw_u = darci->Draw.Tweened->Angle & 2047;
+
+	if (frc.IsActive)
+	{
+		//// Use camera position as start
+		//ex = frc.PositionX >> 8;
+		//ey = frc.PositionY >> 8;
+		//ez = frc.PositionZ >> 8;
+
+		// Use player eye position
+		ex = darci->WorldPos.X >> 8;
+		ey = (darci->WorldPos.Y >> 8) + 96;
+		ez = darci->WorldPos.Z >> 8;
+
+		// Convert yaw/pitch to radians
+		yaw_rad = (fabsf(frc.Yaw) > 10.0f) ? frc.Yaw * FIXED_TO_RAD : frc.Yaw;
+		pitch_rad = (fabsf(frc.Pitch) > 10.0f) ? frc.Pitch * FIXED_TO_RAD : frc.Pitch;
+
+		yaw_rad = FixedAngleToRadians(frc.Yaw);
+		pitch_rad = FixedAngleToRadians(frc.Pitch);
+		pitch_rad += PI;
+		
+		//pitch_rad = (fabsf(frc.Pitch) > 10.0f) ? frc.Pitch * FIXED_TO_RAD : frc.Pitch;
+		//pitch_rad += PI;
+		//pitch_rad = -pitch_rad;
+		//pitch_rad = 0.0f;
+	}
+	else
+	{
+		// Use player eye position
+		ex = darci->WorldPos.X >> 8;
+		ey = (darci->WorldPos.Y >> 8) + 96;
+		ez = darci->WorldPos.Z >> 8;
+
+		yaw_rad = player_yaw_u * (TWO_PI / 2048.0f);
+		pitch_rad = 0.0f;
+	}
 
 	SLONG max_range = max_range_blocks << 8;
-
-	// Types we care about when checking crosshair hits
-	ULONG collide_types = (1 << CLASS_PERSON);// | (1 << CLASS_BARREL) | (1 << CLASS_VEHICLE) | (1 << CLASS_SPECIAL);
+	ULONG collide_types = (1 << CLASS_PERSON) | (1 << CLASS_VEHICLE); // adjust as needed
 
 #define MAX_HIT_FOUND 16
 	UWORD found[MAX_HIT_FOUND];
 
-	// Debug: draw the whole aiming ray (eye -> max_range) as one thin line (cyan).
+	// Compute forward vector
+	float cos_pitch = cosf(pitch_rad);
+	float sin_pitch = -sinf(pitch_rad);
+
+	float fx_dir = -sinf(yaw_rad) * cos_pitch;
+	float fz_dir = -cosf(yaw_rad) * cos_pitch;
+	float fy_dir = sin_pitch;
+
+	// Draw full aiming ray (cyan)
 	{
-		// NOTE: use SIN for X and COS for Z so the ray aligns with player view in this coordinate convention
-		SLONG fx = ex + ((SIN(yaw) * max_range) >> 16);
-		SLONG fz = ez + ((COS(yaw) * max_range) >> 16);
-		SLONG fy = ey;
+		float max_range_f = (float)max_range;
+		SLONG fx = ex + (SLONG)(fx_dir * max_range_f);
+		SLONG fz = ez + (SLONG)(fz_dir * max_range_f);
+		SLONG fy = ey + (SLONG)(fy_dir * max_range_f);
 		AENG_world_line(ex, ey, ez, 2, 0x00FFFF, fx, fy, fz, 2, 0x00FFFF, 1);
 	}
 
-	// draw small segments between samples so you can see where samples are taken
 	SLONG prev_x = ex, prev_y = ey, prev_z = ez;
 
 	for (SLONG dist = step; dist <= max_range; dist += step)
 	{
-		// DEFAULT sampling direction for this fix: SIN->X, COS->Z
-		SLONG wx = ex + ((SIN(yaw) * dist) >> 16);
-		SLONG wz = ez + ((COS(yaw) * dist) >> 16);
-		SLONG wy = ey;
+		float dist_f = (float)dist;
+		SLONG wx = ex + (SLONG)(fx_dir * dist_f);
+		SLONG wz = ez + (SLONG)(fz_dir * dist_f);
+		SLONG wy = ey + (SLONG)(fy_dir * dist_f);
 
-		wx = ex - ((SIN(yaw) * dist) >> 16);
-		wz = ez - ((COS(yaw) * dist) >> 16);
-
-		// ALTERNATIVES (uncomment one if default is wrong):
-		// 1) If ray is flipped 180 degrees: wx = ex - ((SIN(yaw) * dist) >> 16); wz = ez - ((COS(yaw) * dist) >> 16);
-		// 2) If you prefer previous convention but with sign flip on Z: wx = ex + ((COS(yaw) * dist) >> 16); wz = ez - ((SIN(yaw) * dist) >> 16);
-
-		// draw sample segment (prev -> current) (thin blue)
 		AENG_world_line(prev_x, prev_y, prev_z, 1, 0x0000FF, wx, wy, wz, 1, 0x0000FF, 1);
 
-		// Find nearby things around this sample point
- 		SLONG num = THING_find_sphere(
-			wx, wy, wz,
-			search_radius,
-			found,
-			MAX_HIT_FOUND,
-			collide_types);
-
+		SLONG num = THING_find_sphere(wx, wy, wz, search_radius, found, MAX_HIT_FOUND, collide_types);
 		for (SLONG i = 0; i < num; i++)
 		{
 			Thing* p_found = TO_THING(found[i]);
-
-			// ignore self and dead things
 			if (p_found == darci) continue;
 			if (p_found->State == STATE_DEAD) continue;
 
-			// visibility tests: persons use can_a_see_b, non-people use a LOS test
 			BOOL vis = FALSE;
 			if (p_found->Class == CLASS_PERSON)
 			{
@@ -1724,7 +1750,6 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 			}
 			else
 			{
-				// Use same LOS parameters as guns.cpp for non-person tests.
 				if (there_is_a_los(
 					darci->WorldPos.X >> 8,
 					(darci->WorldPos.Y + 0x6000) >> 8,
@@ -1740,17 +1765,13 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 
 			if (vis)
 			{
-				// draw thick green line from eye to the found thing and a small red marker at the sample point
 				SLONG tx = p_found->WorldPos.X >> 8;
 				SLONG ty = p_found->WorldPos.Y >> 8;
 				SLONG tz = p_found->WorldPos.Z >> 8;
 
 				AENG_world_line(ex, ey, ez, 4, 0x00FF00, tx, ty, tz, 4, 0x00FF00, 1);
-
-				// small red vertical marker at the sample point
 				AENG_world_line(wx, wy - 4, wz, 3, 0xFF0000, wx, wy + 4, wz, 3, 0xFF0000, 1);
 
-				// return the first visible thing along the projection
 				return p_found;
 			}
 		}
@@ -1760,11 +1781,11 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 		prev_z = wz;
 	}
 
-	// If nothing found, draw a small yellow marker at max range to visualize the end point
+	// Draw marker at max range if nothing found
 	{
-		SLONG fx = ex + ((SIN(yaw) * max_range) >> 16);
-		SLONG fz = ez + ((COS(yaw) * max_range) >> 16);
-		SLONG fy = ey;
+		SLONG fx = ex + (SLONG)(fx_dir * (float)max_range);
+		SLONG fz = ez + (SLONG)(fz_dir * (float)max_range);
+		SLONG fy = ey + (SLONG)(fy_dir * (float)max_range);
 		AENG_world_line(fx, fy - 4, fz, 2, 0xFFFF00, fx, fy + 4, fz, 2, 0xFFFF00, 1);
 	}
 

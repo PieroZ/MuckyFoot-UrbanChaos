@@ -21,6 +21,7 @@
 #include	"pcom.h"
 #include	"env.h"
 #include "helper_utils.h"
+#include "free_roam_camera.h"
 
 #ifdef TARGET_DC
 #include "target.h"
@@ -5859,15 +5860,26 @@ extern DWORD m_dwSizeOfQueue;
 		FC_Cam* fc = &FC_cam[cam];
 		int line = 0;
 
-//#define DRAW_LINE(fmt, ...) \
-//		do { \
-//			sprintf(text, fmt, __VA_ARGS__); \
-//			/* shadow */ \
-//			FONT2D_DrawString(text, sx + 1, sy + 1 + line * 12, 0x000000, 256, POLY_PAGE_FONT2D, 0); \
-//			/* main */ \
-//			FONT2D_DrawString(text, sx    , sy     + line * 12, 0x00ff00, 256, POLY_PAGE_FONT2D, 0); \
-//			line++; \
-//		} while(0)
+		FreeRoamCamera& frc = FreeRoamCamera::GetInstance();
+
+
+#define DRAW_LINE(fmt, ...) \
+		do { \
+			sprintf(text, fmt, __VA_ARGS__); \
+			/* shadow */ \
+			FONT2D_DrawString(text, sx + 1, sy + 1 + line * 12, 0x000000, 256, POLY_PAGE_FONT2D, 0); \
+			/* main */ \
+			FONT2D_DrawString(text, sx    , sy     + line * 12, 0x00ff00, 256, POLY_PAGE_FONT2D, 0); \
+			line++; \
+		} while(0)
+
+
+		UWORD player_yaw_u = darci->Draw.Tweened->Angle & 2047;
+
+		DRAW_LINE("frc.yaw %d frc.targetyaw %d", int(FixedAngleToDegrees(frc.Yaw))%360, int(FixedAngleToDegrees(frc.targetYaw)) % 360);
+		DRAW_LINE("frc.pitch %d frc.targetpitch %d", int(FixedAngleToDegrees(frc.Pitch)) % 360, int(FixedAngleToDegrees(frc.targetPitch)) % 360);
+		DRAW_LINE("player rotation %d", darci->Draw.Tweened->Angle);
+
 //
 //		DRAW_LINE("CAM %d focus=%p in_wh=%d yaw=%d", cam, (void*)fc->focus, fc->focus_in_warehouse, fc->focus_yaw);
 //		DRAW_LINE("focus_xyz=(%d,%d,%d)", fc->focus_x, fc->focus_y, fc->focus_z);
