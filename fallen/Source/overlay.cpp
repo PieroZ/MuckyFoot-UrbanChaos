@@ -1,4 +1,4 @@
-
+﻿
 #include "game.h"
 #include "..\headers\cam.h"
 #include "..\headers\statedef.h"
@@ -1645,19 +1645,18 @@ void	init_overlay(void)
 //}
 
 
-// --- Added: helper to find target under crosshair and updated crosshair draw ---
 // Returns the first Thing* hit by projecting the player's view from the eye
 // forward. Steps forward in increments and probes a small sphere for things.
 // max_range_blocks is in world "blocks" (1 block == 1<<8 units). step/search
 // radius are in the same world units (>>8).
-static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SLONG step = 64, SLONG search_radius = 64)
+static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SLONG step = 64, SLONG search_radius = 128)
 {
 	Thing* darci = NET_PERSON(0);
 	if (!darci) return NULL;
 
 	// Eye position in world units (>>8 used throughout engine)
 	SLONG ex = darci->WorldPos.X >> 8;
-	SLONG ey = (darci->WorldPos.Y >> 8) + 96; // eye offset approx; tweak if needed
+	SLONG ey = (darci->WorldPos.Y >> 8) + 96; // approximate eye height; tweak if necessary
 	SLONG ez = darci->WorldPos.Z >> 8;
 
 	// Yaw from player (0..2047)
@@ -1666,20 +1665,42 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 	SLONG max_range = max_range_blocks << 8;
 
 	// Types we care about when checking crosshair hits
-	ULONG collide_types = (1 << CLASS_PERSON) | (1 << CLASS_BARREL) | (1 << CLASS_VEHICLE) | (1 << CLASS_SPECIAL);
+	ULONG collide_types = (1 << CLASS_PERSON);// | (1 << CLASS_BARREL) | (1 << CLASS_VEHICLE) | (1 << CLASS_SPECIAL);
 
 #define MAX_HIT_FOUND 16
 	UWORD found[MAX_HIT_FOUND];
 
+	// Debug: draw the whole aiming ray (eye -> max_range) as one thin line (cyan).
+	{
+		// NOTE: use SIN for X and COS for Z so the ray aligns with player view in this coordinate convention
+		SLONG fx = ex + ((SIN(yaw) * max_range) >> 16);
+		SLONG fz = ez + ((COS(yaw) * max_range) >> 16);
+		SLONG fy = ey;
+		AENG_world_line(ex, ey, ez, 2, 0x00FFFF, fx, fy, fz, 2, 0x00FFFF, 1);
+	}
+
+	// draw small segments between samples so you can see where samples are taken
+	SLONG prev_x = ex, prev_y = ey, prev_z = ez;
+
 	for (SLONG dist = step; dist <= max_range; dist += step)
 	{
-		// COS/SIN return fixed-point (1<<16) scaled values in this codebase.
-		SLONG wx = ex + ((COS(yaw) * dist) >> 16);
-		SLONG wz = ez + ((SIN(yaw) * dist) >> 16);
+		// DEFAULT sampling direction for this fix: SIN->X, COS->Z
+		SLONG wx = ex + ((SIN(yaw) * dist) >> 16);
+		SLONG wz = ez + ((COS(yaw) * dist) >> 16);
 		SLONG wy = ey;
 
+		wx = ex - ((SIN(yaw) * dist) >> 16);
+		wz = ez - ((COS(yaw) * dist) >> 16);
+
+		// ALTERNATIVES (uncomment one if default is wrong):
+		// 1) If ray is flipped 180 degrees: wx = ex - ((SIN(yaw) * dist) >> 16); wz = ez - ((COS(yaw) * dist) >> 16);
+		// 2) If you prefer previous convention but with sign flip on Z: wx = ex + ((COS(yaw) * dist) >> 16); wz = ez - ((SIN(yaw) * dist) >> 16);
+
+		// draw sample segment (prev -> current) (thin blue)
+		AENG_world_line(prev_x, prev_y, prev_z, 1, 0x0000FF, wx, wy, wz, 1, 0x0000FF, 1);
+
 		// Find nearby things around this sample point
-		SLONG num = THING_find_sphere(
+ 		SLONG num = THING_find_sphere(
 			wx, wy, wz,
 			search_radius,
 			found,
@@ -1703,8 +1724,7 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 			}
 			else
 			{
-				// There are several LOS helper variants used around the codebase.
-				// Use the same parameters guns.cpp used for non-person los checks.
+				// Use same LOS parameters as guns.cpp for non-person tests.
 				if (there_is_a_los(
 					darci->WorldPos.X >> 8,
 					(darci->WorldPos.Y + 0x6000) >> 8,
@@ -1720,10 +1740,32 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 
 			if (vis)
 			{
-				// First visible thing along the projection -> return it
+				// draw thick green line from eye to the found thing and a small red marker at the sample point
+				SLONG tx = p_found->WorldPos.X >> 8;
+				SLONG ty = p_found->WorldPos.Y >> 8;
+				SLONG tz = p_found->WorldPos.Z >> 8;
+
+				AENG_world_line(ex, ey, ez, 4, 0x00FF00, tx, ty, tz, 4, 0x00FF00, 1);
+
+				// small red vertical marker at the sample point
+				AENG_world_line(wx, wy - 4, wz, 3, 0xFF0000, wx, wy + 4, wz, 3, 0xFF0000, 1);
+
+				// return the first visible thing along the projection
 				return p_found;
 			}
 		}
+
+		prev_x = wx;
+		prev_y = wy;
+		prev_z = wz;
+	}
+
+	// If nothing found, draw a small yellow marker at max range to visualize the end point
+	{
+		SLONG fx = ex + ((SIN(yaw) * max_range) >> 16);
+		SLONG fz = ez + ((COS(yaw) * max_range) >> 16);
+		SLONG fy = ey;
+		AENG_world_line(fx, fy - 4, fz, 2, 0xFFFF00, fx, fy + 4, fz, 2, 0xFFFF00, 1);
 	}
 
 	return NULL;
@@ -1751,7 +1793,7 @@ void PANEL_draw_crosshair(void)
 	const int y = cy - 6;  // tweak -6/-7 to perfectly center vertically
 
 	// Determine whether a visible target exists under the crosshair.
-	Thing* target = OVERLAY_find_target_under_crosshair(8, 64, 64);
+	Thing* target = OVERLAY_find_target_under_crosshair(8, 64, 128);
 
 	if (target && target->Class == CLASS_VEHICLE)
 	{
