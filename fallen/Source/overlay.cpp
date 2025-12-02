@@ -1702,7 +1702,8 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 	}
 
 	SLONG max_range = max_range_blocks << 8;
-	ULONG collide_types = (1 << CLASS_PERSON) | (1 << CLASS_VEHICLE); // adjust as needed
+	//ULONG collide_types = (1 << CLASS_PERSON) | (1 << CLASS_VEHICLE) | ( 1<< CLASS_BARREL); // adjust as needed
+	ULONG collide_types = (1 << CLASS_PERSON) | (1 << CLASS_BARREL);
 
 #define MAX_HIT_FOUND 16
 	UWORD found[MAX_HIT_FOUND];
@@ -1715,14 +1716,14 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 	float fz_dir = -cosf(yaw_rad) * cos_pitch;
 	float fy_dir = sin_pitch;
 
-	// Draw full aiming ray (cyan)
-	{
-		float max_range_f = (float)max_range;
-		SLONG fx = ex + (SLONG)(fx_dir * max_range_f);
-		SLONG fz = ez + (SLONG)(fz_dir * max_range_f);
-		SLONG fy = ey + (SLONG)(fy_dir * max_range_f);
-		AENG_world_line(ex, ey, ez, 2, 0x00FFFF, fx, fy, fz, 2, 0x00FFFF, 1);
-	}
+	//// Draw full aiming ray (cyan)
+	//{
+	//	float max_range_f = (float)max_range;
+	//	SLONG fx = ex + (SLONG)(fx_dir * max_range_f);
+	//	SLONG fz = ez + (SLONG)(fz_dir * max_range_f);
+	//	SLONG fy = ey + (SLONG)(fy_dir * max_range_f);
+	//	AENG_world_line(ex, ey, ez, 2, 0x00FFFF, fx, fy, fz, 2, 0x00FFFF, 1);
+	//}
 
 	SLONG prev_x = ex, prev_y = ey, prev_z = ez;
 
@@ -1733,7 +1734,7 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 		SLONG wz = ez + (SLONG)(fz_dir * dist_f);
 		SLONG wy = ey + (SLONG)(fy_dir * dist_f);
 
-		AENG_world_line(prev_x, prev_y, prev_z, 1, 0x0000FF, wx, wy, wz, 1, 0x0000FF, 1);
+		//AENG_world_line(prev_x, prev_y, prev_z, 1, 0x0000FF, wx, wy, wz, 1, 0x0000FF, 1);
 
 		SLONG num = THING_find_sphere(wx, wy, wz, search_radius, found, MAX_HIT_FOUND, collide_types);
 		for (SLONG i = 0; i < num; i++)
@@ -1745,7 +1746,7 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 			BOOL vis = FALSE;
 			if (p_found->Class == CLASS_PERSON)
 			{
-				if (can_a_see_b(darci, p_found))
+				//if (can_a_see_b(darci, p_found))
 					vis = TRUE;
 			}
 			else
@@ -1769,8 +1770,8 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 				SLONG ty = p_found->WorldPos.Y >> 8;
 				SLONG tz = p_found->WorldPos.Z >> 8;
 
-				AENG_world_line(ex, ey, ez, 4, 0x00FF00, tx, ty, tz, 4, 0x00FF00, 1);
-				AENG_world_line(wx, wy - 4, wz, 3, 0xFF0000, wx, wy + 4, wz, 3, 0xFF0000, 1);
+				/*AENG_world_line(ex, ey, ez, 4, 0x00FF00, tx, ty, tz, 4, 0x00FF00, 1);
+				AENG_world_line(wx, wy - 4, wz, 3, 0xFF0000, wx, wy + 4, wz, 3, 0xFF0000, 1);*/
 
 				return p_found;
 			}
@@ -1814,19 +1815,37 @@ void PANEL_draw_crosshair(void)
 	const int y = cy - 6;  // tweak -6/-7 to perfectly center vertically
 
 	// Determine whether a visible target exists under the crosshair.
-	Thing* target = OVERLAY_find_target_under_crosshair(8, 64, 128);
+	SLONG max_range_blocks = 800*2;
+	Thing* target = OVERLAY_find_target_under_crosshair(max_range_blocks, 64, 128);
 
-	if (target && target->Class == CLASS_VEHICLE)
-	{
-		extern void VEH_reduce_health(
-			Thing * p_car,
-			Thing * p_person,
-			SLONG  damage);
+	extern void HandleMouseInput(Thing * target);
+	HandleMouseInput(target);
+	//if (LeftButton)
+	//{
+	//	if (target && target->Class == CLASS_VEHICLE)
+	//	{
+	//		extern void VEH_reduce_health(
+	//			Thing * p_car,
+	//			Thing * p_person,
+	//			SLONG  damage);
 
-		Thing* darci = NET_PERSON(0);
-		VEH_reduce_health(target, darci, 5);
-		target->Genus.Vehicle->Siren = 1;
-	}
+	//		Thing* darci = NET_PERSON(0);
+	//		VEH_reduce_health(target, darci, 5);
+	//		target->Genus.Vehicle->Siren = 1;
+	//	}
+	//	else if (target && target->Class == CLASS_PERSON)
+	//	{
+	//		SWORD dmg = 5;
+	//		target->Genus.Person->Health -= dmg;
+	//	}
+	//	else if (target && target->Class == CLASS_BARREL)
+	//	{
+	//		Thing* darci = NET_PERSON(0);
+	//		//BARREL_shoot(target, darci);
+	//		set_person_shoot(darci, 0);
+	//		//target->Genus.Barrel
+	//	}
+	//}
 
 	// Choose colour based on whether we have a target
 	const int colour = target ? colour_target : colour_default;

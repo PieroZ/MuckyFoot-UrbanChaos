@@ -5874,11 +5874,11 @@ extern DWORD m_dwSizeOfQueue;
 		} while(0)
 
 
-		UWORD player_yaw_u = darci->Draw.Tweened->Angle & 2047;
+		/*UWORD player_yaw_u = darci->Draw.Tweened->Angle & 2047;
 
 		DRAW_LINE("frc.yaw %d frc.targetyaw %d", int(FixedAngleToDegrees(frc.Yaw))%360, int(FixedAngleToDegrees(frc.targetYaw)) % 360);
 		DRAW_LINE("frc.pitch %d frc.targetpitch %d", int(FixedAngleToDegrees(frc.Pitch)) % 360, int(FixedAngleToDegrees(frc.targetPitch)) % 360);
-		DRAW_LINE("player rotation %d", darci->Draw.Tweened->Angle);
+		DRAW_LINE("player rotation %d", darci->Draw.Tweened->Angle);*/
 
 //
 //		DRAW_LINE("CAM %d focus=%p in_wh=%d yaw=%d", cam, (void*)fc->focus, fc->focus_in_warehouse, fc->focus_yaw);

@@ -6022,7 +6022,7 @@ SLONG get_shoot_damage(Thing *p_person, Thing *p_target,SLONG *gun_type)
 		// This must be the gun.
 		//
 
-		ASSERT(p_person->Genus.Person->Flags & FLAG_PERSON_GUN_OUT);
+		//ASSERT(p_person->Genus.Person->Flags & FLAG_PERSON_GUN_OUT);
 
 	   *gun_type = HIT_TYPE_GUN_SHOT_PISTOL;
 	    damage   = 70;	// Three shots kill...
@@ -6033,6 +6033,7 @@ SLONG get_shoot_damage(Thing *p_person, Thing *p_target,SLONG *gun_type)
 		damage >>= 1;
 	}
 
+	damage += 1;
 	return damage;
 }
 
@@ -6093,7 +6094,7 @@ SLONG shoot_get_ammo_sound_anim_time(Thing *p_person,SLONG *sound,SLONG *anim,SL
 				*sound = S_AK47_BURST;// <- sounds better overall
 				break;
 
-			case SPECIAL_SHOTGUN:
+			case SPECIAL_SHOTGUN: 
 				*anim = ANIM_SHOTGUN_FIRE;
 				*time = 400;
 
@@ -6440,6 +6441,7 @@ extern void DIRT_create_brass(SLONG x,SLONG y,SLONG z,SLONG angle);
 		}
 
 		damage = get_shoot_damage(p_person, p_target, &gun_type);
+		damage += 1000;
 
 		if (damage)
 		{
