@@ -4,6 +4,9 @@
 #include	<cstdint>
 #include	<cmath>
 
+// Forward declaration
+struct Thing;
+
 struct FreeRoamCamera
 {
 	// Position left as int64_t to preserve existing usage; change if you prefer floats.
@@ -24,6 +27,7 @@ struct FreeRoamCamera
 
 	float FieldOfView;
 	bool IsActive;
+	bool FollowPlayer;
 
 	static FreeRoamCamera& GetInstance()
 	{
@@ -35,7 +39,7 @@ struct FreeRoamCamera
 		: PositionX(0), PositionY(0), PositionZ(0),
 		Pitch(0.0f), Yaw(0.0f), Roll(0.0f),
 		targetYaw(0.0f), targetPitch(0.0f), smoothYaw(0.0f), smoothPitch(0.0f),
-		FieldOfView(90.0f), IsActive(false)
+		FieldOfView(90.0f), IsActive(false), FollowPlayer(false)
 	{
 	}
 
@@ -65,5 +69,33 @@ struct FreeRoamCamera
 	{
 		targetYaw = smoothYaw = Yaw;
 		targetPitch = smoothPitch = Pitch;
+	}
+
+	// Update camera position to folloow behind the player
+	void UpdateFollowPlayerCamera(Thing* player, float distance = 512.0f, float height = 128.0f)
+	{
+		if (!player || !FollowPlayer) return;
+
+		//Get player position
+		SLONG px = player->WorldPos.X;
+		SLONG py = player->WorldPos.Y;
+		SLONG pz = player->WorldPos.Z;
+
+		// Calculate camera offset based on yaw and pitch
+		const float FIXED_TO_RAD = (2.0f * 3.14159265358979323846f) / (2048.0f * 256.0f);
+		float yaw_rad = Yaw * FIXED_TO_RAD;
+		float pitch_rad = Pitch * FIXED_TO_RAD;
+
+		float cos_pitch = cosf(pitch_rad);
+
+		// Calculate offset vector (pointing away from where camera is looking)
+		float offsetX = sinf(yaw_rad) * cos_pitch * distance;
+		float offsetZ = cosf(yaw_rad) * cos_pitch * distance;
+		float offsetY = -sinf(pitch_rad) * distance;
+
+		// Postion camera behind player
+		PositionX = px + static_cast<std::int64_t>(offsetX * 256.0f);
+		PositionY = py + static_cast<std::int64_t>(height * 256.0f) + static_cast<std::int64_t>(offsetY * 256.0f);
+		PositionZ = pz + static_cast<std::int64_t>(offsetZ * 256.0f);
 	}
 };

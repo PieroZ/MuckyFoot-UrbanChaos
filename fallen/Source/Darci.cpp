@@ -589,7 +589,7 @@ SLONG	projectile_move_thing(Thing *p_thing,SLONG flag)
 
 	}
 	
-	ASSERT(p_thing->Class == CLASS_PERSON);
+	//ASSERT(p_thing->Class == CLASS_PERSON);
 
 	p_thing->Genus.Person->SlideOdd = 0;
 

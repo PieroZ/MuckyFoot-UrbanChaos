@@ -1016,7 +1016,7 @@ void	OVERLAY_handle(void)
 			OVERLAY_draw_gun_sights();
 
 			// Draw our crosshair
-			PANEL_draw_crosshair();
+			//PANEL_draw_crosshair();
 
 			OVERLAY_draw_enemy_health();
 		}

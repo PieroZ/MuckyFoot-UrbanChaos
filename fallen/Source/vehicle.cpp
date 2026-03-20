@@ -2053,8 +2053,10 @@ void VEH_co_damage(Thing* v1, Thing* v2)
 
 static inline void GetCarPoints(Thing* p_car, SLONG* x, SLONG* y, SLONG* z, SLONG step)
 {
-	Vehicle*	veh;
-	PrimInfo*	pinfo;
+
+
+	Vehicle* veh;
+	PrimInfo* pinfo;
 	int			ii;
 
 	veh = p_car->Genus.Vehicle;
@@ -2082,12 +2084,94 @@ static inline void GetCarPoints(Thing* p_car, SLONG* x, SLONG* y, SLONG* z, SLON
 	// transform to world coordinates
 	for (ii = 0; ii < 4; ii++)
 	{
-		apply_car_matrix(&x[ii],&y[ii],&z[ii]);
+		apply_car_matrix(&x[ii], &y[ii], &z[ii]);
 
 		x[ii] += (p_car->WorldPos.X + ((veh->VelX * step) >> TICK_SHIFT)) >> 8;
 		y[ii] += (p_car->WorldPos.Y + ((veh->VelY * step) >> TICK_SHIFT)) >> 8;
 		z[ii] += (p_car->WorldPos.Z + ((veh->VelZ * step) >> TICK_SHIFT)) >> 8;
 	}
+
+	// DBG VERSION
+	//Vehicle* veh;
+	//PrimInfo* pinfo;
+	//int			ii;
+
+	//veh = p_car->Genus.Vehicle;
+	//pinfo = get_prim_info(veh_info[veh->Type].BodyPrim);
+
+	//// get points in car frame (bottom)
+	//x[0] = pinfo->minx;
+	//x[1] = pinfo->maxx;
+	//x[2] = pinfo->maxx;
+	//x[3] = pinfo->minx;
+
+	//y[0] = pinfo->miny;
+	//y[1] = pinfo->miny;
+	//y[2] = pinfo->miny;
+	//y[3] = pinfo->miny;
+
+	//z[0] = pinfo->minz;
+	//z[1] = pinfo->minz;
+	//z[2] = pinfo->maxz;
+	//z[3] = pinfo->maxz;
+
+	//// prepare top points (same x/z, but y = maxy)
+	//SLONG xt[4], yt[4], zt[4];
+	//for (ii = 0; ii < 4; ii++)
+	//{
+	//	xt[ii] = x[ii];
+	//	yt[ii] = pinfo->maxy;
+	//	zt[ii] = z[ii];
+	//}
+
+	//// make car matrix for new position (ignore tilt & roll)
+	//make_car_matrix_p((veh->Angle + ((veh->VelR * step) >> TICK_SHIFT)) & 2047, 0, 0);
+
+	//// transform to world coordinates for bottom and top
+	//for (ii = 0; ii < 4; ii++)
+	//{
+	//	// bottom point
+	//	apply_car_matrix(&x[ii], &y[ii], &z[ii]);
+	//	x[ii] += (p_car->WorldPos.X + ((veh->VelX * step) >> TICK_SHIFT)) >> 8;
+	//	y[ii] += (p_car->WorldPos.Y + ((veh->VelY * step) >> TICK_SHIFT)) >> 8;
+	//	z[ii] += (p_car->WorldPos.Z + ((veh->VelZ * step) >> TICK_SHIFT)) >> 8;
+
+	//	// top point
+	//	apply_car_matrix(&xt[ii], &yt[ii], &zt[ii]);
+	//	xt[ii] += (p_car->WorldPos.X + ((veh->VelX * step) >> TICK_SHIFT)) >> 8;
+	//	yt[ii] += (p_car->WorldPos.Y + ((veh->VelY * step) >> TICK_SHIFT)) >> 8;
+	//	zt[ii] += (p_car->WorldPos.Z + ((veh->VelZ * step) >> TICK_SHIFT)) >> 8;
+	//}
+
+	//// --- Debug draw ---
+	//// Draw bottom loop: 0-1-2-3-0 (white)
+	//for (ii = 0; ii < 4; ii++)
+	//{
+	//	int ni = (ii + 1) & 3;
+	//	AENG_world_line(
+	//		x[ii], y[ii], z[ii], 4, 0xFFFFFF,
+	//		x[ni], y[ni], z[ni], 4, 0xFFFFFF,
+	//		1);
+	//}
+
+	//// Draw top loop: 0-1-2-3-0 (green)
+	//for (ii = 0; ii < 4; ii++)
+	//{
+	//	int ni = (ii + 1) & 3;
+	//	AENG_world_line(
+	//		xt[ii], yt[ii], zt[ii], 3, 0x00FF00,
+	//		xt[ni], yt[ni], zt[ni], 3, 0x00FF00,
+	//		1);
+	//}
+
+	//// Draw verticals between bottom and top (red)
+	//for (ii = 0; ii < 4; ii++)
+	//{
+	//	AENG_world_line(
+	//		x[ii], y[ii], z[ii], 3, 0xFF0000,
+	//		xt[ii], yt[ii], zt[ii], 3, 0xFF0000,
+	//		1);
+	//}
 }
 
 // DoDamage
@@ -2381,9 +2465,9 @@ static SLONG CollideCar(Thing* p_car, SLONG step)
 			DIRT_new_sparks(px,y[0],pz,2);
 #endif
 		
-/*			AENG_world_line(px, y[0], pz, 32, 0xFFFFFF,
+			AENG_world_line(px, y[0], pz, 32, 0xFFFFFF,
 							(x[0] + x[1] + x[2] + x[3])/4, y[0], (z[0] + z[1] + z[2] + z[3])/4, 0, 0xFFFFFF,
-							TRUE);*/
+							TRUE);
 		}
 	}
 
@@ -2415,10 +2499,10 @@ static SLONG CollideCar(Thing* p_car, SLONG step)
 
 					pflags |= 48;	// just bounce
 
-//					if (is_driven_by_player(p_car))
-//					AENG_world_line((x[jj] + x[kk]) / 2, (y[jj] + y[kk]) / 2, (z[jj] + z[kk]) / 2, 32, 0xff0000,
-//									(x[jj] + x[kk]) / 2, (y[jj] + y[kk]) / 2 + 0xC00, (z[jj] + z[kk]) / 2, 0, 0xff0000,
-//									TRUE);
+					if (is_driven_by_player(p_car))
+					AENG_world_line((x[jj] + x[kk]) / 2, (y[jj] + y[kk]) / 2, (z[jj] + z[kk]) / 2, 32, 0xff0000,
+									(x[jj] + x[kk]) / 2, (y[jj] + y[kk]) / 2 + 0xC00, (z[jj] + z[kk]) / 2, 0, 0xff0000,
+									TRUE);
 
 					DoDamage(p_car, vc);
 				}
@@ -2450,10 +2534,10 @@ static SLONG CollideCar(Thing* p_car, SLONG step)
 
 					pflags |= 48;
 
-//					if (is_driven_by_player(p_car))
-//					AENG_world_line((x[kk] + x[jj]) / 2, (y[kk] + y[jj]) / 2, (z[kk] + z[jj]) / 2, 32, 0xff00,
-//									(x[kk] + x[jj]) / 2, (y[kk] + y[jj]) / 2 + 0xC00, (z[kk] + z[jj]) / 2, 0, 0xff00,
-//									TRUE);		
+					if (is_driven_by_player(p_car))
+					AENG_world_line((x[kk] + x[jj]) / 2, (y[kk] + y[jj]) / 2, (z[kk] + z[jj]) / 2, 32, 0xff00,
+									(x[kk] + x[jj]) / 2, (y[kk] + y[jj]) / 2 + 0xC00, (z[kk] + z[jj]) / 2, 0, 0xff00,
+									TRUE);		
 
 					DoDamage(p_car, vc);
 
