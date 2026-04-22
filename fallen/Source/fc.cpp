@@ -2108,8 +2108,8 @@ void FC_position_for_lookaround(SLONG cam, SLONG pitch)
 	fc->want_z = fc->focus_z          + (vector[2] * 3 >> 2);
 #endif
 
-	/*fc->toonear      = TRUE;
-	fc->toonear_dist = 0x90000;*/
+	fc->toonear      = TRUE;
+	fc->toonear_dist = 0x90000;
 }
 
 

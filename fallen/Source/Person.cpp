@@ -6033,7 +6033,7 @@ SLONG get_shoot_damage(Thing *p_person, Thing *p_target,SLONG *gun_type)
 		damage >>= 1;
 	}
 
-	damage += 1;
+	//damage += 1;
 	return damage;
 }
 
@@ -6441,7 +6441,6 @@ extern void DIRT_create_brass(SLONG x,SLONG y,SLONG z,SLONG angle);
 		}
 
 		damage = get_shoot_damage(p_person, p_target, &gun_type);
-		damage += 1000;
 
 		if (damage)
 		{
@@ -6948,7 +6947,7 @@ void	set_person_shoot(Thing *p_person,UWORD shoot_target)
 					{
 //						PANEL_new_text(p_person,8000,"Get Down.");
 						PANEL_new_text(p_person,8000,XLAT_str(X_GET_DOWN));
-						//set_person_dead(p_target,p_person,PERSON_DEATH_TYPE_GET_DOWN,0,0);
+						set_person_dead(p_target,p_person,PERSON_DEATH_TYPE_GET_DOWN,0,0);
 						Thing* darci = NET_PERSON(0);
 						SLONG darci_wp = EWAY_find_or_create_waypoint_that_created_person(darci);
 						SLONG target = EWAY_find_or_create_waypoint_that_created_person(p_target);
@@ -6959,7 +6958,7 @@ void	set_person_shoot(Thing *p_person,UWORD shoot_target)
 						//extern	void	set_slow_motion(UWORD motion);
 						//set_slow_motion(500);
 						FC_force_camera_behind(0);
-						lighting_strike_person(p_target);
+						//lighting_strike_person(p_target);
 						//BAT_emit_fireball_at_target(darci, p_target);
 						//set_person_as_bodyguard(p_target, darci_wp);
 

@@ -2301,7 +2301,7 @@ extern	void person_enter_fight_mode(Thing *p_person);
 						//MFX_play_thing(THING_NUMBER(p_thing), SOUND_Range(S_PISTOL_SHOT, S_PISTOL_SHOT_END), 0, p_thing);
 						//MFX_play_thing(THING_NUMBER(p_thing), S_PISTOL_SHOT, 0, p_thing);
 
-						//MFX_play_xyz(0,hit_wave,0,p_thing->WorldPos.X,p_thing->WorldPos.Y,p_thing->WorldPos.Z);
+						MFX_play_xyz(0,hit_wave,0,p_thing->WorldPos.X,p_thing->WorldPos.Y,p_thing->WorldPos.Z);
 						if(!pain)
 							PainSound(p_thing);
 					}

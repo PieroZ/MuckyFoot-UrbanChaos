@@ -354,6 +354,10 @@ extern DIJOYSTATE the_state;
 			case GAMEMENU_MENU_TYPE_SURE:
 				GAMEMENU_initialise(GAMEMENU_MENU_TYPE_PAUSE);
 				break;
+			case GAMEMENU_MENU_TYPE_SAVES:
+				GAMEMENU_initialise(GAMEMENU_MENU_TYPE_PAUSE);
+				break;
+
 
 			default:
 				ASSERT(0);

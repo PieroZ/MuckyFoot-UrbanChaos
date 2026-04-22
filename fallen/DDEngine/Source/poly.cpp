@@ -25,6 +25,8 @@
 #include "BreakTimer.h"
 #include "superfacet.h"
 
+#include "..\headers\env.h"
+
 
 #ifndef TARGET_DC
 
@@ -369,7 +371,14 @@ void POLY_camera_set(
 
 				if (EWAY_stop_player_moving())
 				{
+					int VideoRes = ENV_get_value_number("video_res", -1, "Render");
 					wideify = 80.0F;
+
+					if (VideoRes == 6)
+					{
+						wideify = 0.0F; // Botched fix for 2560x1440 resolution black areas issue
+					}
+
 				}
 				else
 				{
