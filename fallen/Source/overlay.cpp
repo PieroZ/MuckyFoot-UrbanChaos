@@ -1016,7 +1016,7 @@ void	OVERLAY_handle(void)
 			OVERLAY_draw_gun_sights();
 
 			// Draw our crosshair
-			//PANEL_draw_crosshair();
+			PANEL_draw_crosshair();
 
 			OVERLAY_draw_enemy_health();
 		}
@@ -1646,6 +1646,13 @@ void	init_overlay(void)
 
 #include "free_roam_camera.h"
 #include "helper_utils.h"
+#include "../Headers/config_extras.h"
+
+
+//#define AIM_RAISE_WORLD 0.15f
+#define AIM_RAISE_WORLD 0
+//#define AIM_RAISE_PIXELS 70
+#define AIM_RAISE_PIXELS 0
 
 // Returns the first Thing* hit by projecting the player's view from the eye
 // forward. Steps forward in increments and probes a small sphere for things.
@@ -1673,9 +1680,13 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 		//ez = frc.PositionZ >> 8;
 
 		// Use player eye position
-		ex = darci->WorldPos.X >> 8;
+		/*ex = darci->WorldPos.X >> 8;
 		ey = (darci->WorldPos.Y >> 8) + 96;
-		ez = darci->WorldPos.Z >> 8;
+		ez = darci->WorldPos.Z >> 8;*/
+		ex = (SLONG)(frc.PositionX >> 8);
+		ey = (SLONG)(frc.PositionY >> 8);
+		ez = (SLONG)(frc.PositionZ >> 8);
+
 
 		// Convert yaw/pitch to radians
 		yaw_rad = (fabsf(frc.Yaw) > 10.0f) ? frc.Yaw * FIXED_TO_RAD : frc.Yaw;
@@ -1703,18 +1714,26 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 
 	SLONG max_range = max_range_blocks << 8;
 	//ULONG collide_types = (1 << CLASS_PERSON) | (1 << CLASS_VEHICLE) | ( 1<< CLASS_BARREL); // adjust as needed
-	ULONG collide_types = (1 << CLASS_PERSON) | (1 << CLASS_BARREL);
+	ULONG collide_types = (1 << CLASS_PERSON) | (1 << CLASS_BARREL) | (1 << CLASS_VEHICLE) | (1 << CLASS_SPECIAL) | ( 1 << CLASS_BAT);
 
 #define MAX_HIT_FOUND 16
 	UWORD found[MAX_HIT_FOUND];
 
-	// Compute forward vector
+	// Compute forward vector unit length.
 	float cos_pitch = cosf(pitch_rad);
 	float sin_pitch = -sinf(pitch_rad);
 
 	float fx_dir = -sinf(yaw_rad) * cos_pitch;
 	float fz_dir = -cosf(yaw_rad) * cos_pitch;
 	float fy_dir = sin_pitch;
+
+	fy_dir += AIM_RAISE_WORLD;
+	{
+		float inv_len = 1.0f / sqrtf(fx_dir * fx_dir + fy_dir * fy_dir + fz_dir * fz_dir);
+		fx_dir *= inv_len;
+		fy_dir *= inv_len;
+		fz_dir *= inv_len;
+	}
 
 	//// Draw full aiming ray (cyan)
 	//{
@@ -1725,7 +1744,13 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 	//	AENG_world_line(ex, ey, ez, 2, 0x00FFFF, fx, fy, fz, 2, 0x00FFFF, 1);
 	//}
 
-	SLONG prev_x = ex, prev_y = ey, prev_z = ez;
+	//SLONG prev_x = ex, prev_y = ey, prev_z = ez;
+
+	// Broad-phase radius used to gather candidates near the ray
+	const SLONG broad_radius = 200;
+
+	Thing* best_thing = NULL;
+	float best_along = (float)max_range + 1.0f;
 
 	for (SLONG dist = step; dist <= max_range; dist += step)
 	{
@@ -1736,21 +1761,69 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 
 		//AENG_world_line(prev_x, prev_y, prev_z, 1, 0x0000FF, wx, wy, wz, 1, 0x0000FF, 1);
 
-		SLONG num = THING_find_sphere(wx, wy, wz, search_radius, found, MAX_HIT_FOUND, collide_types);
+		SLONG num = THING_find_sphere(wx, wy, wz, broad_radius, found, MAX_HIT_FOUND, collide_types);
+		//SLONG num = THING_find_sphere(wx, wy, wz, search_radius, found, MAX_HIT_FOUND, collide_types);
 		for (SLONG i = 0; i < num; i++)
 		{
 			Thing* p_found = TO_THING(found[i]);
-			if (p_found == darci) continue;
+			if (p_found == darci)			  continue;
 			if (p_found->State == STATE_DEAD) continue;
 
-			BOOL vis = FALSE;
-			if (p_found->Class == CLASS_PERSON)
+			//BOOL vis = FALSE;
+			//if (p_found->Class == CLASS_PERSON)
+			//{
+			//	//if (can_a_see_b(darci, p_found))
+			//		vis = TRUE;
+			//}
+			//else
 			{
-				//if (can_a_see_b(darci, p_found))
-					vis = TRUE;
-			}
-			else
-			{
+				if (p_found->Class == CLASS_SPECIAL &&
+					p_found->Genus.Special->SpecialType != SPECIAL_MINE)
+				{
+					continue;
+				}
+
+				SLONG y_off;
+				float accept_radius;
+
+				switch (p_found->Class)
+				{
+				case CLASS_VEHICLE:
+					y_off = 64;
+					accept_radius = 160.0f;
+					break;
+				case CLASS_BARREL:
+					y_off = 48;
+					accept_radius = 90.0f;
+					break;
+				case CLASS_SPECIAL:
+					y_off = 16;
+					accept_radius = 64.0f;
+					break;
+				case CLASS_PERSON:
+				default:
+					y_off = 96;
+					accept_radius = 48.0f;
+					break;
+				}
+
+
+				float vx = (float)((p_found->WorldPos.X >> 8) - ex);
+				float vy = (float)((p_found->WorldPos.Y >> 8) + y_off - ey);
+				float vz = (float)((p_found->WorldPos.Z >> 8) - ez);
+
+				float along = vx * fx_dir + vy * fy_dir + vz * fz_dir;
+
+				if (along < 0.0f || along >(float)max_range)
+					continue;
+				if (along >= best_along)
+					continue;
+
+				float perp2 = (vx * vx + vy * vy + vz * vz) - (along * along);
+
+				if (perp2 > (accept_radius * accept_radius))
+					continue;
+
 				if (there_is_a_los(
 					darci->WorldPos.X >> 8,
 					(darci->WorldPos.Y + 0x6000) >> 8,
@@ -1760,41 +1833,72 @@ static Thing* OVERLAY_find_target_under_crosshair(SLONG max_range_blocks = 8, SL
 					p_found->WorldPos.Z >> 8,
 					LOS_FLAG_IGNORE_PRIMS))
 				{
-					vis = TRUE;
+					best_thing = p_found;
+					best_along = along;
 				}
-			}
-
-			if (vis)
-			{
-				SLONG tx = p_found->WorldPos.X >> 8;
-				SLONG ty = p_found->WorldPos.Y >> 8;
-				SLONG tz = p_found->WorldPos.Z >> 8;
-
-				/*AENG_world_line(ex, ey, ez, 4, 0x00FF00, tx, ty, tz, 4, 0x00FF00, 1);
-				AENG_world_line(wx, wy - 4, wz, 3, 0xFF0000, wx, wy + 4, wz, 3, 0xFF0000, 1);*/
-
-				return p_found;
 			}
 		}
 
-		prev_x = wx;
-		prev_y = wy;
-		prev_z = wz;
+			//		if (vis)
+			//		{
+			//			SLONG tx = p_found->WorldPos.X >> 8;
+			//			SLONG ty = p_found->WorldPos.Y >> 8;
+			//			SLONG tz = p_found->WorldPos.Z >> 8;
+
+			//			/*AENG_world_line(ex, ey, ez, 4, 0x00FF00, tx, ty, tz, 4, 0x00FF00, 1);
+			//			AENG_world_line(wx, wy - 4, wz, 3, 0xFF0000, wx, wy + 4, wz, 3, 0xFF0000, 1);*/
+
+			//			return p_found;
+			//		}6
+			//	}
+
+			//	prev_x = wx;
+			//	prev_y = wy;
+			//	prev_z = wz;
+			//}
+
+			//// Draw marker at max range if nothing found
+			//{
+			//	SLONG fx = ex + (SLONG)(fx_dir * (float)max_range);
+			//	SLONG fz = ez + (SLONG)(fz_dir * (float)max_range);
+			//	SLONG fy = ey + (SLONG)(fy_dir * (float)max_range);
+			//	AENG_world_line(fx, fy - 4, fz, 2, 0xFFFF00, fx, fy + 4, fz, 2, 0xFFFF00, 1);
+			//}
 	}
 
-	// Draw marker at max range if nothing found
-	{
-		SLONG fx = ex + (SLONG)(fx_dir * (float)max_range);
-		SLONG fz = ez + (SLONG)(fz_dir * (float)max_range);
-		SLONG fy = ey + (SLONG)(fy_dir * (float)max_range);
-		AENG_world_line(fx, fy - 4, fz, 2, 0xFFFF00, fx, fy + 4, fz, 2, 0xFFFF00, 1);
-	}
-
-	return NULL;
+	return best_thing;
 }
 
 void PANEL_draw_crosshair(void)
 {
+
+	extern SLONG person_has_gun_out(Thing * p_person);
+
+	Thing* darci = NET_PERSON(0);
+	SLONG gun_out = (darci && darci->State != STATE_DEAD) ? person_has_gun_out(darci) : FALSE;
+
+	Thing* target = NULL;
+
+
+	FreeRoamCamera& frc = FreeRoamCamera::GetInstance();
+
+	if (frc.IsActive)
+	{
+		SLONG max_range_blocks = ConfigExtras::getInstance().mMax_range_blocks;
+		target = OVERLAY_find_target_under_crosshair(max_range_blocks, 64, 128);
+	}
+
+	extern void HandleMouseInput(Thing * target);
+	if (!(GAME_FLAGS & GF_PAUSED))
+	{
+		HandleMouseInput(target);
+	}
+
+	if (!frc.IsActive)
+	{
+		return;
+	}
+
 	// centre
 	const int cx = DisplayWidth / 2;
 	const int cy = DisplayHeight / 2;
@@ -1812,14 +1916,14 @@ void PANEL_draw_crosshair(void)
 	// measure offset: FONT2D has no measure helper here, so offset by a few pixels
 	// If you have a measure function, use it. This centers approximately.
 	const int x = cx - 4;  // tweak -4/-5 to perfectly center for your font
-	const int y = cy - 6;  // tweak -6/-7 to perfectly center vertically
+	const int y = cy - 6 - AIM_RAISE_PIXELS;  // tweak -6/-7 to perfectly center vertically
 
 	// Determine whether a visible target exists under the crosshair.
-	SLONG max_range_blocks = 800*2;
-	Thing* target = OVERLAY_find_target_under_crosshair(max_range_blocks, 64, 128);
+	//SLONG max_range_blocks = 800*2;
+	//Thing* target = OVERLAY_find_target_under_crosshair(max_range_blocks, 64, 128);
 
-	extern void HandleMouseInput(Thing * target);
-	HandleMouseInput(target);
+	//extern void HandleMouseInput(Thing * target);
+	//HandleMouseInput(target);
 	//if (LeftButton)
 	//{
 	//	if (target && target->Class == CLASS_VEHICLE)
@@ -1848,7 +1952,7 @@ void PANEL_draw_crosshair(void)
 	//}
 
 	// Choose colour based on whether we have a target
-	const int colour = target ? colour_target : colour_default;
+	const int colour = (target && ConfigExtras::getInstance().mShowHitMarker) ? colour_target : colour_default;
 
 	// Draw a shadow for contrast (same pattern used elsewhere)
 	FONT2D_DrawString(ch, x + 1, y + 1, 0x000000, maxWidth, fontPage, flags);

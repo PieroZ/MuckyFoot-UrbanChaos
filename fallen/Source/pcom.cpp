@@ -14416,7 +14416,7 @@ void DriveCar(Thing* p_person)
 	extern Thing* SelectedThing;
 	if (LeftButton && (SelectedThing == p_vehicle))
 	{
-		DebugBreak();
+		//DebugBreak();
 		LeftButton = 0;
 	}
 #endif

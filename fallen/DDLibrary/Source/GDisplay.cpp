@@ -3384,7 +3384,7 @@ static void FinishDialog(HWND hWnd) {
 
     ConfigExtras::getInstance().Update();
     
-    ShowCursor(FALSE);
+    //ShowCursor(FALSE);
 }
 
 static BOOL CALLBACK dlgproc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {

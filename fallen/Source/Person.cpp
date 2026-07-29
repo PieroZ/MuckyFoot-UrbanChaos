@@ -38,6 +38,7 @@
 #include	"walkable.h"
 #include	"overlay.h"
 #include	"psystem.h"
+#include	"config_extras.h"
 #include	"poly.h"
 #include	"memory.h"
 #include	"fmatrix.h"
@@ -5929,7 +5930,14 @@ SLONG get_shoot_damage(Thing *p_person, Thing *p_target,SLONG *gun_type)
 			chance >>= 1;
 		}
 
-		SATURATE(chance, 20, 256);  //always have a slim hope surely
+		if (ConfigExtras::getInstance().mLegolasAim && p_person->Genus.Person->PlayerID)
+		{
+			SATURATE(chance, 256, 256);
+		}
+		else
+		{
+			SATURATE(chance, 20, 256);  //always have a slim hope surely
+		}
 	
 		//
 		// There is a chance the person will miss
@@ -7177,6 +7185,85 @@ void	set_person_shoot(Thing *p_person,UWORD shoot_target)
 
 		actually_fire_gun(p_person);
 	}
+}
+
+
+void	set_person_manual_shoot(Thing* p_person)
+{
+	SLONG anim = ANIM_PISTOL_SHOOT;
+	SLONG ammo;
+	SLONG sound;
+	SLONG time;
+
+	if (p_person->State == STATE_CARRY)
+	{
+		return;
+	}
+
+	if (might_i_be_a_villain(p_person))
+	{
+		//
+		// arrest anyone who might be a villain
+		//
+		PCOM_call_cop_to_arrest_me(p_person, 1);
+	}
+
+	if (p_person->SubState == SUB_STATE_RUNNING)
+	{
+		set_person_running_shoot(p_person);
+		return;
+	}
+
+	ammo = shoot_get_ammo_sound_anim_time(p_person, &sound, &anim, &time);
+
+	if (!ammo || ammo == HAD_TO_CHANGE_CLIP)
+	{
+		MFX_play_thing(THING_NUMBER(p_person), S_PISTOL_DRY, MFX_REPLACE, p_person);
+
+		if (p_person->Genus.Person->PlayerID && ammo != HAD_TO_CHANGE_CLIP)
+		{
+			//
+			// Change Darci's weapon.
+			//
+			SLONG special = get_persons_best_weapon_with_ammo(p_person);
+			if (special)
+			{
+				if (special == SPECIAL_GUN)
+				{
+					set_person_draw_gun(p_person);
+				}
+				else
+				{
+					set_person_draw_item(p_person, special);
+				}
+			}
+			else
+			{
+				if (p_person->Genus.Person->SpecialUse)
+				{
+					set_person_item_away(p_person);
+				}
+				else
+				{
+					set_person_gun_away(p_person);
+				}
+			}
+		}
+		return;
+	}
+
+	set_anim(p_person, anim);
+	p_person->Genus.Person->Action = ACTION_SHOOT;
+
+	set_generic_person_state_function(p_person, STATE_GUN);
+
+	p_person->SubState = SUB_STATE_SHOOT_GUN;
+	p_person->Genus.Person->Flags |= (FLAG_PERSON_NON_INT_M | FLAG_PERSON_NON_INT_C);
+	p_person->Draw.Tweened->Flags |= DT_FLAG_GUNFLASH;
+
+	MFX_play_thing(THING_NUMBER(p_person), sound, MFX_REPLACE, p_person);
+
+	actually_fire_gun(p_person);
 }
 
 #ifndef PSX
@@ -18010,6 +18097,12 @@ SLONG	get_angle_to_target(Thing *p_person)
 SLONG	player_running_aim_gun(Thing *p_person)
 {
 	SLONG	old_target=p_person->Genus.Person->Target;
+
+	if (ConfigExtras::getInstance().mMouseInput)
+	{
+		p_person->Genus.Person->Target = 0;
+		return 0;
+	}
 	if (p_person->Genus.Person->Target = find_target_new(p_person))
 	{
 		Thing *p_target = TO_THING(p_person->Genus.Person->Target);
@@ -18379,7 +18472,11 @@ void	fn_person_gun(Thing *p_person)
 					}
 					old_target=p_person->Genus.Person->Target;
 
-					if (p_person->Genus.Person->Target = find_target_new(p_person))
+					if (ConfigExtras::getInstance().mMouseInput)
+					{
+						p_person->Genus.Person->Target = 0;
+					}
+					else if (p_person->Genus.Person->Target = find_target_new(p_person))
 					{
 						Thing *p_target = TO_THING(p_person->Genus.Person->Target);
 						if(p_target->SubState==SUB_STATE_DYING_KNOCK_DOWN_WAIT)
@@ -18453,7 +18550,7 @@ void	fn_person_gun(Thing *p_person)
 					person_normal_animate(p_person);
 				}
 
-				if (p_person->Genus.Person->Target)
+				if (!ConfigExtras::getInstance().mMouseInput && !p_person->Genus.Person->Target)
 				{
 					Thing *p_target = TO_THING(p_person->Genus.Person->Target);
 					highlight_gun_target(p_person,p_target);

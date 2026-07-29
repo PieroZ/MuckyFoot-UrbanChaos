@@ -332,6 +332,7 @@ void	tween_to_anim(Thing *p_person,SLONG anim);
 void	queue_anim(Thing *p_person,SLONG anim);
 void	set_person_draw_gun(Thing *p_person);
 void	set_person_shoot(Thing *p_person,UWORD shoot_target);
+void	set_person_manual_shoot(Thing* p_person);
 void	set_person_gun_away(Thing *p_person);
 void	set_person_flip(Thing *p_person,SLONG dir);
 void	set_person_liukang_kick(Thing *p_person);

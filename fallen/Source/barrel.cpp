@@ -1853,7 +1853,7 @@ void BARREL_shoot(
 
 	wave=S_EXPLODE_SMALL;
 	if (!(Random()&3)) wave++; // 25% chance of a bigger bang than usual
-	MFX_play_xyz(THING_NUMBER(p_barrel),wave,0,barrelpos.X,barrelpos.Y,barrelpos.Z);
+	//MFX_play_xyz(THING_NUMBER(p_barrel),wave,0,barrelpos.X,barrelpos.Y,barrelpos.Z);
 
 	if (p_barrel->Genus.Barrel->type != BARREL_TYPE_CONE &&
 		p_barrel->Genus.Barrel->type != BARREL_TYPE_BIN)

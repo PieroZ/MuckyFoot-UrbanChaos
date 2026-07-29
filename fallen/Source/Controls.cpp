@@ -188,7 +188,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -902,6 +902,45 @@ extern int AENG_detail_crinkles;
 					}
 				}
 				break;
+			case 57: // hitmarker
+				ConfigExtras::getInstance().mShowHitMarker ^= 1;
+				CONSOLE_text(ConfigExtras::getInstance().mShowHitMarker ? "Hitmarker on" : "Hitmarker off");
+				break;
+			case 58: // pammo
+				SLONG	wx, wy, wz, dx, dz;
+				SLONG	angle;
+
+				wx = darci->WorldPos.X >> 8;
+				wy = darci->WorldPos.Y >> 8;
+				wz = darci->WorldPos.Z >> 8;
+
+				darci->Genus.Person->Health = 9999;
+
+				wy += 0x20;
+
+				for (angle = 0; angle < 5; angle++)
+				{
+					dx = COS(angle * (2047 / 7)) >> 8;
+					dz = SIN(angle * (2047 / 7)) >> 8;
+					switch (angle)
+					{
+					case 0:
+						alloc_special(SPECIAL_AMMO_PISTOL, SPECIAL_SUBSTATE_NONE, wx + dx, wy + 0x10, wz + dz, 0);
+						break;
+					case 1:
+						alloc_special(SPECIAL_AMMO_PISTOL, SPECIAL_SUBSTATE_NONE, wx + dx, wy, wz + dz, 0);
+						break;
+					case 2:
+						alloc_special(SPECIAL_AMMO_PISTOL, SPECIAL_SUBSTATE_NONE, wx + dx, wy, wz + dz, 0);
+						break;
+					case 3:
+						alloc_special(SPECIAL_AMMO_PISTOL, SPECIAL_SUBSTATE_NONE, wx + dx, wy, wz + dz, 0);
+						break;
+					case 4:
+						alloc_special(SPECIAL_AMMO_PISTOL, SPECIAL_SUBSTATE_NONE, wx + dx, wy, wz + dz, 0);
+						break;
+					}
+				}
 		  }
 		  return;
 	  }
@@ -2280,13 +2319,26 @@ void	process_controls(void)
 
 	if (ConfigExtras::getInstance().mMouseInput)
 	{
-		if (FreeRoamCamera::GetInstance().IsActive)
+		{
+			extern volatile HWND hDDLibWindow;
+
+			if (GetForegroundWindow() == hDDLibWindow)
+			{
+				if (ShowCursor(FALSE) < -1) ShowCursor(TRUE);
+			}
+			else
+			{
+				if (ShowCursor(TRUE) > 0) ShowCursor(FALSE);
+			}
+		}
+
+		if (FreeRoamCamera::GetInstance().IsActive && !(GAME_FLAGS & GF_PAUSED))
 		{
 			auto& cam = FreeRoamCamera::GetInstance();
 
 			// read raw mouse deltas as floats (ensure MouseDX/MouseDY are per-frame raw deltas)
 			float dx = static_cast<float>(MouseDX);
-			float dy = -static_cast<float>(MouseDY);
+			float dy = static_cast<float>(MouseDY);
 
 			// recenter AFTER reading deltas (if you need to recenter)
 			RecenterMouse();
@@ -2313,6 +2365,35 @@ void	process_controls(void)
 			// write smoothed values back to the camera angles
 			cam.Yaw = cam.smoothYaw;
 			cam.Pitch = cam.smoothPitch;
+
+			{
+				extern SLONG person_has_gun_out(Thing * p_person);
+				/*static SLONG prev_angle = -1;
+
+				SLONG cur_angle = darci ? (darci->Draw.Tweened->Angle & 2047) : prev_angle;*/
+
+				//if (darci && prev_angle >= 0 && person_has_gun_out(darci))
+				/*{
+					SLONG dA = cur_angle - prev_angle;
+					if (dA > 1024) dA -= 2048;
+					if (dA < -1024) dA += 2048;
+
+					float dYaw = (float)(dA * 256);
+					cam.targetYaw += dYaw;
+					cam.smoothYaw += dYaw;
+					cam.Yaw = cam.smoothYaw;
+				}
+
+				prev_angle = cur_angle;*/
+
+				if (darci && person_has_gun_out(darci))
+				{
+					SLONG char_angle((SLONG)(cam.Yaw / 256.0f) & 2047);
+
+					darci->Draw.Tweened->Angle = char_angle;
+					darci->Draw.Tweened->AngleTo = char_angle;
+				}
+			}
 		}
 		else if (0)
 		{

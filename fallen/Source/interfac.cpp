@@ -7904,8 +7904,50 @@ extern SLONG Wadmenu_MuckyTime;
 
 	if (type & INPUT_TYPE_KEY)
 	{
-		if (FreeRoamCamera::GetInstance().IsActive)
+		extern SLONG person_has_gun_out(Thing* p_person);
+		Thing* p_aim_player = NET_PERSON(0);
+		SLONG aiming = (p_aim_player && person_has_gun_out(p_aim_player)) ? TRUE : FALSE;
+
+		if (aiming && FreeRoamCamera::GetInstance().IsActive)
 		{
+
+
+			// While aiming keep the mouse-look camera pinned to the player's eye so it follows them as they walk
+			FreeRoamCamera& frc = FreeRoamCamera::GetInstance();
+
+
+			// View forward vector - must match the aiming ray in overlay.cpp
+			float yaw_rad = FixedAngleToRadians(frc.Yaw);
+			float pitch_rad = FixedAngleToRadians(frc.Pitch) + PI;
+			float cos_pitch = cosf(pitch_rad);
+			float sin_pitch = -sinf(pitch_rad);
+
+			float fwd_x = -sinf(yaw_rad) * cos_pitch;
+			float fwd_z = -cosf(yaw_rad) * cos_pitch;
+			float fwd_y = sin_pitch;
+
+			float right_x = -cosf(yaw_rad);
+			float right_z = sinf(yaw_rad);
+
+			// How far behind / above the player's eye the camera sits.
+			static SLONG cam_back = 260;
+			static SLONG cam_up = 150;
+			static SLONG cam_side = -90;
+
+			SLONG eye_x = p_aim_player->WorldPos.X;
+			SLONG eye_y = p_aim_player->WorldPos.Y + (192 << 8);
+			SLONG eye_z = p_aim_player->WorldPos.Z;
+
+
+			frc.PositionX = eye_x - ((SLONG)(fwd_x * cam_back) << 8) + ((SLONG)(right_x * cam_side) << 8);
+			frc.PositionY = eye_y - ((SLONG)(fwd_y * cam_back) << 8);
+			frc.PositionZ = eye_z - ((SLONG)(fwd_z * cam_back) << 8) + ((SLONG)(right_z * cam_side) << 8);
+		}
+
+		if (FreeRoamCamera::GetInstance().IsActive && !aiming)
+		{
+			
+
 			auto& cam = FreeRoamCamera::GetInstance();
 			// tuning:
 			const float speed = 10000.0f;          // units per second
@@ -7949,28 +7991,28 @@ extern SLONG Wadmenu_MuckyTime;
 			float posY = (float)cam.PositionY;
 			float posZ = (float)cam.PositionZ;
 
-			if (Keys[keybrd_button_use[KEYBRD_BUTTON_FORWARDS]])
-			{
-				posX += fx * moveAmount;
-				posY += fy * moveAmount;
-				posZ += fz * moveAmount;
-			}
-			if (Keys[keybrd_button_use[KEYBRD_BUTTON_BACK]])
-			{
-				posX -= fx * moveAmount;
-				posY -= fy * moveAmount;
-				posZ -= fz * moveAmount;
-			}
-			if (Keys[keybrd_button_use[KEYBRD_BUTTON_LEFT]])
-			{
-				posX -= rx * moveAmount;
-				posZ -= rz * moveAmount;
-			}
-			if (Keys[keybrd_button_use[KEYBRD_BUTTON_RIGHT]])
-			{
-				posX += rx * moveAmount;
-				posZ += rz * moveAmount;
-			}
+			//if (Keys[keybrd_button_use[KEYBRD_BUTTON_FORWARDS]])
+			//{
+			//	posX += fx * moveAmount;
+			//	posY += fy * moveAmount;
+			//	posZ += fz * moveAmount;
+			//}
+			//if (Keys[keybrd_button_use[KEYBRD_BUTTON_BACK]])
+			//{
+			//	posX -= fx * moveAmount;
+			//	posY -= fy * moveAmount;
+			//	posZ -= fz * moveAmount;
+			//}
+			//if (Keys[keybrd_button_use[KEYBRD_BUTTON_LEFT]])
+			//{
+			//	posX -= rx * moveAmount;
+			//	posZ -= rz * moveAmount;
+			//}
+			//if (Keys[keybrd_button_use[KEYBRD_BUTTON_RIGHT]])
+			//{
+			//	posX += rx * moveAmount;
+			//	posZ += rz * moveAmount;
+			//}
 			static bool t_was_down = false;
 			if (Keys[KB_T])
 			{
@@ -8019,18 +8061,28 @@ extern SLONG Wadmenu_MuckyTime;
 				u_was_down = false;
 			}
 
+			//extern SLONG person_has_gun_out(Thing* p_person);
+			//Thing* p_player = NET_PERSON(0);
 
-
-			cam.PositionX = (SLONG)roundf(posX);
-			cam.PositionY = (SLONG)roundf(posY);
-			cam.PositionZ = (SLONG)roundf(posZ);
+			//if (p_player && person_has_gun_out(p_player))
+			//{
+			//	cam.PositionX = p_player->WorldPos.X;
+			//	cam.PositionY = p_player->WorldPos.Y + (96 << 8);
+			//	cam.PositionZ = p_player->WorldPos.Z;
+			//}
+			//else
+			{
+				cam.PositionX = (SLONG)roundf(posX);
+				cam.PositionY = (SLONG)roundf(posY);
+				cam.PositionZ = (SLONG)roundf(posZ);
+			}
 		}
 		else
 		{
 
 			if (Keys[keybrd_button_use[KEYBRD_BUTTON_FORWARDS]])
 			{
-				if (FreeRoamCamera::GetInstance().IsActive)
+				if (FreeRoamCamera::GetInstance().IsActive && !aiming)
 				{
 					FreeRoamCamera::GetInstance().PositionZ += 10000;
 				}
@@ -8042,7 +8094,7 @@ extern SLONG Wadmenu_MuckyTime;
 
 			if (Keys[keybrd_button_use[KEYBRD_BUTTON_BACK]])
 			{
-				if (FreeRoamCamera::GetInstance().IsActive)
+				if (FreeRoamCamera::GetInstance().IsActive && !aiming)
 				{
 					FreeRoamCamera::GetInstance().PositionZ -= 10000;
 				}
@@ -8054,7 +8106,7 @@ extern SLONG Wadmenu_MuckyTime;
 
 			if (Keys[keybrd_button_use[KEYBRD_BUTTON_LEFT]])
 			{
-				if (FreeRoamCamera::GetInstance().IsActive)
+				if (FreeRoamCamera::GetInstance().IsActive && !aiming)
 				{
 					FreeRoamCamera::GetInstance().PositionX += 10000;
 				}
@@ -8069,7 +8121,7 @@ extern SLONG Wadmenu_MuckyTime;
 
 			if (Keys[keybrd_button_use[KEYBRD_BUTTON_RIGHT]])
 			{
-				if (FreeRoamCamera::GetInstance().IsActive)
+				if (FreeRoamCamera::GetInstance().IsActive && !aiming)
 				{
 					FreeRoamCamera::GetInstance().PositionX -= 10000;
 				}

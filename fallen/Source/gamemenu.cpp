@@ -18,7 +18,7 @@
 #include "frontend.h"
 #endif
 
-
+#include "../Headers/config_extras.h"
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -661,6 +661,7 @@ extern DIDeviceInfo *primary_device;
 						break;
 
 					case X_RESTART_LEVEL:
+						ConfigExtras::getInstance().Update();
 						return GAMEMENU_DO_RESTART;
 
 					case X_ABANDON_GAME:

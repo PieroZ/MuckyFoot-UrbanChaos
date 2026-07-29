@@ -1408,7 +1408,7 @@ void AENG_set_bike_wheel_rotation(UWORD rot, UBYTE prim);
 
 #if !defined(PSX) && !defined(TARGET_DC)
 #ifndef NDEBUG
-	if (p_car != SelectedThing)	// don't draw wheels when selected	
+//	if (p_car != SelectedThing)	// don't draw wheels when selected	
 #endif
 #endif
 	for(c0=0;c0<4;c0++)
@@ -2343,9 +2343,9 @@ static SLONG CollideCar(Thing* p_car, SLONG step)
 
 	car_hit_flags=0;
 	
-#ifdef _DEBUG
+//#ifdef _DEBUG
 	if (Keys[KB_H] && is_driven_by_player(p_car))	return 0;
-#endif
+//#endif
 
 	// hit the kerb?
 	CollideWithKerb(p_car);
