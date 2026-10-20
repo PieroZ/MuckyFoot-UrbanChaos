@@ -101,6 +101,7 @@ extern ControllerPacket PAD_Input1,PAD_Input2;
 #endif
 
 #include "config_extras.h"
+#include "killcam.h"
 #include "save_selector.h"
 #include "free_roam_camera.h"
 
@@ -188,7 +189,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "baalrog", "balrog", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "baalrog", "balrog", "killcam", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -901,6 +902,10 @@ extern int AENG_detail_crinkles;
 						CONSOLE_text("Free roam disabled");
 					}
 				}
+				break;
+			case 61: // killcam
+				// Slow motion + camera swing when the last enemy goes down: on / off.
+				KILLCAM_toggle();
 				break;
 			case 59: // baalrog
 			case 60: // balrog

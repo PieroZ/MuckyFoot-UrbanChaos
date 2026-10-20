@@ -49,6 +49,7 @@ void	MFX_stop_attached(Thing *p);
 void	MFX_set_pitch(UWORD channel_id, ULONG wave, SLONG pitchbend);
 void	MFX_set_gain(UWORD channel_id, ULONG wave, UBYTE gain);
 void	MFX_set_queue_gain(UWORD channel_id, ULONG wave, UBYTE gain);
+void	MFX_set_global_pitch(float pitch);		// 1.0 = normal; all voices except music (slow motion)
 
 //----- listener -----
 

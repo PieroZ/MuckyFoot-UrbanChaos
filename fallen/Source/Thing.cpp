@@ -15,6 +15,7 @@
 #include	"gamemenu.h"
 
 #include "memory.h"
+#include "killcam.h"
 //extern	ULONG	get_hardware_input(UWORD type);
 
 UWORD	*thing_class_head;
@@ -1048,6 +1049,27 @@ extern	UBYTE	record_video;
 				TICK_RATIO = 1;
 			}
 		}
+
+	//
+	// Killcam slow motion (last enemy down). Runs on real time.
+	//
+
+	if (!GAMEMENU_is_paused())
+	{
+		SLONG killcam_speed = KILLCAM_process(REAL_TICK_RATIO * NORMAL_TICK_TOCK >> TICK_SHIFT);
+
+		if (killcam_speed < 256)
+		{
+			TICK_RATIO = TICK_RATIO * killcam_speed >> 8;
+
+			if (TICK_RATIO < 1)
+			{
+				TICK_RATIO = 1;
+			}
+
+			TICK_TOCK = TICK_RATIO * NORMAL_TICK_TOCK >> TICK_SHIFT;
+		}
+	}
 #endif
 	TICK_INV_RATIO = 0x10000 / TICK_RATIO;
 

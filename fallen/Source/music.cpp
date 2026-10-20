@@ -147,12 +147,28 @@ SLONG last_MFX_QUICK_mode;
 // ---- assorted 'system level' utilities ----
 float music_volume;
 
+// music_current_level runs 0 .. music_max_gain (128 << 8); MFX gains are 0 .. 255.
+// Full level = full music volume (the volume the music has been playing at).
+static UBYTE MUSIC_level_to_gain(SLONG level)
+{
+	SLONG gain = level >> 7;
+
+	if (gain > 255) gain = 255;
+	if (gain < 0)   gain = 0;
+
+	return UBYTE(gain);
+}
+
 void MUSIC_play_the_mode(UBYTE mode)
 {
 	just_asked_for_mode_now    = TRUE;
 	just_asked_for_mode_number = mode;
 
 	if (!mode) return;
+
+	// Only modes 1..MUSIC_MODE_CHAOS have tunes (the lookup table below). Anything
+	// else used to read past the end of the table and play a random sample.
+	if (mode > MUSIC_MODE_CHAOS) return;
 
 	// for the PC, do an MFX_play with a random constant within the appropriate range to mode
 	// for the PSX, queue up the appropriate track if it's not playing already
@@ -195,7 +211,11 @@ void MUSIC_play_the_mode(UBYTE mode)
 
 
 	MFX_play_stereo(MUSIC_REF,music_current_wave,MFX_SHORT_QUEUE|MFX_QUEUED|MFX_EARLY_OUT|MFX_NEVER_OVERLAP);
-	MFX_set_gain(MUSIC_REF,music_current_wave,music_current_level>>8);
+
+	// Set the volume of the piece that is actually playing. music_current_wave is
+	// the piece just queued (a new random pick every frame), so setting the gain
+	// on it hardly ever reached the playing piece and fades didn't happen.
+	MFX_set_gain(MUSIC_REF,MFX_get_wave(MUSIC_REF),MUSIC_level_to_gain(music_current_level));
 }
 
 
@@ -212,7 +232,7 @@ void MUSIC_set_the_volume(SLONG vol)
 	// for the PSX, set the CDaudio playback volume
 #ifndef PSX
 
-	MFX_set_gain(MUSIC_REF,music_current_wave,vol>>8);
+	MFX_set_gain(MUSIC_REF,MFX_get_wave(MUSIC_REF),MUSIC_level_to_gain(vol));
 
 #else
 
@@ -282,6 +302,11 @@ void MUSIC_mode_process()
 		}
 	}
 
+#ifdef TARGET_DC
+	// Dreamcast only: warehouse ambience through the music system. On the PC
+	// Sound.cpp plays it on WEATHER_REF; doing it here as well put the music
+	// into a mode that doesn't exist (15+) and broke the music after leaving
+	// the warehouse.
 	if ( NETPERSON != NULL )
 	{
 		if ( NET_PERSON(0) != NULL )
@@ -297,6 +322,7 @@ void MUSIC_mode_process()
 			}
 		}
 	}
+#endif
 
 
 	MUSIC_play_the_mode(music_current_mode);

@@ -14,6 +14,8 @@
 #include "memory.h"
 #include "font2d.h"
 
+#include "killcam.h"
+
 #ifdef TARGET_DC
 #include "DIManager.h"
 #endif
@@ -202,6 +204,8 @@ void FC_init(void)
 	}
 
 	GAME_cut_scene = 0;
+
+	KILLCAM_reset();
 }
 
 //
@@ -1139,6 +1143,192 @@ void FC_setup_camera_for_warehouse(SLONG cam)
 
 
 
+//
+// Killcam (killcam.cpp): while it runs, camera 0 swings around the last
+// defeated enemy. The normal camera keeps running underneath: its state is
+// saved before the killcam view is written over it and put back at the start
+// of the next FC_process(), so the camera returns smoothly afterwards.
+//
+
+static SLONG FC_kc_overridden;
+static SLONG FC_kc_saved[6];		// x, y, z, yaw, pitch, roll of the normal camera
+static SLONG FC_kc_started;
+static SLONG FC_kc_start_angle;
+static SLONG FC_kc_start_dist;
+static SLONG FC_kc_dir;
+
+static void FC_killcam_restore(FC_Cam *fc)
+{
+	if (FC_kc_overridden)
+	{
+		fc->x     = FC_kc_saved[0];
+		fc->y     = FC_kc_saved[1];
+		fc->z     = FC_kc_saved[2];
+		fc->yaw   = FC_kc_saved[3];
+		fc->pitch = FC_kc_saved[4];
+		fc->roll  = FC_kc_saved[5];
+
+		FC_kc_overridden = FALSE;
+	}
+}
+
+static void FC_killcam_apply(FC_Cam *fc)
+{
+	SLONG i;
+
+	if (!KILLCAM_active() || !KILLCAM_victim())
+	{
+		FC_kc_started = FALSE;
+		return;
+	}
+
+	Thing *p_victim = TO_THING(KILLCAM_victim());
+
+	SLONG w = KILLCAM_blend();		// 0..256
+	SLONG t = KILLCAM_progress();	// 0..256
+
+	//
+	// Look at the victim's chest.
+	//
+
+	SLONG vx = p_victim->WorldPos.X >> 8;
+	SLONG vy = (p_victim->WorldPos.Y >> 8) + 0x50;
+	SLONG vz = p_victim->WorldPos.Z >> 8;
+
+	//
+	// The normal camera this frame.
+	//
+
+	SLONG nx = fc->x >> 8;
+	SLONG ny = fc->y >> 8;
+	SLONG nz = fc->z >> 8;
+
+	if (!FC_kc_started)
+	{
+		FC_kc_started = TRUE;
+
+		//
+		// Start from where the camera is now, relative to the victim.
+		//
+
+		SLONG dx = nx - vx;
+		SLONG dz = nz - vz;
+
+		FC_kc_start_angle = calc_angle(dx, dz);
+		FC_kc_start_dist  = QDIST2(abs(dx), abs(dz));
+
+		SATURATE(FC_kc_start_dist, 0x180, 0x500);
+
+		//
+		// Swing round whichever way has a clear view half way round.
+		//
+
+		FC_kc_dir = +1;
+
+		for (i = 0; i < 2; i++)
+		{
+			SLONG dir = (i == 0) ? +1 : -1;
+			SLONG mid = (FC_kc_start_angle + dir * 640) & 2047;
+
+			if (there_is_a_los(
+					vx, vy, vz,
+					vx + (SIN(mid) * 0x200 >> 16),
+					vy + 0x40,
+					vz + (COS(mid) * 0x200 >> 16),
+					LOS_FLAG_IGNORE_SEETHROUGH_FENCE_FLAG | LOS_FLAG_IGNORE_PRIMS))
+			{
+				FC_kc_dir = dir;
+				break;
+			}
+		}
+	}
+
+	//
+	// Orbit about 220 degrees around him, closing in during the first half
+	// and coming down from above.
+	//
+
+	SLONG close = t * 2;
+
+	if (close > 256) {close = 256;}
+
+	SLONG angle  = (FC_kc_start_angle + FC_kc_dir * (1250 * t >> 8)) & 2047;
+	SLONG dist   = FC_kc_start_dist + ((0x1c0 - FC_kc_start_dist) * close >> 8);
+	SLONG height = vy + 0x20 + (0x60 * (256 - t) >> 8);
+
+	SLONG cx = vx + (SIN(angle) * dist >> 16);
+	SLONG cy = height;
+	SLONG cz = vz + (COS(angle) * dist >> 16);
+
+	//
+	// Don't look through walls: move in towards him until he can be seen.
+	//
+
+	for (i = 0; i < 4; i++)
+	{
+		if (there_is_a_los(vx, vy, vz, cx, cy, cz, LOS_FLAG_IGNORE_SEETHROUGH_FENCE_FLAG | LOS_FLAG_IGNORE_PRIMS))
+		{
+			break;
+		}
+
+		cx = vx + (cx - vx >> 1);
+		cy = vy + (cy - vy >> 1);
+		cz = vz + (cz - vz >> 1);
+	}
+
+	{
+		SLONG ground = PAP_calc_map_height_at(cx, cz) + 0x30;
+
+		if (cy < ground)
+		{
+			cy = ground;
+		}
+	}
+
+	//
+	// Blend between the normal camera and the killcam one.
+	//
+
+	SLONG bx = nx + ((cx - nx) * w >> 8);
+	SLONG by = ny + ((cy - ny) * w >> 8);
+	SLONG bz = nz + ((cz - nz) * w >> 8);
+
+	SLONG fx = fc->focus_x >> 8;
+	SLONG fy = fc->focus_y + fc->lookabove >> 8;
+	SLONG fz = fc->focus_z >> 8;
+
+	SLONG lx = fx + ((vx - fx) * w >> 8);
+	SLONG ly = fy + ((vy - fy) * w >> 8);
+	SLONG lz = fz + ((vz - fz) * w >> 8);
+
+	//
+	// Remember the normal camera and replace it for this frame.
+	//
+
+	FC_kc_saved[0] = fc->x;
+	FC_kc_saved[1] = fc->y;
+	FC_kc_saved[2] = fc->z;
+	FC_kc_saved[3] = fc->yaw;
+	FC_kc_saved[4] = fc->pitch;
+	FC_kc_saved[5] = fc->roll;
+
+	FC_kc_overridden = TRUE;
+
+	fc->x = bx << 8;
+	fc->y = by << 8;
+	fc->z = bz << 8;
+
+	SLONG dx  = lx - bx;
+	SLONG dy  = ly - by;
+	SLONG dz  = lz - bz;
+	SLONG dxz = QDIST2(abs(dx), abs(dz));
+
+	fc->yaw   = (-Arctan(dx, dz) & 2047) << 8;
+	fc->pitch = ( Arctan(dy, dxz) & 2047) << 8;
+	fc->roll  = 1024 << 8;
+}
+
+
 void FC_process()
 {
 	SLONG i;
@@ -1167,6 +1357,15 @@ void FC_process()
  	for (cam = 0; cam < FC_MAX_CAMS; cam++)
 	{
 		fc = &FC_cam[cam];
+
+		if (cam == 0)
+		{
+			//
+			// Carry on from the normal camera, not the killcam view.
+			//
+
+			FC_killcam_restore(fc);
+		}
 
 		if (fc->focus == NULL)
 		{
@@ -1924,6 +2123,11 @@ extern	SLONG	EWAY_cam_jumped;
 
 			fc->shake -= 1;
 			fc->shake -= fc->shake >> 3;
+		}
+
+		if (cam == 0)
+		{
+			FC_killcam_apply(fc);
 		}
 	}
 }

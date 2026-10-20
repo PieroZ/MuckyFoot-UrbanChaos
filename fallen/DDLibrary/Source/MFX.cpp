@@ -107,6 +107,7 @@ static float		Gain2D = 1.0;			// gain for 2D voices
 static float		LX,LY,LZ;				// listener coords
 
 static float		Volumes[3];				// volumes for each SampleType
+static float		GlobalPitch = 1.0f;		// pitch of all non-music voices (slow motion)
 
 static int			AllocatedRAM = 0;
 
@@ -617,7 +618,7 @@ static void FinishLoading(MFX_Voice* vptr)
 	}
 
 	MoveVoice(vptr);
-	if (vptr->ratemult != 1.0)
+	if (vptr->ratemult != 1.0 || GlobalPitch != 1.0f)
 	{
 		SetVoiceRate(vptr, vptr->ratemult);
 	}
@@ -670,13 +671,24 @@ static void MoveVoice(MFX_Voice* vptr)
 	}
 }
 
+// The pitch a voice should play at: its own rate times the global (slow motion) pitch.
+// Music keeps its normal pitch.
+static float VoicePitch(MFX_Voice* vptr)
+{
+	if (vptr->smp && vptr->smp->type == SMP_Music)
+	{
+		return vptr->ratemult;
+	}
+	return vptr->ratemult * GlobalPitch;
+}
+
 static void SetVoiceRate(MFX_Voice* vptr, float mult)
 {
+	vptr->ratemult = mult;
 	if (vptr->handle)
 	{
-		alSourcef(vptr->handle, AL_PITCH, mult);
+		alSourcef(vptr->handle, AL_PITCH, VoicePitch(vptr));
 	}
-	vptr->ratemult = mult;
 }
 
 static void SetVoiceGain(MFX_Voice* vptr, float gain)
@@ -686,17 +698,20 @@ static void SetVoiceGain(MFX_Voice* vptr, float gain)
 		return;
 	}
 
-	gain *= Volumes[vptr->smp->type];
+	// vptr->gain and the queue keep the gain *before* the volume setting is applied,
+	// they are passed back into this function later (FinishLoading, MFX_update).
+	// Storing the scaled value made the volume setting apply twice.
+	float level = gain * Volumes[vptr->smp->type];
 
 	if (vptr->handle)
 	{
 		if (vptr->is3D)
 		{
-			alSourcef(vptr->handle, AL_GAIN, gain);
+			alSourcef(vptr->handle, AL_GAIN, level);
 		}
 		else
 		{
-			alSourcef(vptr->handle, AL_GAIN, gain * Gain2D);
+			alSourcef(vptr->handle, AL_GAIN, level * Gain2D);
 		}		
 	}
 	if (vptr->queue)
@@ -714,12 +729,10 @@ static bool IsVoiceDone(MFX_Voice* vptr)
 	}
 
 	ALint state;
-	ALint posn;
 
 	if (vptr->handle)
 	{
 		alGetSourcei(vptr->handle, AL_SOURCE_STATE, &state);
-		alGetSourcei(vptr->handle, AL_SAMPLE_OFFSET, &posn);
 	}
 	else if (vptr->smp && vptr->smp->loading)
 	{
@@ -730,9 +743,20 @@ static bool IsVoiceDone(MFX_Voice* vptr)
 		return true;
 	}
 
+	if (state == AL_STOPPED)
+	{
+		return true;
+	}
+
 	if (vptr->flags & MFX_EARLY_OUT)
 	{
-		return (vptr->smp->size - posn < 440*2);
+		// smp->size is in bytes, so the play position must be in bytes too.
+		// (It used to be AL_SAMPLE_OFFSET, in sample frames: a finished
+		// early-out voice - all the music - was then never 'done', the next
+		// queued piece never started and the music went silent.)
+		ALint bytepos = 0;
+		alGetSourcei(vptr->handle, AL_BYTE_OFFSET, &bytepos);
+		return (vptr->smp->size - bytepos < 440*2);
 	}
 
 	return (state != AL_PLAYING);
@@ -751,7 +775,7 @@ static void QueueWave(MFX_Voice* vptr, UWORD wave, ULONG flags, bool is3D, SLONG
 		return;
 	}
 
-	if (vptr->queuesz > MAX_QVOICE)
+	if (vptr->queuesz >= MAX_QVOICE)
 	{
 		return;
 	}
@@ -786,6 +810,8 @@ static void QueueWave(MFX_Voice* vptr, UWORD wave, ULONG flags, bool is3D, SLONG
 	qptr->y = y;
 	qptr->z = z;
 	qptr->gain = 1.0;
+
+	vptr->queuesz++;
 }
 
 static void TriggerPairedVoice(UWORD channel_id)
@@ -840,6 +866,11 @@ static UBYTE PlayWave(UWORD channel_id, ULONG wave, ULONG flags, bool is3D, SLON
 			MoveVoice(vptr);
 			return 0;
 		}
+		FreeVoice(vptr);
+	}
+	else if (vptr->queue)
+	{
+		// a voice without a sample but with a queue - give the queue back first
 		FreeVoice(vptr);
 	}
 
@@ -1289,10 +1320,12 @@ void MFX_update()
 		{
 			continue;
 		}
-		if (!vptr->smp)
+		if (!vptr->smp && !vptr->queue)
 		{
 			continue;
 		}
+		// (a voice whose sample failed to load but has something queued is 'done'
+		// and moves on to the queue instead of blocking its channel for ever)
 
 		if (IsVoiceDone(vptr))
 		{
@@ -1304,7 +1337,8 @@ void MFX_update()
 			{
 				// get next wave from queue
 				MFX_QWave*	qptr = vptr->queue;
-				vptr->queue = qptr->next;
+				MFX_QWave*	rest = qptr->next;
+				SLONG		restsz = vptr->queuesz > 0 ? vptr->queuesz - 1 : 0;
 
 				if (qptr->flags & MFX_PAIRED_TRK1)
 				{
@@ -1316,6 +1350,12 @@ void MFX_update()
 				FreeVoiceSource(vptr);
 				SetupVoice(vptr, vptr->id, qptr->wave, qptr->flags & ~MFX_PAIRED_TRK2, qptr->is3D);
 				vptr->thing = thing;
+
+				// SetupVoice() clears the queue - put the rest of it back, otherwise the
+				// queue elements leak and once all MAX_QWAVE are gone nothing (music
+				// included) can be queued any more.
+				vptr->queue = rest;
+				vptr->queuesz = restsz;
 
 				// set the position
 				if ((vptr->flags & MFX_MOVING) && vptr->thing)
@@ -1360,6 +1400,29 @@ void MFX_update()
 				vptr->z = vptr->thing->WorldPos.Z >> 8;
 				MoveVoice(vptr);
 			}
+		}
+	}
+}
+
+void MFX_set_global_pitch(float pitch)
+{
+	if (pitch < 0.1f)
+	{
+		pitch = 0.1f;
+	}
+
+	if (pitch == GlobalPitch)
+	{
+		return;
+	}
+
+	GlobalPitch = pitch;
+
+	for (int ii = 0; ii < MAX_VOICE; ii++)
+	{
+		if (Voices[ii].handle)
+		{
+			alSourcef(Voices[ii].handle, AL_PITCH, VoicePitch(&Voices[ii]));
 		}
 	}
 }

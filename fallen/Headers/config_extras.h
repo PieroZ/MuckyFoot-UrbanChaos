@@ -20,6 +20,7 @@ struct ConfigExtras
 		mMax_range_blocks = ENV_get_value_number("max_range_blocks", 1600, "Extra");
 		mMouseShootCooldown = ENV_get_value_number("mouse_shoot_cooldown", 10, "Extra");
 		mLegolasAim = ENV_get_value_number("legolas_aim", 0, "Extra");
+		mKillCam = ENV_get_value_number("killcam", 1, "Extra");
 
 		mDrawDistance = static_cast<std::int16_t>(ENV_get_value_number("draw_distance", 40, "Extra"));
 		if (mDrawDistance < 10)
@@ -42,6 +43,7 @@ struct ConfigExtras
 	
 	bool mCustomTurnRateEnabled = false;
 	bool mLegolasAim = false;
+	bool mKillCam = true;			// Slow motion + orbiting camera when the last enemy goes down
 	std::int16_t mCustomTurnRateValue = 70;
 	std::int32_t mMax_range_blocks = 1600;
 	std::int16_t mMouseShootCooldown = 10;

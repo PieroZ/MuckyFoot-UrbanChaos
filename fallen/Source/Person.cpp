@@ -39,6 +39,7 @@
 #include	"overlay.h"
 #include	"psystem.h"
 #include	"config_extras.h"
+#include	"killcam.h"
 #include	"poly.h"
 #include	"memory.h"
 #include	"fmatrix.h"
@@ -2298,6 +2299,15 @@ void set_person_dead(
 	SLONG       locked = FALSE;
 
 	ASSERT(p_thing->Class == CLASS_PERSON);
+
+#ifndef PSX
+	//
+	// Was that the last enemy fighting the player? (slow motion + killcam)
+	//
+
+	KILLCAM_person_defeated(p_thing, p_aggressor, death_type);
+#endif
+
 	p_thing->Draw.Tweened->Roll	 = 0;
 	p_thing->Draw.Tweened->DRoll = 0;
 
