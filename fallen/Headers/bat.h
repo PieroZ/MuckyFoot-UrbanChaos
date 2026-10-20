@@ -88,4 +88,19 @@ void BAT_set_anim(Thing* p_thing, SLONG anim);
 
 void BAT_set_anim_test(Thing* p_thing, SLONG anim);
 void BAT_set_anim_and_type(Thing* p_thing, SLONG anim, UBYTE type);
+
+
+//
+// Playable Balrog (console cheat "baalrog"). The player's person is hidden,
+// invulnerable and carried along inside the Balrog while the player's input
+// drives the Balrog.
+//
+
+void  BAT_player_toggle(Thing *p_person);							// Starts / ends it
+void  BAT_player_reset(void);										// New level
+SLONG BAT_player_active(void);
+SLONG BAT_player_control(Thing *p_person, ULONG input, SLONG mouse_dx);	// TRUE => the person gets no input
+SLONG BAT_player_is_rider(Thing *p_thing);							// TRUE for the hidden person
+void  BAT_player_draw_overlay(void);								// Health + fireball sight, HUD time
+
 #endif

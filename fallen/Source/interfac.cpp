@@ -1814,7 +1814,7 @@ extern	SLONG	person_on_floor(Thing *p_person);
 				extern UWORD find_arrestee(Thing *p_person);
 
 				//PANEL_new_text(NULL,4000,"ACTION FIND arrest");
-				if (p_thing->Genus.Person->PersonType == PERSON_DARCI && (index = find_arrestee(p_thing)))
+				if ((p_thing->Genus.Person->PersonType == PERSON_DARCI || p_thing->Genus.Person->PersonType == PERSON_COP) && (index = find_arrestee(p_thing)))
 				{
 					set_person_arrest(p_thing, index);
 					//PANEL_new_text(NULL,4000,"ACTION DO arrest");
@@ -5947,7 +5947,7 @@ void	set_person_fight_step_forward(Thing *p_person);
 			UWORD index;
 
 				//PANEL_new_text(NULL,4000,"COMBAT find arrest");
-			if (p_person->Genus.Person->PersonType==PERSON_DARCI && (index=find_arrestee(p_person)))
+			if ((p_person->Genus.Person->PersonType==PERSON_DARCI || p_person->Genus.Person->PersonType == PERSON_COP) && (index=find_arrestee(p_person)))
 			{
 				set_person_arrest(p_person,index);
 				pl->DoneSomething = TRUE;
@@ -8897,6 +8897,28 @@ void	process_hardware_level_input_for_player(Thing *p_player)
 //		CONSOLE_text(" punch pressed A",500);
 
 	input &= ~(p_player->Genus.Player->InputDone); //&~INPUT_MASK_ACTION);
+
+	//
+	// Playing as the Balrog (cheat "baalrog")? Then he gets the input, not the person.
+	//
+
+	{
+		SLONG mouse_dx = 0;
+
+#ifndef PSX
+#ifndef TARGET_DC
+		if (ConfigExtras::getInstance().mMouseInput)
+		{
+			mouse_dx = MouseDX;
+		}
+#endif
+#endif
+
+		if (BAT_player_control(p_person, input, mouse_dx))
+		{
+			no_control = TRUE;
+		}
+	}
 
 //	if(input&INPUT_MASK_PUNCH)
 //		CONSOLE_text(" punch pressed",500);

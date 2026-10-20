@@ -752,6 +752,9 @@ void	OVERLAY_draw_gun_sights(void)
 	}
 	track_count=0;
 
+	// Playing as the Balrog: his health and the fireball sight.
+	BAT_player_draw_overlay();
+
 	// draw a grenade aim target
 extern SLONG person_holding_special(Thing* p_person, UBYTE special);	// I am so naughty.  I blame Mark.
 
@@ -1042,7 +1045,30 @@ void	OVERLAY_handle(void)
 
 			if(!(GAME_STATE&GS_LEVEL_WON))
 			{
-				PANEL_last();
+				//PANEL_last();
+				if (FC_cam[1].focus)
+				{
+					extern int m_iPanelYPos;
+					extern float POLY_screen_clip_top;
+					extern float POLY_screen_clip_bottom;
+
+					POLY_screen_clip_top = 0.0F;
+					POLY_screen_clip_bottom = float(DisplayHeight);
+
+					SLONG save_panel_y = m_iPanelYPos;
+
+					m_iPanelYPos = DisplayHeight >> 1;
+					PANEL_last(0);
+
+					m_iPanelYPos = DisplayHeight;
+					PANEL_last(1);
+						
+					m_iPanelYPos = save_panel_y;
+				}
+				else
+				{
+					PANEL_last();
+				}
 			}
 		}
 #endif

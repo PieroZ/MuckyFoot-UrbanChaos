@@ -9,6 +9,7 @@
 #include "env.h"
 
 #include "renderstate.h"
+#include "config_extras.h"
 
 // s_State
 //
@@ -239,7 +240,8 @@ void RenderState::InitScene(DWORD fog_colour)
 	REALLY_SET_RENDER_STATE(D3DRENDERSTATE_FOGTABLEMODE, D3DFOG_LINEAR);
 
 	extern SLONG	CurDrawDistance;
-	float fFogDist = CurDrawDistance * (60.0f / (22.f * 256.0f));
+	//float fFogDist = CurDrawDistance * (60.0f / (22.f * 256.0f));
+	float  fFogDist = float(ConfigExtras::getInstance().mFogDistance);
 	float fFogDistNear = fFogDist * 0.7f;
 	REALLY_SET_RENDER_STATE(D3DRENDERSTATE_FOGTABLESTART, FloatAsDword(fFogDistNear));
 	REALLY_SET_RENDER_STATE(D3DRENDERSTATE_FOGTABLEEND, FloatAsDword(fFogDist));

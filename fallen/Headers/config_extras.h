@@ -20,6 +20,18 @@ struct ConfigExtras
 		mMax_range_blocks = ENV_get_value_number("max_range_blocks", 1600, "Extra");
 		mMouseShootCooldown = ENV_get_value_number("mouse_shoot_cooldown", 10, "Extra");
 		mLegolasAim = ENV_get_value_number("legolas_aim", 0, "Extra");
+
+		mDrawDistance = static_cast<std::int16_t>(ENV_get_value_number("draw_distance", 40, "Extra"));
+		if (mDrawDistance < 10)
+		{
+			mDrawDistance = 10;
+		}
+
+		mFogDistance = static_cast<std::int16_t>(ENV_get_value_number("fog_distance", 60, "Extra"));
+		if (mFogDistance < 10)
+		{
+			mFogDistance = 10;
+		}
 	}
 
 	static ConfigExtras& getInstance()
@@ -35,4 +47,6 @@ struct ConfigExtras
 	std::int16_t mMouseShootCooldown = 10;
 	bool mMouseInput = false;
 	bool mShowHitMarker = false;
+	std::int16_t mDrawDistance = 40;
+	std::int16_t mFogDistance = 50;
 };

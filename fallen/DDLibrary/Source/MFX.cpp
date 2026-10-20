@@ -646,7 +646,7 @@ static void PlayVoice(MFX_Voice* vptr)
 
 static void MoveVoice(MFX_Voice* vptr)
 {
-	if (vptr->is3D)
+	if (vptr->is3D && vptr->handle)
 	{
 		float	x = vptr->x * COORDINATE_UNITS;
 		float	y = vptr->y * COORDINATE_UNITS;

@@ -10677,7 +10677,7 @@ void PCOM_process_default(Thing *p_person)
 // Alerts all nearby MIB / Guards / Gangs to attack / fight test... including the person himself.
 //
 
-void PCOM_alert_nearby_mib_to_attack(Thing *p_person)
+void PCOM_alert_nearby_mib_to_attack(Thing *p_person, int which=0)
 {
 	{
 		SLONG  i;
@@ -10712,7 +10712,8 @@ void PCOM_alert_nearby_mib_to_attack(Thing *p_person)
 						p_found->Genus.Person->pcom_ai_state == PCOM_AI_STATE_HOMESICK ||
 						p_found->Genus.Person->pcom_ai_state == PCOM_AI_STATE_INVESTIGATING)
 					{
-						PCOM_set_person_ai_navtokill(p_found, NET_PERSON(0));
+						//PCOM_set_person_ai_navtokill(p_found, NET_PERSON(0));
+						PCOM_set_person_ai_navtokill(p_found, NET_PERSON(which));
 					}
 				}
 			}
@@ -11506,7 +11507,11 @@ void PCOM_process_state_change(Thing *p_person)
 				{
 					if (PCOM_get_dist_between(p_person, NET_PERSON(0)) < 0x200)
 					{
-						PCOM_alert_nearby_mib_to_attack(p_person);	// Not just MIBs!
+						PCOM_alert_nearby_mib_to_attack(p_person, 0);	// Not just MIBs!
+					}
+					if (PCOM_get_dist_between(p_person, NET_PERSON(1)) < 0x200)
+					{
+						PCOM_alert_nearby_mib_to_attack(p_person, 1);	// Not just MIBs!
 					}
 				}
 			}
@@ -11712,7 +11717,11 @@ void PCOM_process_state_change(Thing *p_person)
 
 				if (can_a_see_b(p_person, NET_PERSON(0))&&!stealth_debug)
 				{
-					PCOM_alert_nearby_mib_to_attack(p_person);
+					PCOM_alert_nearby_mib_to_attack(p_person, 0);
+				}
+				if (NET_PERSON(1) && can_a_see_b(p_person, NET_PERSON(1)) && !stealth_debug)
+				{
+					PCOM_alert_nearby_mib_to_attack(p_person, 1);
 				}
 			}
 

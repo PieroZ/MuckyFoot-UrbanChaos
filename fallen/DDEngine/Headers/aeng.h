@@ -131,6 +131,7 @@ void AENG_set_camera_radians(
 
 void  AENG_set_draw_distance(SLONG dist);
 SLONG AENG_get_draw_distance();
+void  AENG_long_draw_distance();
 
 //
 // Draws world lines.

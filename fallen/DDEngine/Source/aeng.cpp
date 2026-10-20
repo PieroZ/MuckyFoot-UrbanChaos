@@ -38,6 +38,7 @@
 #include "spark.h"
 #include "glitter.h"
 #include	"Text.h"	//	Guy.
+#include "config_extras.h"
 #include "cone.h"
 #include "ob.h"
 #include "morph.h"
@@ -497,6 +498,13 @@ void AENG_set_draw_distance(SLONG dist)
 	NormalDrawDistance = dist;
 	ENV_set_value_number("draw_distance", dist, "Render");
 #endif
+	CurDrawDistance = dist << 8;
+	ENV_set_value_number("draw_distance", dist, "Extra");
+}
+
+void AENG_load_draw_distance()
+{
+	CurDrawDistance = ConfigExtras::getInstance().mDrawDistance << 8;
 }
 
 //
@@ -777,6 +785,7 @@ UBYTE *movie_data_upto;
 
 void AENG_init(void)
 {
+	AENG_load_draw_distance();
 	MESH_init();
 //	FONT2D_init();
 #ifndef TARGET_DC
@@ -7869,7 +7878,7 @@ extern	UBYTE	player_visited[16][128];
 
 							square = NIGHT_cache[px][pz];
 
-							ASSERT(WITHIN(square, 1, NIGHT_MAX_SQUARES - 1));
+							//ASSERT(WITHIN(square, 1, NIGHT_MAX_SQUARES - 1));
 							ASSERT(NIGHT_square[square].flag & NIGHT_SQUARE_FLAG_USED);
 
 							nq = &NIGHT_square[square];
@@ -16232,10 +16241,18 @@ void AENG_draw(SLONG draw_3d)
 				AENG_ensure_appropriate_caching(FALSE);
 				AENG_draw_city();
 			}
+
+
+			if (i==0 && FreeRoamCamera::GetInstance().IsActive)
+			{
+				warehouse = 0;
+				FreeRoamCamera::GetInstance().CopyToFC(fc);
+			}
 		}
 
 		AENG_get_rid_of_deleteme_squares();
 		AENG_get_rid_of_unused_dfcache_lighting(TRUE);
+
 	}
 	else
 	{

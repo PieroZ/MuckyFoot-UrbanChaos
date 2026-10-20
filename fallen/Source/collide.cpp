@@ -10887,6 +10887,15 @@ void create_shockwave(
 	{
 		p_found = TO_THING(found[i]);
 
+		if (BAT_player_is_rider(p_found))
+		{
+			//
+			// The player's person hidden inside a player-driven Balrog.
+			//
+
+			continue;
+		}
+
 		//
 		// How far is this thing from the epicentre?
 		//

@@ -4308,7 +4308,7 @@ void PANEL_inventory(Thing *darci, Thing *player) {
 
 
 
-void PANEL_last()
+void PANEL_last(SLONG which)
 {
 
 
@@ -4391,7 +4391,7 @@ void PANEL_last()
 	}
 
 
-	Thing *darci = NET_PERSON(0);
+	Thing *darci = NET_PERSON(which);
 
 	if (darci == NULL)
 	{
@@ -5151,7 +5151,7 @@ extern	ULONG	strip_stats[];
 				if (PANEL_scanner_poo)
 					dangle = atan2(dx,dz) - float(darci->Draw.Tweened->Angle) * (2.0F * PI / 2048.0F);
 				else
-					dangle = atan2(dx,dz) - float(FC_cam[0].yaw>>8) * (2.0F * PI / 2048.0F);
+					dangle = atan2(dx,dz) - float(FC_cam[which].yaw>>8) * (2.0F * PI / 2048.0F);
 				score  = (float)fmod(dangle, 2.0F * PI) - PI;
 
 				if (score > +PI) {score -= 2.0F * PI;}
@@ -5394,7 +5394,7 @@ extern	ULONG	strip_stats[];
 					}
 					else
 					{
-						dangle = atan2(dx,dz) - float(FC_cam[0].yaw>>8) * (2.0F * PI / 2048.0F);
+						dangle = atan2(dx,dz) - float(FC_cam[which].yaw>>8) * (2.0F * PI / 2048.0F);
 					}
 
 					x = PLS_MID_X + (float)sin(dangle) * PLS_RADIUS * dist;
@@ -5627,7 +5627,7 @@ extern	ULONG	strip_stats[];
 	//
 
 	{
-		Thing *darci = NET_PERSON(0);
+		Thing *darci = NET_PERSON(which);
 
 		if(darci)
 		{

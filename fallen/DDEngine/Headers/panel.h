@@ -93,7 +93,7 @@ SLONG PANEL_fadeout_finished(void);
 // The last panel for Urban Chaos (with a bit of luck).
 //
 
-void PANEL_last(void);
+void PANEL_last(SLONG which = 0);
 
 
 

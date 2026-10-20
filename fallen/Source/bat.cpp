@@ -26,6 +26,7 @@
 #include "pcom.h"
 #include "memory.h"
 #include "night.h"
+#include "interfac.h"
 
 
 //
@@ -67,7 +68,8 @@ static const int BAT_STATE_BANE_IDLE = 16;
 static const int BAT_STATE_BANE_ATTACK = 17;
 static const int BAT_STATE_BANE_START = 18;
 static const int BAT_STATE_TURRET_IDLE = 19;
-static const int BAT_STATE_NUMBER = 20;
+static const int BAT_STATE_BALROG_PLAYER = 20;	// A Balrog driven by the player (cheat "baalrog")
+static const int BAT_STATE_NUMBER = 21;
 
 
 #ifndef PSX
@@ -93,7 +95,8 @@ CBYTE* BAT_state_name[BAT_STATE_NUMBER] =
 	"Bane idle",
 	"Bane attack",
 	"Bane start",
-	"Turret idle"
+	"Turret idle",
+	"Balrog player"
 };
 
 #endif
@@ -238,6 +241,8 @@ void BAT_init()
 	memset(the_game.Bats, 0, sizeof(Bat) * BAT_MAX_BATS);
 
 	BAT_COUNT = 0;
+
+	BAT_player_reset();
 }
 #endif
 
@@ -1461,6 +1466,974 @@ void BAT_balrog_slide_along(
 }
 
 
+
+// ========================================================================
+// Playable Balrog - console cheat "baalrog" (or "balrog").
+//
+// The player's person (D'arci) is hidden, made invulnerable and carried along
+// inside the Balrog every game turn, so the camera, the mission scripts,
+// waypoints and the HUD keep working as usual. The player's input drives the
+// Balrog instead of D'arci:
+//
+//    forwards / backwards    walk (the Balrog yomp)
+//    left / right / mouse    turn
+//    punch                   fist swipe        (shockwave in front of him)
+//    kick                    stomp the ground  (big shockwave + dust)
+//    jump                    roar
+//    action (hold)           aim a fireball: an arc and a sight show where it lands,
+//                            it locks onto the nearest enemy in front of him;
+//                            forwards / backwards change the range while aiming.
+//    action (release)        throw the fireball
+//
+// Typing the cheat again (or the Balrog dying) lets D'arci out again.
+// ========================================================================
+
+#include "fc.h"
+#include "..\DDEngine\Headers\console.h"
+
+static const int BAT_SUBSTATE_PLAYER_IDLE = 20;
+static const int BAT_SUBSTATE_PLAYER_WALK_START = 21;
+static const int BAT_SUBSTATE_PLAYER_WALK = 22;
+static const int BAT_SUBSTATE_PLAYER_WALK_END = 23;
+static const int BAT_SUBSTATE_PLAYER_SWIPE = 24;
+static const int BAT_SUBSTATE_PLAYER_STOMP = 25;
+static const int BAT_SUBSTATE_PLAYER_ROAR = 26;
+static const int BAT_SUBSTATE_PLAYER_FIRE = 27;
+
+#define BAT_PLAYER_AIM_MIN		0x200	// World units (256 per mapsquare)
+#define BAT_PLAYER_AIM_MAX		0xc00
+#define BAT_PLAYER_AIM_DEFAULT	0x600
+#define BAT_PLAYER_LOCK_ANGLE	160		// Lock onto targets within +-28 degrees (2048 = 360)
+#define BAT_PLAYER_FIRE_HEIGHT	0x7000	// Where the fireball leaves his hand (<< 8)
+#define BAT_PLAYER_MAX_IMPACTS	4
+
+extern SLONG is_person_dead(Thing* p_person);
+extern void  set_person_idle(Thing* p_person);
+extern SLONG plant_feet(Thing* p_person);
+extern void  PANEL_draw_gun_sight(SLONG mx, SLONG my, SLONG mz, SLONG accuracy, SLONG scale);
+extern void  PANEL_draw_local_health(SLONG mx, SLONG my, SLONG mz, SLONG percentage, SLONG radius);
+extern void  AENG_world_line_nondebug(
+	SLONG x1, SLONG y1, SLONG z1, SLONG width1, ULONG colour1,
+	SLONG x2, SLONG y2, SLONG z2, SLONG width2, ULONG colour2,
+	SLONG sort_to_front);
+
+typedef struct
+{
+	THING_INDEX bat;		// The Balrog, NULL => not playing as the Balrog
+	THING_INDEX rider;		// The hidden person (D'arci)
+
+	ULONG input;			// Input of this game turn
+	ULONG last_input;
+	ULONG pressed;			// Collected until the Balrog has processed them
+	SLONG mouse_dx;
+
+	UBYTE aiming;
+	UBYTE fired;			// The fireball of the current throw has gone
+	UBYTE was_invulnerable;
+	UBYTE saved_draw_type;
+	SWORD saved_health;
+	UWORD padding;
+
+	SLONG aim_dist;			// World units
+	THING_INDEX aim_target;	// Locked-on target or NULL
+	SLONG aim_x;			// Where the fireball lands (world units)
+	SLONG aim_y;
+	SLONG aim_z;
+
+	SLONG rider_x;			// Where we put the rider last game turn (<< 8)
+	SLONG rider_z;
+
+	SLONG saved_cam_dist;
+	SLONG saved_cam_height;
+
+	struct
+	{
+		SLONG turn;			// GAME_TURN the fireball lands, 0 => unused
+		SLONG x;
+		SLONG y;
+		SLONG z;
+
+	} impact[BAT_PLAYER_MAX_IMPACTS];
+
+} BAT_Player;
+
+static BAT_Player BAT_player;
+
+void BAT_player_reset(void)
+{
+	memset(&BAT_player, 0, sizeof(BAT_player));
+}
+
+SLONG BAT_player_active(void)
+{
+	return BAT_player.bat != 0;
+}
+
+SLONG BAT_player_is_rider(Thing* p_thing)
+{
+	return BAT_player.rider && p_thing && THING_NUMBER(p_thing) == BAT_player.rider;
+}
+
+//
+// Sets an anim. 'restart' plays it from the start even if it is already playing.
+//
+
+static void BAT_player_anim(Thing* p_thing, SLONG anim, SLONG restart)
+{
+	if (restart)
+	{
+		p_thing->Draw.Tweened->CurrentAnim = -1;
+	}
+
+	BAT_set_anim(p_thing, anim);
+}
+
+//
+// The direction the Balrog walks in (16.16).
+//
+
+static void BAT_player_forwards(Thing* p_thing, SLONG* fx, SLONG* fz)
+{
+	*fx = -SIN(p_thing->Draw.Tweened->Angle);
+	*fz = -COS(p_thing->Draw.Tweened->Angle);
+}
+
+//
+// The velocity (<< 8 units per game turn) that makes a PFLAG_GRAVITY particle
+// started at (sx,sy,sz) land at (tx,ty,tz). Mirrors PARTICLE_Run():
+// y(n) = y0 + n * dy0 - 0xff * n * (n - 1) / 2. Returns the flight time in turns.
+//
+
+static SLONG BAT_player_fireball_velocity(
+	SLONG sx, SLONG sy, SLONG sz,
+	SLONG tx, SLONG ty, SLONG tz,
+	SLONG* vx, SLONG* vy, SLONG* vz)
+{
+	SLONG dx = tx - sx;
+	SLONG dy = ty - sy;
+	SLONG dz = tz - sz;
+
+	SLONG dist = QDIST2(abs(dx), abs(dz));
+	SLONG turns = dist / 0x2400;
+
+	SATURATE(turns, 8, 70);
+
+	*vx = dx / turns;
+	*vz = dz / turns;
+	*vy = (dy + 0xff * turns * (turns - 1) / 2) / turns;
+
+	SATURATE(*vx, -32000, +32000);
+	SATURATE(*vy, -32000, +32000);
+	SATURATE(*vz, -32000, +32000);
+
+	return turns;
+}
+
+static void BAT_player_fireball_start(Thing* p_thing, SLONG* sx, SLONG* sy, SLONG* sz)
+{
+	SLONG fx;
+	SLONG fz;
+
+	BAT_player_forwards(p_thing, &fx, &fz);
+
+	*sx = p_thing->WorldPos.X + (fx * 0x60 >> 8);
+	*sy = p_thing->WorldPos.Y + BAT_PLAYER_FIRE_HEIGHT;
+	*sz = p_thing->WorldPos.Z + (fz * 0x60 >> 8);
+}
+
+//
+// Works out where the fireball would land: the best target in front of the Balrog
+// or a point on the ground 'aim_dist' in front of him.
+//
+
+static void BAT_player_update_aim(Thing* p_thing)
+{
+	SLONG i;
+	SLONG fx;
+	SLONG fz;
+	SLONG dx;
+	SLONG dz;
+	SLONG dist;
+	SLONG dangle;
+	SLONG score;
+	SLONG best_score = INFINITY;
+
+	BAT_player_forwards(p_thing, &fx, &fz);
+
+	SLONG bx = p_thing->WorldPos.X >> 8;
+	SLONG by = p_thing->WorldPos.Y >> 8;
+	SLONG bz = p_thing->WorldPos.Z >> 8;
+
+	BAT_player.aim_target = 0;
+
+	SLONG num = THING_find_sphere(
+		bx, by, bz,
+		BAT_PLAYER_AIM_MAX,
+		THING_array,
+		THING_ARRAY_SIZE,
+		(1 << CLASS_PERSON) | (1 << CLASS_VEHICLE) | (1 << CLASS_BAT));
+
+	for (i = 0; i < num; i++)
+	{
+		Thing* p_found = TO_THING(THING_array[i]);
+
+		if (p_found == p_thing || BAT_player_is_rider(p_found))
+		{
+			continue;
+		}
+
+		if (p_found->State == STATE_DEAD || p_found->State == STATE_DYING)
+		{
+			continue;
+		}
+
+		if (p_found->Class == CLASS_PERSON && is_person_dead(p_found))
+		{
+			continue;
+		}
+
+		if (p_found->Class == CLASS_BAT && p_found->Genus.Bat->health == 0)
+		{
+			continue;
+		}
+
+		dx = (p_found->WorldPos.X >> 8) - bx;
+		dz = (p_found->WorldPos.Z >> 8) - bz;
+
+		dist = QDIST2(abs(dx), abs(dz));
+
+		if (dist < BAT_PLAYER_AIM_MIN || dist > BAT_PLAYER_AIM_MAX)
+		{
+			continue;
+		}
+
+		dangle = ((calc_angle(dx, dz) + 1024) & 2047) - p_thing->Draw.Tweened->Angle;
+
+		if (dangle > +1024) { dangle -= 2048; }
+		if (dangle < -1024) { dangle += 2048; }
+
+		if (abs(dangle) > BAT_PLAYER_LOCK_ANGLE)
+		{
+			continue;
+		}
+
+		score = dist + abs(dangle) * 8;
+
+		if (score < best_score)
+		{
+			best_score = score;
+			BAT_player.aim_target = THING_array[i];
+		}
+	}
+
+	if (BAT_player.aim_target)
+	{
+		Thing* p_target = TO_THING(BAT_player.aim_target);
+
+		BAT_player.aim_x = p_target->WorldPos.X >> 8;
+		BAT_player.aim_y = p_target->WorldPos.Y >> 8;
+		BAT_player.aim_z = p_target->WorldPos.Z >> 8;
+	}
+	else
+	{
+		BAT_player.aim_x = bx + (fx * BAT_player.aim_dist >> 16);
+		BAT_player.aim_z = bz + (fz * BAT_player.aim_dist >> 16);
+		BAT_player.aim_y = PAP_calc_map_height_at(BAT_player.aim_x, BAT_player.aim_z);
+	}
+}
+
+static void BAT_player_launch_fireball(Thing* p_thing)
+{
+	SLONG i;
+	SLONG sx, sy, sz;
+	SLONG vx, vy, vz;
+
+	BAT_player_fireball_start(p_thing, &sx, &sy, &sz);
+
+	SLONG turns = BAT_player_fireball_velocity(
+		sx, sy, sz,
+		BAT_player.aim_x << 8,
+		BAT_player.aim_y << 8,
+		BAT_player.aim_z << 8,
+		&vx, &vy, &vz);
+
+	PARTICLE_Add(
+		sx, sy, sz,
+		vx, vy, vz,
+		POLY_PAGE_METEOR,
+		2 + ((Random() & 0x3) << 2),
+		0xffffffff,
+		PFLAG_SPRITEANI | PFLAG_SPRITELOOP | PFLAG_EXPLODE_ON_IMPACT | PFLAG_GRAVITY | PFLAG_LEAVE_TRAIL,
+		turns + 60,
+		160,
+		1,
+		1,
+		1);
+
+	MFX_play_thing(THING_NUMBER(p_thing), S_BALROG_FIREBALL, 0, p_thing);
+
+	//
+	// Remember where it lands to set people on fire there.
+	//
+
+	for (i = 0; i < BAT_PLAYER_MAX_IMPACTS; i++)
+	{
+		if (BAT_player.impact[i].turn == 0)
+		{
+			BAT_player.impact[i].turn = GAME_TURN + turns;
+			BAT_player.impact[i].x = BAT_player.aim_x;
+			BAT_player.impact[i].y = BAT_player.aim_y;
+			BAT_player.impact[i].z = BAT_player.aim_z;
+			break;
+		}
+	}
+}
+
+//
+// The fireball's explosion (shockwave + PYRO_WHOOMPH) comes from the particle
+// system. On top of that, people caught in it catch fire.
+//
+
+static void BAT_player_process_impacts(void)
+{
+	SLONG i;
+	SLONG j;
+
+	for (i = 0; i < BAT_PLAYER_MAX_IMPACTS; i++)
+	{
+		if (BAT_player.impact[i].turn == 0 || GAME_TURN < BAT_player.impact[i].turn)
+		{
+			continue;
+		}
+
+		SLONG num = THING_find_sphere(
+			BAT_player.impact[i].x,
+			BAT_player.impact[i].y,
+			BAT_player.impact[i].z,
+			0x140,
+			THING_array,
+			THING_ARRAY_SIZE,
+			1 << CLASS_PERSON);
+
+		for (j = 0; j < num; j++)
+		{
+			Thing* p_found = TO_THING(THING_array[j]);
+
+			if (!BAT_player_is_rider(p_found))
+			{
+				p_found->Flags |= FLAGS_BURNING;
+			}
+		}
+
+		BAT_player.impact[i].turn = 0;
+	}
+}
+
+//
+// Keeps the hidden person inside the Balrog.
+//
+
+static void BAT_player_sync_rider(Thing* p_thing)
+{
+	GameCoord pos;
+
+	if (!BAT_player.rider)
+	{
+		return;
+	}
+
+	Thing* p_rider = TO_THING(BAT_player.rider);
+
+	if (abs(p_rider->WorldPos.X - BAT_player.rider_x) > 0x20000 ||
+		abs(p_rider->WorldPos.Z - BAT_player.rider_z) > 0x20000)
+	{
+		//
+		// A script or cutscene moved the rider - the Balrog follows her.
+		//
+
+		pos.X = p_rider->WorldPos.X;
+		pos.Z = p_rider->WorldPos.Z;
+		pos.Y = (PAP_calc_height_at(pos.X >> 8, pos.Z >> 8) + 0x40) << 8;
+
+		move_thing_on_map(p_thing, &pos);
+	}
+
+	pos.X = p_thing->WorldPos.X;
+	pos.Z = p_thing->WorldPos.Z;
+	pos.Y = PAP_calc_height_at(pos.X >> 8, pos.Z >> 8) << 8;
+
+	move_thing_on_map(p_rider, &pos);
+
+	p_rider->Draw.Tweened->Angle = p_thing->Draw.Tweened->Angle;
+
+	BAT_player.rider_x = pos.X;
+	BAT_player.rider_z = pos.Z;
+
+	//
+	// Keep her hidden and safe.
+	//
+
+	p_rider->DrawType = DT_NONE;
+	p_rider->Flags &= ~FLAGS_BURNING;
+	p_rider->Genus.Person->Flags2 |= FLAG2_PERSON_INVULNERABLE;
+
+	if (p_rider->Genus.Person->Health < BAT_player.saved_health)
+	{
+		p_rider->Genus.Person->Health = BAT_player.saved_health;
+	}
+}
+
+//
+// Lets the rider out of the Balrog and ends the cheat. 'kill_balrog' makes the
+// Balrog collapse (when the player leaves him).
+//
+
+static void BAT_player_stop(SLONG kill_balrog)
+{
+	if (BAT_player.bat && kill_balrog)
+	{
+		Thing* p_thing = TO_THING(BAT_player.bat);
+
+		if (p_thing->Class == CLASS_BAT && p_thing->Genus.Bat->state == BAT_STATE_BALROG_PLAYER)
+		{
+			Bat* p_bat = p_thing->Genus.Bat;
+
+			p_bat->health = 0;
+			p_bat->state = BAT_STATE_DYING;
+			p_bat->substate = BAT_SUBSTATE_DEAD_FINAL;
+			p_bat->dx = 0;
+			p_bat->dy = 0;
+			p_bat->dz = 0;
+
+			BAT_set_anim(p_thing, BAT_ANIM_BALROG_DIE);
+			MFX_play_thing(THING_NUMBER(p_thing), S_BALROG_DEATH, 0, p_thing);
+		}
+	}
+
+	if (BAT_player.rider)
+	{
+		Thing* p_rider = TO_THING(BAT_player.rider);
+
+		p_rider->DrawType = BAT_player.saved_draw_type ? BAT_player.saved_draw_type : DT_ROT_MULTI;
+
+		if (!BAT_player.was_invulnerable)
+		{
+			p_rider->Genus.Person->Flags2 &= ~FLAG2_PERSON_INVULNERABLE;
+		}
+
+		p_rider->Genus.Person->Health = BAT_player.saved_health;
+		p_rider->Genus.Person->Flags &= ~(FLAG_PERSON_KO | FLAG_PERSON_HELPLESS);
+		p_rider->Flags &= ~FLAGS_BURNING;
+
+		set_person_idle(p_rider);
+		plant_feet(p_rider);
+
+		FC_cam[0].cam_dist = BAT_player.saved_cam_dist;
+		FC_cam[0].cam_height = BAT_player.saved_cam_height;
+		FC_force_camera_behind(0);
+	}
+
+	BAT_player_reset();
+}
+
+void BAT_player_toggle(Thing* p_person)
+{
+	if (BAT_player.bat)
+	{
+		BAT_player_stop(TRUE);
+		CONSOLE_text("D'arci is back.", 3000);
+		return;
+	}
+
+	if (p_person == NULL || p_person->Class != CLASS_PERSON)
+	{
+		return;
+	}
+
+	if (is_person_dead(p_person))
+	{
+		CONSOLE_text("Too dead to be a Balrog.", 3000);
+		return;
+	}
+
+	if (p_person->Genus.Person->Flags & (FLAG_PERSON_DRIVING | FLAG_PERSON_BIKING | FLAG_PERSON_PASSENGER))
+	{
+		CONSOLE_text("Get out of the vehicle first.", 3000);
+		return;
+	}
+
+	if ((p_person->Genus.Person->Flags & FLAG_PERSON_WAREHOUSE) || (p_person->Flags & FLAGS_IN_SEWERS))
+	{
+		CONSOLE_text("Not enough room for a Balrog in here.", 3000);
+		return;
+	}
+
+	THING_INDEX index = BAT_create(
+		BAT_TYPE_BALROG,
+		p_person->WorldPos.X >> 8,
+		p_person->WorldPos.Z >> 8,
+		p_person->Draw.Tweened->Angle);
+
+	if (!index)
+	{
+		CONSOLE_text("No room for another Balrog.", 3000);
+		return;
+	}
+
+	Thing* p_thing = TO_THING(index);
+	Bat* p_bat = p_thing->Genus.Bat;
+
+	//
+	// BAT_create() started him roaring - keep that as his entrance.
+	//
+
+	p_bat->state = BAT_STATE_BALROG_PLAYER;
+	p_bat->substate = BAT_SUBSTATE_PLAYER_ROAR;
+	p_bat->target = 0;
+	p_bat->timer = BAT_TICKS_PER_SECOND * 10;
+	p_bat->flag &= ~BAT_FLAG_ATTACKED;
+
+	MFX_play_thing(THING_NUMBER(p_thing), S_BALROG_ROAR, 0, p_thing);
+
+	BAT_player_reset();
+
+	BAT_player.bat = index;
+	BAT_player.rider = THING_NUMBER(p_person);
+	BAT_player.aim_dist = BAT_PLAYER_AIM_DEFAULT;
+	BAT_player.saved_draw_type = p_person->DrawType;
+	BAT_player.was_invulnerable = (p_person->Genus.Person->Flags2 & FLAG2_PERSON_INVULNERABLE) ? TRUE : FALSE;
+	BAT_player.saved_health = p_person->Genus.Person->Health > 0 ? p_person->Genus.Person->Health : 1;
+	BAT_player.saved_cam_dist = FC_cam[0].cam_dist;
+	BAT_player.saved_cam_height = FC_cam[0].cam_height;
+	BAT_player.rider_x = p_person->WorldPos.X;
+	BAT_player.rider_z = p_person->WorldPos.Z;
+
+	set_person_idle(p_person);
+
+	//
+	// Pull the camera back - he is three times D'arci's size.
+	//
+
+	FC_cam[0].cam_dist = 0x500;
+	FC_cam[0].cam_height = 0x28000;
+
+	BAT_player_sync_rider(p_thing);
+
+	CONSOLE_text("BALROG! Walk/turn: arrows, Punch: fist, Kick: stomp, Jump: roar, hold Action: aim fireball, release: throw", 10000);
+}
+
+SLONG BAT_player_control(Thing* p_person, ULONG input, SLONG mouse_dx)
+{
+	if (!BAT_player.bat || THING_NUMBER(p_person) != BAT_player.rider)
+	{
+		return FALSE;
+	}
+
+	Thing* p_thing = TO_THING(BAT_player.bat);
+
+	if (p_thing->Class != CLASS_BAT || p_thing->Genus.Bat->state != BAT_STATE_BALROG_PLAYER)
+	{
+		//
+		// He has been killed. Let D'arci out once he has fallen over.
+		//
+
+		if (p_thing->Class != CLASS_BAT ||
+			p_thing->Genus.Bat->state == BAT_STATE_DEAD ||
+			p_thing->State == STATE_DEAD)
+		{
+			BAT_player_stop(FALSE);
+			CONSOLE_text("The Balrog is dead.", 3000);
+			return FALSE;
+		}
+
+		return TRUE;
+	}
+
+	BAT_player.last_input = BAT_player.input;
+	BAT_player.input = input;
+	BAT_player.pressed |= input & ~BAT_player.last_input;
+	BAT_player.mouse_dx = mouse_dx;
+
+	return TRUE;
+}
+
+//
+// BAT_STATE_BALROG_PLAYER: the Balrog does what the player says.
+//
+
+static SLONG BAT_player_process(Thing* p_thing)
+{
+	Bat* p_bat = p_thing->Genus.Bat;
+	DrawTween* dt = p_thing->Draw.Tweened;
+
+	ULONG input = BAT_player.input;
+	ULONG pressed = BAT_player.pressed;
+
+	SLONG fx;
+	SLONG fz;
+	SLONG walk = 0;
+
+	BAT_player.pressed = 0;
+
+	SLONG busy =
+		p_bat->substate == BAT_SUBSTATE_PLAYER_SWIPE ||
+		p_bat->substate == BAT_SUBSTATE_PLAYER_STOMP ||
+		p_bat->substate == BAT_SUBSTATE_PLAYER_ROAR ||
+		p_bat->substate == BAT_SUBSTATE_PLAYER_FIRE;
+
+	//
+	// Turning.
+	//
+
+	if (!busy)
+	{
+		SLONG da = 24 * TICK_RATIO >> TICK_SHIFT;
+		SLONG turn = 0;
+
+		if (input & INPUT_MASK_LEFT) { turn += da; }
+		if (input & INPUT_MASK_RIGHT) { turn -= da; }
+
+		turn -= BAT_player.mouse_dx * TICK_RATIO >> TICK_SHIFT;
+
+		SATURATE(turn, -64, +64);
+
+		dt->Angle = (dt->Angle + turn) & 2047;
+	}
+
+	BAT_player.mouse_dx = 0;
+
+	//
+	// Aiming the fireball: hold action, release to throw.
+	//
+
+	if (!busy && (input & INPUT_MASK_ACTION))
+	{
+		SLONG dd = 0x18 * TICK_RATIO >> TICK_SHIFT;
+
+		if (input & INPUT_MASK_FORWARDS) { BAT_player.aim_dist += dd; }
+		if (input & INPUT_MASK_BACKWARDS) { BAT_player.aim_dist -= dd; }
+
+		SATURATE(BAT_player.aim_dist, BAT_PLAYER_AIM_MIN, BAT_PLAYER_AIM_MAX);
+
+		BAT_player.aiming = TRUE;
+
+		BAT_player_update_aim(p_thing);
+	}
+	else
+	if (BAT_player.aiming)
+	{
+		BAT_player.aiming = FALSE;
+
+		if (!busy)
+		{
+			BAT_player_update_aim(p_thing);
+			BAT_player_anim(p_thing, BAT_ANIM_BALROG_SWIPE, TRUE);
+			MFX_play_thing(THING_NUMBER(p_thing), SOUND_Range(S_BALROG_GROWL_START, S_BALROG_GROWL_END), 0, p_thing);
+
+			p_bat->substate = BAT_SUBSTATE_PLAYER_FIRE;
+			BAT_player.fired = FALSE;
+			busy = TRUE;
+		}
+	}
+
+	//
+	// Attacks.
+	//
+
+	if (!busy && !BAT_player.aiming)
+	{
+		if (pressed & INPUT_MASK_PUNCH)
+		{
+			BAT_player_anim(p_thing, BAT_ANIM_BALROG_SWIPE, TRUE);
+			MFX_play_thing(THING_NUMBER(p_thing), SOUND_Range(S_BALROG_GROWL_START, S_BALROG_GROWL_END), 0, p_thing);
+			p_bat->substate = BAT_SUBSTATE_PLAYER_SWIPE;
+			busy = TRUE;
+		}
+		else
+		if (pressed & INPUT_MASK_KICK)
+		{
+			BAT_player_anim(p_thing, BAT_ANIM_BALROG_STOMP, TRUE);
+			MFX_play_thing(THING_NUMBER(p_thing), SOUND_Range(S_BALROG_GROWL_START, S_BALROG_GROWL_END), 0, p_thing);
+			p_bat->substate = BAT_SUBSTATE_PLAYER_STOMP;
+			busy = TRUE;
+		}
+		else
+		if (pressed & INPUT_MASK_JUMP)
+		{
+			BAT_player_anim(p_thing, BAT_ANIM_BALROG_ROAR, TRUE);
+			MFX_play_thing(THING_NUMBER(p_thing), S_BALROG_ROAR, 0, p_thing);
+			p_bat->substate = BAT_SUBSTATE_PLAYER_ROAR;
+			busy = TRUE;
+		}
+
+		if (busy)
+		{
+			p_bat->flag &= ~BAT_FLAG_ATTACKED;
+		}
+	}
+
+	//
+	// Walking.
+	//
+
+	if (!busy && !BAT_player.aiming)
+	{
+		if (input & INPUT_MASK_FORWARDS) { walk = +1; }
+		else
+		if (input & INPUT_MASK_BACKWARDS) { walk = -1; }
+	}
+
+	switch (p_bat->substate)
+	{
+		case BAT_SUBSTATE_PLAYER_IDLE:
+
+			if (walk)
+			{
+				BAT_player_anim(p_thing, BAT_ANIM_BALROG_YOMP_START, TRUE);
+				p_bat->substate = BAT_SUBSTATE_PLAYER_WALK_START;
+			}
+			else
+			{
+				BAT_player_anim(p_thing, BAT_ANIM_BALROG_IDLE, FALSE);
+			}
+
+			break;
+
+		case BAT_SUBSTATE_PLAYER_WALK_START:
+		case BAT_SUBSTATE_PLAYER_WALK:
+
+			if (!walk)
+			{
+				BAT_player_anim(p_thing, BAT_ANIM_BALROG_YOMP_END, TRUE);
+				p_bat->substate = BAT_SUBSTATE_PLAYER_WALK_END;
+			}
+
+			break;
+
+		case BAT_SUBSTATE_PLAYER_WALK_END:
+
+			if (walk)
+			{
+				BAT_player_anim(p_thing, BAT_ANIM_BALROG_YOMP_START, TRUE);
+				p_bat->substate = BAT_SUBSTATE_PLAYER_WALK_START;
+			}
+
+			break;
+	}
+
+	//
+	// Speed - the same as the AI Balrog, half that walking backwards.
+	//
+
+	BAT_player_forwards(p_thing, &fx, &fz);
+
+	if (walk && (p_bat->substate == BAT_SUBSTATE_PLAYER_WALK_START || p_bat->substate == BAT_SUBSTATE_PLAYER_WALK))
+	{
+		SLONG want_dx;
+		SLONG want_dz;
+
+		if (walk > 0)
+		{
+			want_dx = (fx >> 4) + (fx >> 5);
+			want_dz = (fz >> 4) + (fz >> 5);
+		}
+		else
+		{
+			want_dx = -((fx >> 4) + (fx >> 5) >> 1);
+			want_dz = -((fz >> 4) + (fz >> 5) >> 1);
+		}
+
+		p_bat->dx += (want_dx - p_bat->dx) >> 3;
+		p_bat->dz += (want_dz - p_bat->dz) >> 3;
+	}
+	else
+	{
+		p_bat->dx -= p_bat->dx >> 2;
+		p_bat->dz -= p_bat->dz >> 2;
+	}
+
+	p_bat->dy = 0;
+
+	//
+	// Animate and do the hits on the right frames.
+	//
+
+	SLONG end = BAT_animate(p_thing);
+
+	switch (p_bat->substate)
+	{
+		case BAT_SUBSTATE_PLAYER_SWIPE:
+
+			if (!(p_bat->flag & BAT_FLAG_ATTACKED) && dt->FrameIndex > 4)
+			{
+				//
+				// The fist comes down in front of him.
+				//
+
+				create_shockwave(
+					(p_thing->WorldPos.X >> 8) + (fx * 0xa0 >> 16),
+					p_thing->WorldPos.Y >> 8,
+					(p_thing->WorldPos.Z >> 8) + (fz * 0xa0 >> 16),
+					0x180,
+					110,
+					p_thing);
+
+				p_bat->flag |= BAT_FLAG_ATTACKED;
+			}
+
+			break;
+
+		case BAT_SUBSTATE_PLAYER_STOMP:
+
+			if (!(p_bat->flag & BAT_FLAG_ATTACKED) && dt->FrameIndex > 12)
+			{
+				create_shockwave(
+					p_thing->WorldPos.X >> 8,
+					p_thing->WorldPos.Y >> 8,
+					p_thing->WorldPos.Z >> 8,
+					0x300,
+					150,
+					p_thing);
+
+				PYRO_create(p_thing->WorldPos, PYRO_DUSTWAVE);
+
+				p_bat->flag |= BAT_FLAG_ATTACKED;
+			}
+
+			break;
+
+		case BAT_SUBSTATE_PLAYER_FIRE:
+
+			if (!BAT_player.fired && dt->FrameIndex > 4)
+			{
+				BAT_player_launch_fireball(p_thing);
+				BAT_player.fired = TRUE;
+			}
+
+			break;
+	}
+
+	if (end)
+	{
+		switch (p_bat->substate)
+		{
+			case BAT_SUBSTATE_PLAYER_WALK_START:
+				BAT_player_anim(p_thing, BAT_ANIM_BALROG_YOMP, TRUE);
+				p_bat->substate = BAT_SUBSTATE_PLAYER_WALK;
+				break;
+
+			case BAT_SUBSTATE_PLAYER_WALK_END:
+			case BAT_SUBSTATE_PLAYER_SWIPE:
+			case BAT_SUBSTATE_PLAYER_STOMP:
+			case BAT_SUBSTATE_PLAYER_ROAR:
+			case BAT_SUBSTATE_PLAYER_FIRE:
+				BAT_player_anim(p_thing, BAT_ANIM_BALROG_IDLE, TRUE);
+				p_bat->substate = BAT_SUBSTATE_PLAYER_IDLE;
+				p_bat->flag &= ~BAT_FLAG_ATTACKED;
+				break;
+		}
+	}
+
+	BAT_player_process_impacts();
+
+	//
+	// He slowly heals.
+	//
+
+	if ((GAME_TURN & 31) == 0 && p_bat->health > 0 && p_bat->health < 255)
+	{
+		p_bat->health += 1;
+	}
+
+	return FALSE;
+}
+
+//
+// Called while drawing the HUD: his health and, while aiming, the flight path and
+// a sight where the fireball will land.
+//
+
+void BAT_player_draw_overlay(void)
+{
+	if (!BAT_player.bat)
+	{
+		return;
+	}
+
+	Thing* p_thing = TO_THING(BAT_player.bat);
+
+	if (p_thing->Class != CLASS_BAT || p_thing->Genus.Bat->state != BAT_STATE_BALROG_PLAYER)
+	{
+		return;
+	}
+
+	PANEL_draw_local_health(
+		p_thing->WorldPos.X >> 8,
+		p_thing->WorldPos.Y >> 8,
+		p_thing->WorldPos.Z >> 8,
+		(100 * p_thing->Genus.Bat->health) >> 8,
+		300);
+
+	if (!BAT_player.aiming)
+	{
+		return;
+	}
+
+	//
+	// Trace the fireball's flight the way PARTICLE_Run() will move it.
+	//
+
+	SLONG i;
+	SLONG x, y, z;
+	SLONG vx, vy, vz;
+
+	BAT_player_fireball_start(p_thing, &x, &y, &z);
+
+	SLONG turns = BAT_player_fireball_velocity(
+		x, y, z,
+		BAT_player.aim_x << 8,
+		BAT_player.aim_y << 8,
+		BAT_player.aim_z << 8,
+		&vx, &vy, &vz);
+
+	ULONG colour = BAT_player.aim_target ? 0x80ff4000 : 0x80ffa000;
+
+	for (i = 0; i < turns + 8; i++)
+	{
+		SLONG nx = x + vx;
+		SLONG ny = y + vy;
+		SLONG nz = z + vz;
+
+		vy -= 0xff;
+
+		if (i & 1)
+		{
+			AENG_world_line_nondebug(
+				x >> 8, y >> 8, z >> 8, 4, colour,
+				nx >> 8, ny >> 8, nz >> 8, 4, colour,
+				TRUE);
+		}
+
+		x = nx;
+		y = ny;
+		z = nz;
+
+		if ((y >> 8) < PAP_calc_map_height_at(x >> 8, z >> 8))
+		{
+			break;
+		}
+	}
+
+	PANEL_draw_gun_sight(
+		BAT_player.aim_x,
+		BAT_player.aim_y + 0x10,
+		BAT_player.aim_z,
+		1000,
+		BAT_player.aim_target ? 260 : 400);
+}
+
+
+
 //
 // Processes a bat thing.
 //
@@ -2241,6 +3214,18 @@ void BAT_normal(Thing* p_thing)
 			end = BAT_animate(p_thing);
 			break;
 
+		case BAT_STATE_BALROG_PLAYER:
+
+			end = BAT_player_process(p_thing);
+
+			//
+			// Never let BAT_change_state() take over.
+			//
+
+			p_bat->timer = BAT_TICKS_PER_SECOND * 10;
+
+			break;
+
 		case BAT_STATE_BANE_IDLE:
 			end = BAT_animate(p_thing);
 
@@ -2443,6 +3428,15 @@ void BAT_normal(Thing* p_thing)
 	}
 
 	move_thing_on_map(p_thing, &newpos);
+
+	if (p_bat->state == BAT_STATE_BALROG_PLAYER)
+	{
+		//
+		// Carry the player's (hidden) person along.
+		//
+
+		BAT_player_sync_rider(p_thing);
+	}
 
 	//
 	// Too far from home?
