@@ -3469,7 +3469,7 @@ void MEMORY_quick_save(const CBYTE* filename)
 
 	if (fwrite( NIGHT_square,       sizeof(NIGHT_Square),      NIGHT_MAX_SQUARES        , handle) != NIGHT_MAX_SQUARES        ) goto file_error;
 	if (fwrite(&NIGHT_square_free,  sizeof(NIGHT_square_free), 1                        , handle) != 1                        ) goto file_error;
-	if (fwrite( NIGHT_cache,        sizeof(UBYTE),             PAP_SIZE_LO * PAP_SIZE_LO, handle) != PAP_SIZE_LO * PAP_SIZE_LO) goto file_error;
+	if (fwrite( NIGHT_cache,        sizeof(NIGHT_cache[0][0]), PAP_SIZE_LO * PAP_SIZE_LO, handle) != PAP_SIZE_LO * PAP_SIZE_LO) goto file_error;
 
 	if (fwrite( NIGHT_dfcache,      sizeof(NIGHT_Dfcache),     NIGHT_MAX_DFCACHES       , handle) != NIGHT_MAX_DFCACHES       ) goto file_error;
 	if (fwrite(&NIGHT_dfcache_used, sizeof(UBYTE),             1                        , handle) != 1                        ) goto file_error;
@@ -3702,7 +3702,7 @@ SLONG MEMORY_quick_load(const CBYTE* filename)
 
 	if (fread( NIGHT_square,       sizeof(NIGHT_Square),      NIGHT_MAX_SQUARES        , handle) != NIGHT_MAX_SQUARES        ) goto file_error;
 	if (fread(&NIGHT_square_free,  sizeof(NIGHT_square_free), 1                        , handle) != 1                        ) goto file_error;
-	if (fread( NIGHT_cache,        sizeof(UBYTE),             PAP_SIZE_LO * PAP_SIZE_LO, handle) != PAP_SIZE_LO * PAP_SIZE_LO) goto file_error;
+	if (fread( NIGHT_cache,        sizeof(NIGHT_cache[0][0]), PAP_SIZE_LO * PAP_SIZE_LO, handle) != PAP_SIZE_LO * PAP_SIZE_LO) goto file_error;
 
 	if (fread( NIGHT_dfcache,      sizeof(NIGHT_Dfcache),     NIGHT_MAX_DFCACHES       , handle) != NIGHT_MAX_DFCACHES       ) goto file_error;
 	if (fread(&NIGHT_dfcache_used, sizeof(UBYTE),             1                        , handle) != 1                        ) goto file_error;

@@ -189,7 +189,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "baalrog", "balrog", "killcam", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "baalrog", "balrog", "killcam", "drawdist", "fogstart", "crinklemode", "carflee", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -901,6 +901,67 @@ extern int AENG_detail_crinkles;
 					{
 						CONSOLE_text("Free roam disabled");
 					}
+				}
+				break;
+			case 62: // drawdist <10..120>
+			case 63: // fogstart <10..95>
+			case 64: // crinklemode <0..2>
+				{
+					extern void  AENG_set_draw_distance(SLONG dist);
+					extern SLONG AENG_get_draw_distance();
+					extern void  AENG_set_fog_range();
+
+					ConfigExtras& extras = ConfigExtras::getInstance();
+					CBYTE msg[80];
+					SLONG value = atoi(ptr);
+
+					if (i == 62)
+					{
+						if (WITHIN(value, 10, 120))
+						{
+							extras.mDrawDistance = static_cast<std::int16_t>(value);
+							AENG_set_draw_distance(value);	// also saves [Extra] draw_distance
+						}
+						sprintf(msg, "Draw distance %d (10..120)", AENG_get_draw_distance());
+					}
+					else
+					if (i == 63)
+					{
+						if (WITHIN(value, 10, 95))
+						{
+							extras.mFogStart = static_cast<std::int16_t>(value);
+							ENV_set_value_number("fog_start", value, "Extra");
+							AENG_set_fog_range();
+						}
+						sprintf(msg, "Fog starts at %d%% of the draw distance (10..95)", extras.mFogStart);
+					}
+					else
+					{
+						if (*ptr && WITHIN(value, 0, 2))
+						{
+							extras.mCrinkleMode = static_cast<std::int16_t>(value);
+							ENV_set_value_number("crinkle_mode", value, "Extra");
+						}
+						sprintf(msg, "Crinkle mode %d (0 = flat walls, 1 = always 3D, 2 = original)", extras.mCrinkleMode);
+					}
+
+					CONSOLE_text(msg, 4000);
+				}
+				break;
+			case 65: // carflee <0..2>
+				{
+					ConfigExtras& extras = ConfigExtras::getInstance();
+					CBYTE msg[96];
+					SLONG value = atoi(ptr);
+
+					if (*ptr && WITHIN(value, 0, 2))
+					{
+						extras.mCarFlee = static_cast<std::int16_t>(value);
+						ENV_set_value_number("car_flee", value, "Extra");
+					}
+
+					sprintf(msg, "Drivers flee from you: %d (0 = off, 1 = criminals, 2 = everybody)", extras.mCarFlee);
+					CONSOLE_text(msg, 4000);
 				}
 				break;
 			case 61: // killcam

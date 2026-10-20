@@ -22,7 +22,7 @@ UBYTE HEAP_pad[HEAP_PAD_SIZE];
 #elif defined(TARGET_DC)
 #define HEAP_SIZE (1024 * 64)
 #else
-#define HEAP_SIZE (1024 * 1280)
+#define HEAP_SIZE (1024 * 1024 * 16)	// Lighting caches for long draw distances (was 1.25MB)
 #endif
 
 UBYTE HEAP_heap[HEAP_SIZE];

@@ -354,8 +354,15 @@ extern ULONG POLY_force_additive_alpha;	// Everything is drawn with additive alp
 // The fade-out range of the points.
 //
 
-#define POLY_FADEOUT_START	(0.60F)
-#define POLY_FADEOUT_END	(0.95F)
+// Set every frame from config.ini [Extra] fog_start (AENG_set_fog_range()).
+// Originally the constants 0.60 and 0.95.
+#ifndef POLY_FADEOUT_VARS
+#define POLY_FADEOUT_VARS
+extern float POLY_fadeout_start;
+extern float POLY_fadeout_end;
+#endif
+#define POLY_FADEOUT_START	(POLY_fadeout_start)
+#define POLY_FADEOUT_END	(POLY_fadeout_end)
 
 
 //#define POLY_FADEOUT_START	(0.60F/3.0F)

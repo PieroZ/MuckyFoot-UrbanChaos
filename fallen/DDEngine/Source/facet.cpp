@@ -20,6 +20,41 @@
 #include	"smap.h"
 #include	"superfacet.h"
 #include	"supercrinkle.h"
+#include	"config_extras.h"
+
+//
+// How far the crinkle (3D relief) of a wall texture comes out at view-space
+// depth z (0 .. 1 = the draw distance). 0 => draw the wall flat.
+//
+// config.ini [Extra] crinkle_mode:
+//   0 = never (flat walls)
+//   1 = always fully 3D (default)
+//   2 = original: only near the camera, growing out of the wall as you approach
+//
+
+static inline float FACET_crinkle_extrude(float z)
+{
+	switch (ConfigExtras::getInstance().mCrinkleMode)
+	{
+		case 0:
+			return 0.0F;
+
+		case 2:
+			if (z > 0.6F) {return 0.0F;}
+			if (z < 0.3F) {return 1.0F;}
+			{
+				float extrude = (z - 0.5F) * (1.0F / (0.4F - 0.5F));
+
+				if (extrude < 0.0F) {extrude = 0.0F;}
+				if (extrude > 1.0F) {extrude = 1.0F;}
+
+				return extrude;
+			}
+
+		default:
+			return (z > 1.0F) ? 0.0F : 1.0F;
+	}
+}
 #include	"matrix.h"
 
 // temptemptempetc.
@@ -1710,61 +1745,23 @@ extern int AENG_detail_crinkles;
 						// This quad could be crinkled!
 						//
 
-						if (quad[0]->z > 0.6F)
-						{
-							//
-							// Too far away to be crinkled.
-							//
-						}
-						else
-						if (quad[0]->z < 0.3F)
-						{
-							//
-							// Maximum crinkleyness!
-							//
+						//
+						// How far the relief comes out depends on config.ini
+						// [Extra] crinkle_mode (FACET_crinkle_extrude()).
+						//
 
+						float extrude = FACET_crinkle_extrude(quad[0]->z);
+
+						if (extrude > 0.0F)
+						{
 							CRINKLE_do(
 								TEXTURE_crinkle[page],
 								page,
-								1.0F,
+								extrude,
 								quad,
 								flip);
 
 							goto added_crinkle;
-						}
-						else
-						{
-							float extrude;
-							float av_z;
-
-							//
-							// Intermediate crinkle extrusion.
-							//
-
-							// av_z  = quad[0]->z + quad[1]->z + quad[2]->z + quad[3]->z;
-							// av_z *= 0.25F;
-
-							av_z  = quad[0]->z;
-
-							extrude  = av_z - 0.5F;
-							extrude *= 1.0F / (0.4F - 0.5F);
-
-							if (extrude > 0.0F)
-							{
-								if (extrude > 1.0F)
-								{
-									extrude = 1.0F;
-								}
-
-								CRINKLE_do(
-									TEXTURE_crinkle[page],
-									page,
-									extrude,
-									quad,
-									flip);
-
-								goto added_crinkle;
-							}
 						}
 					}
 				}
@@ -1993,61 +1990,23 @@ extern int AENG_detail_crinkles;
 						// This quad could be crinkled!
 						//
 
-						if (quad[0]->z > 0.6F)
-						{
-							//
-							// Too far away to be crinkled.
-							//
-						}
-						else
-						if (quad[0]->z < 0.3F)
-						{
-							//
-							// Maximum crinkleyness!
-							//
+						//
+						// How far the relief comes out depends on config.ini
+						// [Extra] crinkle_mode (FACET_crinkle_extrude()).
+						//
 
+						float extrude = FACET_crinkle_extrude(quad[0]->z);
+
+						if (extrude > 0.0F)
+						{
 							CRINKLE_do(
 								TEXTURE_crinkle[page],
 								page,
-								1.0F,
+								extrude,
 								quad,
 								flip);
 
 							goto added_crinkle_common;
-						}
-						else
-						{
-							float extrude;
-							float av_z;
-
-							//
-							// Intermediate crinkle extrusion.
-							//
-
-							// av_z  = quad[0]->z + quad[1]->z + quad[2]->z + quad[3]->z;
-							// av_z *= 0.25F;
-
-							av_z  = quad[0]->z;
-
-							extrude  = av_z - 0.5F;
-							extrude *= 1.0F / (0.4F - 0.5F);
-
-							if (extrude > 0.0F)
-							{
-								if (extrude > 1.0F)
-								{
-									extrude = 1.0F;
-								}
-
-								CRINKLE_do(
-									TEXTURE_crinkle[page],
-									page,
-									extrude,
-									quad,
-									flip);
-
-								goto added_crinkle_common;
-							}
 						}
 					}
 				}
@@ -5613,56 +5572,17 @@ void FACET_project_crinkled_shadow(SLONG facet)
 								// This quad could be crinkled!
 								//
 
-								if (pp.z > 0.6F)
-								{
-									//
-									// Too far away to be crinkled.
-									//
-								}
-								else
-								if (pp.z < 0.3F)
-								{
-									//
-									// Maximum crinkleyness!
-									//
+								float extrude = FACET_crinkle_extrude(pp.z);
 
+								if (extrude > 0.0F)
+								{
 									CRINKLE_project(
 										TEXTURE_crinkle[page],
-										1.0F,
+										extrude,
 										poly,
 										rflip);
 
 									goto added_crinkle;
-								}
-								else
-								{
-									float extrude;
-									float av_z;
-
-									//
-									// Intermediate crinkle extrusion.
-									//
-
-									av_z = pp.z;
-
-									extrude  = av_z - 0.5F;
-									extrude *= 1.0F / (0.4F - 0.5F);
-
-									if (extrude > 0.0F)
-									{
-										if (extrude > 1.0F)
-										{
-											extrude = 1.0F;
-										}
-
-										CRINKLE_project(
-											TEXTURE_crinkle[page],
-											extrude,
-											poly,
-											rflip);
-
-										goto added_crinkle;
-									}
 								}
 							}
 						}

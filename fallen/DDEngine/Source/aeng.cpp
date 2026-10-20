@@ -502,9 +502,31 @@ void AENG_set_draw_distance(SLONG dist)
 	ENV_set_value_number("draw_distance", dist, "Extra");
 }
 
+//
+// Distance fog: config.ini [Extra] fog_start = % of the draw distance where the
+// fog starts. It is complete just before the draw distance, so nothing is cut
+// off in plain view. (Was fixed at 60% .. 95%.)
+//
+
+void AENG_set_fog_range()
+{
+	extern float POLY_fadeout_start;
+	extern float POLY_fadeout_end;
+
+	POLY_fadeout_end   = 0.98F;
+	POLY_fadeout_start = float(ConfigExtras::getInstance().mFogStart) / 100.0F;
+
+	if (POLY_fadeout_start > POLY_fadeout_end - 0.05F)
+	{
+		POLY_fadeout_start = POLY_fadeout_end - 0.05F;
+	}
+}
+
 void AENG_load_draw_distance()
 {
 	CurDrawDistance = ConfigExtras::getInstance().mDrawDistance << 8;
+
+	AENG_set_fog_range();
 }
 
 //

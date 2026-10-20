@@ -121,6 +121,15 @@ float POLY_cam_z;
 float POLY_cam_aspect;
 float POLY_cam_lens;
 float POLY_cam_view_dist;
+
+// Distance fog range, as a fraction of the view distance (see poly.h).
+float POLY_fadeout_start = 0.60F;
+float POLY_fadeout_end   = 0.95F;
+
+// Points up to this far beyond the far plane are still projected, so a polygon
+// that sticks out past the draw distance is drawn (fogged) instead of vanishing
+// as a whole. Only polygons entirely beyond the far plane are dropped.
+#define POLY_FAR_SLACK	(2.0F)
 float POLY_cam_over_view_dist;
 float POLY_cam_matrix[9];
 
@@ -649,7 +658,7 @@ inline void POLY_perspective(POLY_Point *pt, UBYTE wibble_key)
 		pt->clip = POLY_CLIP_NEAR;
 	}
 	else
-	if (pt->z > 1.0F)
+	if (pt->z > POLY_FAR_SLACK)
 	{
 		pt->clip = POLY_CLIP_FAR;
 	}
@@ -693,6 +702,16 @@ inline void POLY_perspective(POLY_Point *pt, UBYTE wibble_key)
 		//
 
 		POLY_setclip(pt);
+
+		if (pt->z > 1.0F)
+		{
+			//
+			// Beyond the far plane but projected: the polygon is only rejected
+			// when all its points are like this (POLY_valid_quad etc. AND the flags).
+			//
+
+			pt->clip |= POLY_CLIP_FAR;
+		}
 	}
 }
 

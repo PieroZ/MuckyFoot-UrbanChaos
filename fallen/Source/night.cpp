@@ -47,9 +47,9 @@ UBYTE        NIGHT_dlight_used;
 //
 
 NIGHT_Square  NIGHT_square[NIGHT_MAX_SQUARES];
-UBYTE         NIGHT_square_free;
+UWORD         NIGHT_square_free;
 SLONG         NIGHT_square_num_used;
-UBYTE         NIGHT_cache[PAP_SIZE_LO][PAP_SIZE_LO];
+UWORD         NIGHT_cache[PAP_SIZE_LO][PAP_SIZE_LO];
 
 NIGHT_Dfcache NIGHT_dfcache[NIGHT_MAX_DFCACHES];
 UBYTE         NIGHT_dfcache_free;
@@ -1972,7 +1972,7 @@ void NIGHT_cache_init()
 	// Clear the cache entries.
 	//
 
-	memset((UBYTE*)NIGHT_cache, 0, sizeof(NIGHT_cache));
+	memset(NIGHT_cache, 0, sizeof(NIGHT_cache));
 }
 
 void NIGHT_cache_recalc(void)
@@ -2337,7 +2337,7 @@ void NIGHT_cache_create_inside(UBYTE lo_map_x, UBYTE lo_map_z,SLONG floor_y)
 	NIGHT_square_num_used += 1;
 }
 
-void NIGHT_cache_destroy(UBYTE square_index)
+void NIGHT_cache_destroy(UWORD square_index)
 {
 	NIGHT_Square *nq;
 
@@ -2435,6 +2435,48 @@ void NIGHT_dfcache_recalc()
 		NIGHT_dfcache_destroy(dfcache);
 
 		dfacets[dfacet].Dfcache = NIGHT_dfcache_create(dfacet);
+	}
+}
+
+//
+// All the dfcaches are in use (DFacet::Dfcache is a byte, so there can only be
+// 255 of them). With long draw distances more facets than that can be in view;
+// instead of not drawing the extra facets (things popping in and out), free the
+// cached lighting of another facet. First choice: one that hasn't been drawn
+// this frame; otherwise one that has already been drawn - it is simply
+// recalculated if it's needed again.
+//
+
+static void NIGHT_dfcache_recycle(UWORD dfacet_index)
+{
+	SLONG pass;
+	SLONG dfcache;
+	SLONG next;
+
+	for (pass = 0; pass < 2; pass++)
+	{
+		for (dfcache = NIGHT_dfcache_used; dfcache; dfcache = next)
+		{
+			NIGHT_Dfcache *ndf = &NIGHT_dfcache[dfcache];
+
+			next = ndf->next;
+
+			if (ndf->dfacet == dfacet_index)
+			{
+				continue;
+			}
+
+			if (pass == 0 && dfacets[ndf->dfacet].Counter[0] == SUPERMAP_counter[0])
+			{
+				continue;	// Drawn this frame - try the others first.
+			}
+
+			dfacets[ndf->dfacet].Dfcache = 0;
+
+			NIGHT_dfcache_destroy(UBYTE(dfcache));
+
+			return;
+		}
 	}
 }
 
@@ -2545,6 +2587,11 @@ UBYTE NIGHT_dfcache_create(UWORD dfacet_index)
 	//
 	// Get a new cache element.
 	//
+
+ 	if (!WITHIN(NIGHT_dfcache_free, 1, NIGHT_MAX_DFCACHES - 1))
+	{
+		NIGHT_dfcache_recycle(dfacet_index);
+	}
 
  	if (!WITHIN(NIGHT_dfcache_free, 1, NIGHT_MAX_DFCACHES - 1))
 	{

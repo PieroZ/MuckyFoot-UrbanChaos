@@ -22,11 +22,27 @@ struct ConfigExtras
 		mLegolasAim = ENV_get_value_number("legolas_aim", 0, "Extra");
 		mKillCam = ENV_get_value_number("killcam", 1, "Extra");
 
-		mDrawDistance = static_cast<std::int16_t>(ENV_get_value_number("draw_distance", 40, "Extra"));
+		mDrawDistance = static_cast<std::int16_t>(ENV_get_value_number("draw_distance", 64, "Extra"));
 		if (mDrawDistance < 10)
 		{
 			mDrawDistance = 10;
 		}
+		if (mDrawDistance > 120)
+		{
+			mDrawDistance = 120;	// The whole map is 128 mapsquares across
+		}
+
+		// Fog: starts at fog_start % of the draw distance and is complete at the draw distance.
+		mFogStart = static_cast<std::int16_t>(ENV_get_value_number("fog_start", 70, "Extra"));
+		if (mFogStart < 10) { mFogStart = 10; }
+		if (mFogStart > 95) { mFogStart = 95; }
+
+		// Crinkles (3D relief on some flat walls):
+		// 0 = off (flat walls), 1 = always full 3D (default), 2 = original (grows in as you get near)
+		mCrinkleMode = static_cast<std::int16_t>(ENV_get_value_number("crinkle_mode", 1, "Extra"));
+
+		// Drivers running away from the player: 0 = off, 1 = only criminals, 2 = every driver
+		mCarFlee = static_cast<std::int16_t>(ENV_get_value_number("car_flee", 2, "Extra"));
 
 		mFogDistance = static_cast<std::int16_t>(ENV_get_value_number("fog_distance", 60, "Extra"));
 		if (mFogDistance < 10)
@@ -49,6 +65,9 @@ struct ConfigExtras
 	std::int16_t mMouseShootCooldown = 10;
 	bool mMouseInput = false;
 	bool mShowHitMarker = false;
-	std::int16_t mDrawDistance = 40;
+	std::int16_t mDrawDistance = 64;
+	std::int16_t mFogStart = 70;
+	std::int16_t mCrinkleMode = 1;
+	std::int16_t mCarFlee = 2;
 	std::int16_t mFogDistance = 50;
 };
