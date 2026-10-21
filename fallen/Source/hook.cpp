@@ -444,6 +444,25 @@ void HOOK_spin(
 	}
 }
 
+void HOOK_hide()
+{
+	SLONG i;
+
+	for (i = 0; i < HOOK_NUM_POINTS; i++)
+	{
+		HOOK_point[i].x     = 0;
+		HOOK_point[i].y     = -0x1000000;	// Far underground- nobody sees it
+		HOOK_point[i].z     = 0;
+		HOOK_point[i].dx    = 0;
+		HOOK_point[i].dy    = 0;
+		HOOK_point[i].dz    = 0;
+		HOOK_point[i].alive = FALSE;
+	}
+
+	HOOK_state     = HOOK_STATE_STILL;
+	HOOK_countdown = 0;
+}
+
 void HOOK_release()
 {
 	ASSERT(HOOK_state == HOOK_STATE_SPINNING);

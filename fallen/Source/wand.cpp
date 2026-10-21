@@ -364,6 +364,97 @@ void WAND_draw(SLONG map_x, SLONG map_z)
 #endif
 #endif
 
+//
+// Can the player's camera see this point? (world units)
+//
+// The wandering cars and people used to be moved (vanish) and put back
+// (appear) DRAW_DIST = 22 mapsquares from D'arci- fine when you could only
+// see 22 mapsquares, but now the view goes much further, so it happened in
+// front of you. Now they only go and come where the camera can't see:
+// past the draw distance, off to the side / behind, or behind a building.
+//
+
+#include "fc.h"
+#include <math.h>
+
+extern SLONG AENG_get_draw_distance();
+extern SLONG FC_can_see_point(SLONG cam, SLONG x, SLONG y, SLONG z);
+
+SLONG WAND_hidden_from_camera(SLONG x, SLONG y, SLONG z)
+{
+	FC_Cam *fc = &FC_cam[0];
+
+	if (fc->focus == NULL)
+	{
+		return TRUE;
+	}
+
+	float cx = float(fc->x >> 8);
+	float cz = float(fc->z >> 8);
+
+	float dx = float(x) - cx;
+	float dz = float(z) - cz;
+
+	float dist = sqrtf(dx * dx + dz * dz);
+
+	if (dist > float((AENG_get_draw_distance() + 3) << 8))
+	{
+		return TRUE;	// Too far away to be drawn.
+	}
+
+	if (dist < 0x300)
+	{
+		return FALSE;	// Right next to the camera.
+	}
+
+	//
+	// Off to the side of / behind where the camera looks?
+	//
+
+	float fx = float(fc->focus_x >> 8) - cx;
+	float fz = float(fc->focus_z >> 8) - cz;
+	float fl = sqrtf(fx * fx + fz * fz);
+
+	if (fl > 1.0F)
+	{
+		float cosang = (dx * fx + dz * fz) / (dist * fl);
+
+		if (cosang < 0.3F)
+		{
+			return TRUE;	// More than about 70 degrees off.
+		}
+	}
+
+	//
+	// Behind a building?
+	//
+
+	if (!FC_can_see_point(0, x, y + 0x80, z) &&
+		!FC_can_see_point(0, x, y + 0x20, z))
+	{
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+//
+// A random distance (in mapsquares) to put a car / person: not nearer than
+// DRAW_DIST, and up to just past what you can see.
+//
+
+static SLONG WAND_appear_dist(void)
+{
+	SLONG far_away = AENG_get_draw_distance() + 4;
+
+	if (far_away < DRAW_DIST + 2)
+	{
+		far_away = DRAW_DIST + 2;
+	}
+
+	return DRAW_DIST + (Random() % (far_away - DRAW_DIST + 1));
+}
+
 #define	SEARCH_SIZE	1
 
 SLONG	WAND_find_good_start_point(SLONG *mapx,SLONG *mapz)
@@ -373,37 +464,55 @@ SLONG	WAND_find_good_start_point(SLONG *mapx,SLONG *mapz)
 	SLONG	angle;
 
 	p_person=NET_PERSON(0);
-	angle=p_person->Draw.Tweened->Angle;
 
-	angle+=(Random()&511)-256;
-	angle&=2047;
-	dx = -(SIN(angle) * DRAW_DIST) >> 8;
-	dz = -(COS(angle) * DRAW_DIST) >> 8;
+	SLONG attempt;
 
-	x=(p_person->WorldPos.X>>8)+dx;
-	z=(p_person->WorldPos.Z>>8)+dz;
-
-	x>>=8;
-	z>>=8;
-
-	minx=x-SEARCH_SIZE;
-	maxx=x+SEARCH_SIZE;
-	minz=z-SEARCH_SIZE;
-	maxz=z+SEARCH_SIZE;
-
-	SATURATE(minx,2,125);
-	SATURATE(minz,2,125);
-	SATURATE(maxx,2,125);
-	SATURATE(maxz,2,125);
-
-	for(x=minx;x<=maxx;x++)
-	for(z=minz;z<=maxz;z++)
+	for (attempt = 0; attempt < 6; attempt++)
 	{
-		if(WAND_square_is_wander(x,z))
+		//
+		// (Was: always DRAW_DIST straight ahead of D'arci- right in front of you
+		// now that you can see further.) Somewhere all around, where you can't see.
+		//
+
+		angle  = Random() & 2047;
+		SLONG d = WAND_appear_dist();
+
+		dx = -(SIN(angle) * d) >> 8;
+		dz = -(COS(angle) * d) >> 8;
+
+		x=(p_person->WorldPos.X>>8)+dx;
+		z=(p_person->WorldPos.Z>>8)+dz;
+
+		x>>=8;
+		z>>=8;
+
+		minx=x-SEARCH_SIZE;
+		maxx=x+SEARCH_SIZE;
+		minz=z-SEARCH_SIZE;
+		maxz=z+SEARCH_SIZE;
+
+		SATURATE(minx,2,125);
+		SATURATE(minz,2,125);
+		SATURATE(maxx,2,125);
+		SATURATE(maxz,2,125);
+
+		for(x=minx;x<=maxx;x++)
+		for(z=minz;z<=maxz;z++)
 		{
-			*mapx=(x<<8)+128;
-			*mapz=(z<<8)+128;
-			return(1);
+			if(WAND_square_is_wander(x,z))
+			{
+				SLONG wx = (x<<8)+128;
+				SLONG wz = (z<<8)+128;
+
+				if (!WAND_hidden_from_camera(wx, PAP_calc_map_height_at(wx, wz), wz))
+				{
+					continue;	// You'd see them pop up.
+				}
+
+				*mapx=wx;
+				*mapz=wz;
+				return(1);
+			}
 		}
 	}
 
@@ -460,9 +569,11 @@ SLONG WAND_find_good_start_point_for_car(SLONG* posx, SLONG* posz, SLONG* yaw, S
 		// get a random angle - not just ahead of the player
 		SLONG	angle = Random() & 2047;
 
-		// get the position at this angle and (DRAW_DIST) away
-		SLONG	dx = (SIN(angle) * DRAW_DIST) >> 8;
-		SLONG	dz = (COS(angle) * DRAW_DIST) >> 8;
+		// get the position at this angle and somewhere between DRAW_DIST and
+		// just past the draw distance away
+		SLONG	d  = WAND_appear_dist();
+		SLONG	dx = (SIN(angle) * d) >> 8;
+		SLONG	dz = (COS(angle) * d) >> 8;
 
 		x = (p_person->WorldPos.X >> 8) + dx;
 		z = (p_person->WorldPos.Z >> 8) + dz;
@@ -555,6 +666,12 @@ SLONG WAND_find_good_start_point_for_car(SLONG* posx, SLONG* posz, SLONG* yaw, S
 		SLONG	dz = (p_person->WorldPos.Z >> 8) - z;
 
 		if (QDIST2(dx,dz) < (DRAW_DIST << 8))
+		{
+			return 0;
+		}
+
+		// ...and somewhere the camera can't see, so it doesn't just pop up
+		if (!WAND_hidden_from_camera(x, PAP_calc_map_height_at(x, z), z))
 		{
 			return 0;
 		}

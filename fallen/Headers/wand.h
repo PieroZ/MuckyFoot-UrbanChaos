@@ -38,4 +38,11 @@ SLONG WAND_square_is_wander(SLONG map_x, SLONG map_z);
 void WAND_draw(SLONG map_x, SLONG map_z);
 
 
+//
+// TRUE if the player's camera can't see this point (world units): past the
+// draw distance, off to the side / behind, or behind a building.
+//
+
+SLONG WAND_hidden_from_camera(SLONG x, SLONG y, SLONG z);
+
 #endif

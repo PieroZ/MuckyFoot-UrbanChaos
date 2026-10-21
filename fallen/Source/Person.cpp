@@ -20911,6 +20911,10 @@ void fn_person_grapple(Thing *p_person)
 
 			break;
 
+		case 252:	// SUB_STATE_GRAPPLE_ROPE - the rope from grapple.cpp, which moves her itself
+
+			break;
+
 		case SUB_STATE_GRAPPLING_RELEASE:
 
 			//

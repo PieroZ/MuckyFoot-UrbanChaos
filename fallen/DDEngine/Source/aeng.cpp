@@ -11416,6 +11416,58 @@ extern	void	ANIMAL_draw(Thing *p_thing);
 #ifndef TARGET_DC
 	if(!INDOORS_INDEX||outside)
 	AENG_draw_hook();
+
+	//
+	// The grappling hook thrown onto a roof (grapple.cpp) and its rope.
+	//
+
+	{
+		extern SLONG GRAPPLE_get_draw(SLONG *hook_x, SLONG *hook_y, SLONG *hook_z, SLONG *hook_yaw, SLONG *hook_pitch, SLONG *hand_x, SLONG *hand_y, SLONG *hand_z, SLONG *taut);
+
+		SLONG gx;
+		SLONG gy;
+		SLONG gz;
+		SLONG gyaw;
+		SLONG gpitch;
+		SLONG ax;
+		SLONG ay;
+		SLONG az;
+		SLONG taut;
+
+		if (GRAPPLE_get_draw(&gx, &gy, &gz, &gyaw, &gpitch, &ax, &ay, &az, &taut))
+		{
+			MESH_draw_poly(
+				PRIM_OBJ_HOOK,
+				gx, gy, gz,
+				gyaw,
+				gpitch,
+				0,
+				NULL,0xff,0);
+
+			SLONG seg;
+			SLONG px = ax;
+			SLONG py = ay;
+			SLONG pz = az;
+
+			for (seg = 1; seg <= 8; seg++)
+			{
+				float t = float(seg) * (1.0F / 8.0F);
+
+				SLONG sx = ax + SLONG(float(gx - ax) * t);
+				SLONG sy = ay + SLONG(float(gy - ay) * t) - ((taut) ? 0 : SLONG(sinf(t * 3.14159F) * 24.0F));
+				SLONG sz = az + SLONG(float(gz - az) * t);
+
+				AENG_world_line(
+					px, py, pz, 5, 0x705030,
+					sx, sy, sz, 5, 0x705030,
+					FALSE);
+
+				px = sx;
+				py = sy;
+				pz = sz;
+			}
+		}
+	}
 #endif
 
 	//

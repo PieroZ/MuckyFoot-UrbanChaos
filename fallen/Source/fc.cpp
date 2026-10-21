@@ -16,6 +16,7 @@
 
 #include "killcam.h"
 #include "driveby.h"
+#include "grapple.h"
 
 #ifdef TARGET_DC
 #include "DIManager.h"
@@ -1336,11 +1337,15 @@ static void FC_killcam_apply(FC_Cam *fc)
 // the killcam above.
 //
 
-static void FC_driveby_apply(FC_Cam *fc)
+//
+// The same for aiming the grappling hook (grapple.cpp).
+//
+
+static void FC_driveby_apply(FC_Cam *fc, SLONG grapple = FALSE)
 {
 	if (FC_kc_overridden)
 	{
-		return;		// The killcam has the camera.
+		return;		// The killcam (or the other one) has the camera.
 	}
 
 	SLONG cx;
@@ -1350,7 +1355,9 @@ static void FC_driveby_apply(FC_Cam *fc)
 	SLONG ly;
 	SLONG lz;
 
-	SLONG w = DRIVEBY_camera(&cx, &cy, &cz, &lx, &ly, &lz);	// 0..256
+	SLONG w = (grapple) ?
+		GRAPPLE_camera(&cx, &cy, &cz, &lx, &ly, &lz) :
+		DRIVEBY_camera(&cx, &cy, &cz, &lx, &ly, &lz);	// 0..256
 
 	if (w <= 0)
 	{
@@ -2196,6 +2203,7 @@ extern	SLONG	EWAY_cam_jumped;
 		{
 			FC_killcam_apply(fc);
 			FC_driveby_apply(fc);
+			FC_driveby_apply(fc, TRUE);	// Grappling hook
 		}
 	}
 }

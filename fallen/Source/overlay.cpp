@@ -33,6 +33,7 @@
 
 #include "overlay.h"
 #include "driveby.h"
+#include "grapple.h"
 extern	void	add_damage_text(SWORD x,SWORD y,SWORD z,CBYTE *text);
 
 
@@ -758,6 +759,9 @@ void	OVERLAY_draw_gun_sights(void)
 
 	// Shooting out of the car window: the sight on the target.
 	DRIVEBY_draw_overlay();
+
+	// Aiming the grappling hook / on the rope.
+	GRAPPLE_draw_overlay();
 
 	// draw a grenade aim target
 extern SLONG person_holding_special(Thing* p_person, UBYTE special);	// I am so naughty.  I blame Mark.
@@ -1919,7 +1923,7 @@ void PANEL_draw_crosshair(void)
 	}
 
 	extern void HandleMouseInput(Thing * target);
-	if (!(GAME_FLAGS & GF_PAUSED) && !DRIVEBY_active())	// In a car the mouse buttons shoot out of the window
+	if (!(GAME_FLAGS & GF_PAUSED) && !DRIVEBY_active() && !GRAPPLE_active())	// In a car the mouse buttons shoot out of the window
 	{
 		HandleMouseInput(target);
 	}

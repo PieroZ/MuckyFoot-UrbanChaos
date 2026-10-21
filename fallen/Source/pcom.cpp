@@ -358,6 +358,12 @@ void PCOM_init(void)
 {
 	CARFLEE_reset();	// Drivers running away from the player
 
+	{
+		extern void GRAPPLE_reset(void);
+
+		GRAPPLE_reset();	// Grappling hook (new level)
+	}
+
 	//
 	// Clear all our gang info.
 	//
@@ -7433,7 +7439,8 @@ void PCOM_process_driving_wander(Thing *p_person)
 				Thing	*p_darci=NET_PERSON(0);
 				dx=abs((p_person->WorldPos.X-p_darci->WorldPos.X)>>8);
 				dz=abs((p_person->WorldPos.Z-p_darci->WorldPos.Z)>>8);
-				if(QDIST2(dx,dz) >= (DRAW_DIST<<8))
+				if(QDIST2(dx,dz) >= (DRAW_DIST<<8) &&
+				   WAND_hidden_from_camera(p_vehicle->WorldPos.X >> 8, p_vehicle->WorldPos.Y >> 8, p_vehicle->WorldPos.Z >> 8))	// (don't vanish in front of you)
 				{
 					SLONG	x,z,yaw;
 
@@ -7898,6 +7905,9 @@ SLONG	should_person_regen(Thing *p_person)
 	dz=abs((p_person->WorldPos.Z-p_darci->WorldPos.Z)>>8);
 	if(QDIST2(dx,dz)<(DRAW_DIST<<8))
 		return(0);
+
+	if (!WAND_hidden_from_camera(p_person->WorldPos.X >> 8, p_person->WorldPos.Y >> 8, p_person->WorldPos.Z >> 8))
+		return(0);	// You'd see them vanish.
 
 	if(p_person->Genus.Person->InsideRoom>50)
 		return(1);

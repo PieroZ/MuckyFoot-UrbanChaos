@@ -37,6 +37,7 @@
 #include "PersonPZI.h"
 #include "config_extras.h"
 #include "driveby.h"
+#include "grapple.h"
 #include "free_roam_camera.h"
 #include "helper_utils.h"
 
@@ -9086,6 +9087,15 @@ void	process_hardware_level_input_for_player(Thing *p_player)
 			//else
 #endif
 #endif
+			if (GRAPPLE_process(p_person, input))
+			{
+				//
+				// Aiming the grappling hook or on the rope: it has the controls.
+				//
+
+				processed = 0;
+			}
+			else
 			{
 				if (p_person->Genus.Person->Mode == PERSON_MODE_FIGHT)
 				{

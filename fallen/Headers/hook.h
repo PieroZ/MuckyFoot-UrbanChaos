@@ -46,6 +46,12 @@ void HOOK_spin(
 
 void HOOK_release(void);
 
+//
+// Puts the hook out of the way (grapple.cpp has taken over).
+//
+
+void HOOK_hide(void);
+
 
 //
 // Processes the hook.

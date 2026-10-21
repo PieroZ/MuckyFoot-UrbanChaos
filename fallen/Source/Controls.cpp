@@ -189,7 +189,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "baalrog", "balrog", "killcam", "drawdist", "fogstart", "crinklemode", "carflee", "uciekinier", "fugitive", "przebij", "napraw", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "baalrog", "balrog", "killcam", "drawdist", "fogstart", "crinklemode", "carflee", "uciekinier", "fugitive", "przebij", "napraw", "hak", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -946,6 +946,14 @@ extern int AENG_detail_crinkles;
 					}
 
 					CONSOLE_text(msg, 4000);
+				}
+				break;
+			case 70: // hak
+				// The grappling hook: on / off.
+				{
+					extern void GRAPPLE_toggle_cheat(void);
+
+					GRAPPLE_toggle_cheat();
 				}
 				break;
 			case 68: // przebij
