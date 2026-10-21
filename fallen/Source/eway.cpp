@@ -546,6 +546,13 @@ ANNOYINGSCRIBBLECHECK;
 
 CBYTE	*EWAY_get_mess(SLONG index)
 {
+	if (index == MAP_BEACON_MESS_FUGITIVE)
+	{
+		static CBYTE fugitive[] = "Uciekinier";
+
+		return fugitive;	// Beacon on a fugitive from the cheat (CARFLEE in pcom.cpp)
+	}
+
 	ASSERT(index<EWAY_mess_upto);
 	ASSERT(EWAY_mess[index]>=&EWAY_mess_buffer[0] && EWAY_mess[index]<&EWAY_mess_buffer[EWAY_mess_buffer_upto]);
 	ASSERT(EWAY_mess[index]!=(CBYTE*)0x3c003c00);

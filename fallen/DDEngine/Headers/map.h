@@ -31,6 +31,12 @@ void MAP_draw(void);
 UBYTE MAP_beacon_create(SLONG x, SLONG z, SLONG index, THING_INDEX track_my_position);
 void  MAP_beacon_remove(UBYTE beacon);
 
+//
+// Pass this as the message index for a beacon on a fugitive (CARFLEE).
+//
+
+#define MAP_BEACON_MESS_FUGITIVE 0xffff
+
 
 //
 // Processes the map.

@@ -10825,7 +10825,7 @@ SLONG collide_box_with_line(
 	{
 		ix = rx1 + (rx2 - rx1) * (maxz - rz1) / (rz2 - rz1);
 
-		if (WITHIN(iz, minx, maxx))
+		if (WITHIN(ix, minx, maxx))	// Was 'iz' - a typo that missed hits on this side of the box
 		{	
 			return TRUE;
 		}

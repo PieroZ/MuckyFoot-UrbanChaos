@@ -30,6 +30,21 @@ static struct
 
 } KILLCAM;
 
+//
+// Bullet time on its own (no camera swing): D'arci jumping off a bike.
+//
+
+static SLONG KILLCAM_bt_left;	// Real milliseconds
+static SLONG KILLCAM_bt_total;
+
+#define KILLCAM_BT_SLOWEST	80	// 256 = normal => about 30%
+
+void KILLCAM_bullet_time(SLONG ms)
+{
+	KILLCAM_bt_left  = ms;
+	KILLCAM_bt_total = ms;
+}
+
 
 void KILLCAM_reset(void)
 {
@@ -39,6 +54,8 @@ void KILLCAM_reset(void)
 	}
 
 	memset(&KILLCAM, 0, sizeof(KILLCAM));
+
+	KILLCAM_bt_left = 0;
 }
 
 void KILLCAM_toggle(void)
@@ -271,6 +288,32 @@ SLONG KILLCAM_process(SLONG real_millisecs)
 
 	if (!KILLCAM.active)
 	{
+		if (KILLCAM_bt_left > 0)
+		{
+			//
+			// Bullet time: in quickly, out slowly.
+			//
+
+			SLONG done  = KILLCAM_bt_total - KILLCAM_bt_left;
+			SLONG in    = (done << 8) / 150;
+			SLONG out   = (KILLCAM_bt_left << 8) / 500;
+			SLONG blend = 256;
+
+			if (blend > in)  {blend = in;}
+			if (blend > out) {blend = out;}
+
+			SATURATE(blend, 0, 256);
+
+			KILLCAM_bt_left -= real_millisecs;
+
+			SLONG speed = 256 - ((256 - KILLCAM_BT_SLOWEST) * blend >> 8);
+
+			MFX_set_global_pitch(0.55F + 0.45F * float(speed) / 256.0F);
+			KILLCAM.pitched = TRUE;
+
+			return speed;
+		}
+
 		if (KILLCAM.pitched)
 		{
 			MFX_set_global_pitch(1.0F);

@@ -189,7 +189,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "baalrog", "balrog", "killcam", "drawdist", "fogstart", "crinklemode", "carflee", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "baalrog", "balrog", "killcam", "drawdist", "fogstart", "crinklemode", "carflee", "uciekinier", "fugitive", "przebij", "napraw", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -948,19 +948,33 @@ extern int AENG_detail_crinkles;
 					CONSOLE_text(msg, 4000);
 				}
 				break;
-			case 65: // carflee <0..2>
+			case 68: // przebij
+			case 69: // napraw
+				// Burst a tyre / mend the tyres of the car you are in (or the nearest car).
+				{
+					extern void VEH_tyre_cheat(Thing *p_player, SLONG repair);
+
+					VEH_tyre_cheat(darci, i == 69);
+				}
+				break;
+			case 66: // uciekinier
+			case 67: // fugitive
+				// A fugitive in a car near the player, marked on the map. He runs away from you.
+				CARFLEE_spawn_fugitive();
+				break;
+			case 65: // carflee <0..3>
 				{
 					ConfigExtras& extras = ConfigExtras::getInstance();
 					CBYTE msg[96];
 					SLONG value = atoi(ptr);
 
-					if (*ptr && WITHIN(value, 0, 2))
+					if (*ptr && WITHIN(value, 0, 3))
 					{
 						extras.mCarFlee = static_cast<std::int16_t>(value);
 						ENV_set_value_number("car_flee", value, "Extra");
 					}
 
-					sprintf(msg, "Drivers flee from you: %d (0 = off, 1 = criminals, 2 = everybody)", extras.mCarFlee);
+					sprintf(msg, "Drivers who flee: %d (0 = nobody, 1 = fugitives, 2 = + criminals, 3 = + everybody)", extras.mCarFlee);
 					CONSOLE_text(msg, 4000);
 				}
 				break;

@@ -360,6 +360,14 @@ SLONG	PCOM_cop_aiming_at_you(Thing *p_person,Thing *p_cop);
 
 void PCOM_make_driver_run_away(Thing *p_driver, Thing *p_scary);
 
+//
+// Fugitives in cars who run away from the player (cheat "uciekinier" / "fugitive").
+//
+
+void CARFLEE_reset(void);				// New level
+void CARFLEE_spawn_fugitive(void);		// Puts a fugitive in a car on a road near the player
+void CARFLEE_process_fugitives(void);	// Once a frame
+
 
 //
 // Make the person face someone and do their talk to anim.

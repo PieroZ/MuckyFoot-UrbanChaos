@@ -55,6 +55,9 @@
 #include "mfx.h"
 
 #include "memory.h"
+#include "combat.h"
+#include "config_extras.h"
+#include "..\DDEngine\Headers\console.h"
 #include "road.h"
 
 #ifndef PSX
@@ -357,6 +360,291 @@ inline bool is_driven_by_player(Thing* p_car)
 	}
 
 	return false;
+}
+
+//
+// ---------------------------------------------------------------------------
+// Flat tyres.
+//
+// A shot that hits a car can burst the tyre nearest the shooter
+// (config.ini [Extra] tyre_shot_chance, % per hit, default 35; shotguns
+// twice as likely). A car on a flat tyre:
+//   - sits lower on that corner (the wheel squashes into the road),
+//   - pulls towards the flat side and wobbles, worse the faster it goes,
+//   - loses speed (more drag for every flat tyre),
+//   - easily spins out in bends with a flat at the back,
+//   - throws sparks off the rim at speed.
+// Cheats: "przebij" bursts a tyre (your car, or the nearest one), "napraw"
+// mends all the tyres of that car.
+//
+// Wheels: 0 = rear left, 1 = rear right, 2 = front left, 3 = front right
+// (front is -z in the car's frame, left is -x).
+// ---------------------------------------------------------------------------
+//
+
+#define VEH_FLAT_DROP		(10 << 8)	// How much lower a flat tyre sits
+#define VEH_FLAT_DRAG		40			// Each flat tyre takes Velocity/40 off the speed every tick
+
+static UBYTE VEH_flat[MAX_THINGS];		// Bit n set => wheel n has a flat tyre. Indexed by THING_NUMBER of the car.
+
+static void VEH_flat_tyre_steering(Thing *p_car);
+static void VEH_flat_tyre_effects (Thing *p_car);
+
+SLONG VEH_flat_tyres(Thing *p_car)
+{
+	return VEH_flat[THING_NUMBER(p_car)] & 0xf;
+}
+
+static SLONG VEH_count_flats(SLONG mask)
+{
+	return ((mask >> 0) & 1) + ((mask >> 1) & 1) + ((mask >> 2) & 1) + ((mask >> 3) & 1);
+}
+
+//
+// Where a wheel is in the world (world units).
+//
+
+static void VEH_wheel_world_pos(Thing *p_car, SLONG wheel, SLONG *wx, SLONG *wz)
+{
+	VehInfo *info  = &veh_info[p_car->Genus.Vehicle->Type];
+	SLONG    angle = p_car->Genus.Vehicle->Angle & 2047;
+
+	SLONG lx = info->DX[wheel];
+	SLONG lz = info->DZ[wheel];
+
+	// Same as GetCarPoints(): local (x,z) -> world (x*cos + z*sin, z*cos - x*sin)
+
+	*wx = (p_car->WorldPos.X >> 8) + ((lx * COS(angle) + lz * SIN(angle)) >> 16);
+	*wz = (p_car->WorldPos.Z >> 8) + ((lz * COS(angle) - lx * SIN(angle)) >> 16);
+}
+
+// (for driveby.cpp)
+
+void VEH_get_half_size(Thing *p_car, SLONG *half_width, SLONG *half_length)
+{
+	PrimInfo *pi = get_prim_info(veh_info[p_car->Genus.Vehicle->Type].BodyPrim);
+
+	*half_width  = (pi->maxx - pi->minx) >> 1;
+	*half_length = (pi->maxz - pi->minz) >> 1;
+}
+
+void VEH_get_wheel_pos(Thing *p_car, SLONG wheel, SLONG *wx, SLONG *wz)
+{
+	VEH_wheel_world_pos(p_car, wheel, wx, wz);
+}
+
+//
+// Bursts a tyre. wheel = -1 picks one that's still OK at random.
+// Returns TRUE if a tyre burst.
+//
+
+SLONG VEH_puncture_tyre(Thing *p_car, SLONG wheel)
+{
+	SLONG i;
+
+	if (p_car == NULL || p_car->Class != CLASS_VEHICLE)
+	{
+		return FALSE;
+	}
+
+	UBYTE *flat = &VEH_flat[THING_NUMBER(p_car)];
+
+	if (wheel < 0)
+	{
+		SLONG start = Random() & 3;
+
+		for (i = 0; i < 4; i++)
+		{
+			if (!(*flat & (1 << ((start + i) & 3))))
+			{
+				wheel = (start + i) & 3;
+
+				break;
+			}
+		}
+
+		if (wheel < 0)
+		{
+			return FALSE;	// They're all flat already.
+		}
+	}
+
+	if (*flat & (1 << wheel))
+	{
+		return FALSE;
+	}
+
+	*flat |= 1 << wheel;
+
+	//
+	// Bang! A jolt on that corner and a puff of rubber.
+	//
+
+	Vehicle *veh = p_car->Genus.Vehicle;
+
+	veh->DY[wheel] -= 600;
+	veh->Stable     = 0;
+
+	if (p_car->StateFn == NULL)
+	{
+		p_car->StateFn = VEH_driving;	// So a parked car settles onto the flat
+	}
+
+	SLONG wx;
+	SLONG wz;
+
+	VEH_wheel_world_pos(p_car, wheel, &wx, &wz);
+
+	SLONG wy = PAP_calc_map_height_at(wx, wz) + 0x10;
+
+	PARTICLE_Add(
+		wx << 8, wy << 8, wz << 8,
+		0, 10, 0,
+		POLY_PAGE_SMOKECLOUD2, 2 + ((Random() & 3) << 2), 0x7F404040,
+		PFLAG_FADE | PFLAG_RESIZE | PFLAG_SPRITEANI | PFLAG_SPRITELOOP,
+		40, 50, 1, 12, 8);
+
+	DIRT_new_sparks(wx, wy, wz, 2);
+
+	MFX_play_thing(THING_NUMBER(p_car), S_CAR_BUMP, 0, p_car);
+
+	if (is_driven_by_player(p_car))
+	{
+		CONSOLE_text("Przebita opona!", 3000);
+	}
+
+	return TRUE;
+}
+
+void VEH_repair_tyres(Thing *p_car)
+{
+	if (p_car && p_car->Class == CLASS_VEHICLE)
+	{
+		VEH_flat[THING_NUMBER(p_car)] = 0;
+	}
+}
+
+//
+// Called when a shot hits a car.
+//
+
+void VEH_shot_at_tyres(Thing *p_car, Thing *p_shooter, SLONG gun_type)
+{
+	SLONG i;
+
+	if (p_car == NULL || p_car->Class != CLASS_VEHICLE || p_shooter == NULL)
+	{
+		return;
+	}
+
+	SLONG chance = ConfigExtras::getInstance().mTyreShotChance;
+
+	if (gun_type == HIT_TYPE_GUN_SHOT_SHOTGUN)
+	{
+		chance *= 2;	// A wide spread of pellets.
+	}
+
+	if (SLONG(Random() % 100) >= chance)
+	{
+		return;
+	}
+
+	//
+	// The tyre nearest the shooter (if that's gone, the next nearest).
+	//
+
+	SLONG best      = -1;
+	SLONG best_dist = 0x7fffffff;
+
+	for (i = 0; i < 4; i++)
+	{
+		if (VEH_flat[THING_NUMBER(p_car)] & (1 << i))
+		{
+			continue;
+		}
+
+		SLONG wx;
+		SLONG wz;
+
+		VEH_wheel_world_pos(p_car, i, &wx, &wz);
+
+		SLONG dx   = wx - (p_shooter->WorldPos.X >> 8);
+		SLONG dz   = wz - (p_shooter->WorldPos.Z >> 8);
+		SLONG dist = QDIST2(abs(dx), abs(dz));
+
+		if (dist < best_dist)
+		{
+			best_dist = dist;
+			best      = i;
+		}
+	}
+
+	if (best >= 0 && VEH_puncture_tyre(p_car, best))
+	{
+		if (p_shooter->Class == CLASS_PERSON && p_shooter->Genus.Person->PlayerID)
+		{
+			CONSOLE_text("Opona przestrzelona!", 2000);
+		}
+	}
+}
+
+//
+// Cheats: burst / mend the tyres of the car you're in, or the nearest car.
+//
+
+void VEH_tyre_cheat(Thing *p_player, SLONG repair)
+{
+	Thing *p_car = NULL;
+
+	if (p_player == NULL)
+	{
+		return;
+	}
+
+	if ((p_player->Genus.Person->Flags & FLAG_PERSON_DRIVING) && p_player->Genus.Person->InCar)
+	{
+		p_car = TO_THING(p_player->Genus.Person->InCar);
+	}
+	else
+	{
+		THING_INDEX nearest = THING_find_nearest(
+								p_player->WorldPos.X >> 8,
+								p_player->WorldPos.Y >> 8,
+								p_player->WorldPos.Z >> 8,
+								0xa00,
+								1 << CLASS_VEHICLE);
+
+		if (nearest)
+		{
+			p_car = TO_THING(nearest);
+		}
+	}
+
+	if (p_car == NULL || p_car->Class != CLASS_VEHICLE)
+	{
+		CONSOLE_text("No car nearby", 3000);
+
+		return;
+	}
+
+	if (repair)
+	{
+		VEH_repair_tyres(p_car);
+
+		CONSOLE_text("Opony naprawione", 3000);
+	}
+	else
+	{
+		if (!VEH_puncture_tyre(p_car, -1))
+		{
+			CONSOLE_text("All the tyres are flat already", 3000);
+		}
+		else
+		if (!is_driven_by_player(p_car))
+		{
+			CONSOLE_text("Przebita opona!", 3000);
+		}
+	}
 }
 
 // find things we might run over
@@ -694,6 +982,8 @@ void init_vehicles(void)
 	{
 		TO_VEHICLE(i)->Spring[0].Compression = VEH_NULL;
 	}
+
+	memset(VEH_flat, 0, sizeof(VEH_flat));
 }
 #endif
 
@@ -944,6 +1234,9 @@ ANNOYINGSCRIBBLECHECK;
 			//
 
 			p_thing->Class      = CLASS_VEHICLE;
+
+			VEH_flat[ans] = 0;	// New car, new tyres
+
 			p_thing->State      = 0;
 			p_thing->SubState   = 0;
 			p_thing->DrawType   = DT_VEHICLE;
@@ -1607,19 +1900,22 @@ void VEH_collide_find_things(SLONG x, SLONG y, SLONG z, SLONG radius, SLONG igno
 	// Do we include bikes or not? 
 	//
 
-	ULONG collide_types;
+	//
+	// (This used to be "if (bike) {...} else #else {...} #endif". With BIKE
+	// defined - as it is in Fallen.vcxproj - the 'else' swallowed the
+	// THING_find_sphere() call below: for a car collide_types was never set,
+	// so the search looked for random kinds of things and often missed the
+	// other cars completely. That's why cars could drive into each other.)
+	//
+
+	// This is collision for a van or car - ignore bikes.
+	ULONG collide_types = (1 << CLASS_VEHICLE) | (1 << CLASS_ANIM_PRIM) | (1 << CLASS_BAT);
 
 	#if BIKE
 	if (ignore && TO_THING(ignore)->Class == CLASS_BIKE)
 	{
 		// This is collision for a bike - include bikes.
 		collide_types = (1 << CLASS_VEHICLE) | (1 << CLASS_ANIM_PRIM) | (1 << CLASS_BIKE);
-	}
-	else
-	#else
-	{
-		// This is collision for a van or car - ignore bikes.
-		collide_types = (1 << CLASS_VEHICLE) | (1 << CLASS_ANIM_PRIM) | (1 << CLASS_BAT);
 	}
 	#endif
 
@@ -1644,7 +1940,7 @@ void VEH_collide_find_things(SLONG x, SLONG y, SLONG z, SLONG radius, SLONG igno
 	{
 		if (found[i] == ignore)		continue;
 
-		ASSERT(WITHIN(VEH_col_upto, 0, VEH_MAX_COL - 1));
+		if (VEH_col_upto >= VEH_MAX_COL)	return;		// Out of room in the array.
 
 		p_found =  TO_THING(found[i]);
 		
@@ -3017,6 +3313,238 @@ void VEH_throw_out_person(Thing *p_person, Thing *p_vehicle)
 //
 // vehicle state handler
 
+//
+// Car against car: two cars must never end up inside each other.
+//
+// CollideCar() only tests this car's edges against the other car's box and,
+// once two cars overlap even a little, it can't separate them (it nudges by a
+// fraction of a unit and then just stops the car - inside the other one).
+// So after a car has moved we test its rectangle against every other car's
+// rectangle properly (separating axis test), push it out of any car it is
+// in, take away its speed into that car and shove the other car instead.
+//
+
+typedef struct
+{
+	float cx;		// Centre of the body in world units
+	float cz;
+	float ax[2];	// The car's local x and z axes in the world
+	float az[2];
+	float half[2];	// Half the width and length
+
+} VEH_Obb;
+
+static void VEH_get_obb(Thing *p_car, VEH_Obb *o)
+{
+	PrimInfo *pi    = get_prim_info(veh_info[p_car->Genus.Vehicle->Type].BodyPrim);
+	SLONG     angle = p_car->Genus.Vehicle->Angle & 2047;
+
+	float cy = float(COS(angle)) * (1.0F / 65536.0F);
+	float sy = float(SIN(angle)) * (1.0F / 65536.0F);
+
+	//
+	// Same transform as GetCarPoints(): local (x,z) -> world (x*cy + z*sy, z*cy - x*sy)
+	//
+
+	float lx = float(pi->minx + pi->maxx) * 0.5F;
+	float lz = float(pi->minz + pi->maxz) * 0.5F;
+
+	o->cx = float(p_car->WorldPos.X) * (1.0F / 256.0F) + lx * cy + lz * sy;
+	o->cz = float(p_car->WorldPos.Z) * (1.0F / 256.0F) - lx * sy + lz * cy;
+
+	o->ax[0] =  cy;		// local x
+	o->az[0] = -sy;
+	o->ax[1] =  sy;		// local z
+	o->az[1] =  cy;
+
+	o->half[0] = float(pi->maxx - pi->minx) * 0.5F;
+	o->half[1] = float(pi->maxz - pi->minz) * 0.5F;
+}
+
+//
+// Returns TRUE if the two boxes overlap. (*nx,*nz) is the direction to push
+// 'a' out of 'b' and *depth how far.
+//
+
+static SLONG VEH_obb_overlap(const VEH_Obb *a, const VEH_Obb *b, float *nx, float *nz, float *depth)
+{
+	SLONG k;
+
+	float dx = a->cx - b->cx;
+	float dz = a->cz - b->cz;
+
+	float best   = 1e30F;
+	float best_x = 0.0F;
+	float best_z = 0.0F;
+
+	for (k = 0; k < 4; k++)
+	{
+		const VEH_Obb *o = (k < 2) ? a : b;
+
+		float ux = o->ax[k & 1];
+		float uz = o->az[k & 1];
+
+		float ra = a->half[0] * fabsf(a->ax[0] * ux + a->az[0] * uz) + a->half[1] * fabsf(a->ax[1] * ux + a->az[1] * uz);
+		float rb = b->half[0] * fabsf(b->ax[0] * ux + b->az[0] * uz) + b->half[1] * fabsf(b->ax[1] * ux + b->az[1] * uz);
+		float d  = dx * ux + dz * uz;
+
+		float overlap = ra + rb - fabsf(d);
+
+		if (overlap <= 0.0F)
+		{
+			return FALSE;	// Found a gap between them.
+		}
+
+		if (overlap < best)
+		{
+			best = overlap;
+
+			if (d < 0.0F)
+			{
+				ux = -ux;
+				uz = -uz;
+			}
+
+			best_x = ux;
+			best_z = uz;
+		}
+	}
+
+	*nx    = best_x;
+	*nz    = best_z;
+	*depth = best;
+
+	return TRUE;
+}
+
+#define VEH_SEPARATE_MAX_PUSH	64.0F	// Never move a car more than this in one go (world units)
+#define VEH_SEPARATE_BOUNCE		0.25F	// How much bounce there is in a car crash
+#define VEH_SEPARATE_SHOVE		0.45F	// How much of our speed into the other car it gets
+#define VEH_SEPARATE_MIN_SHOVE	1500.0F	// Slower than this (VelX units) just stops- doesn't shove.
+
+static void VEH_separate_from_cars(Thing *p_thing)
+{
+	SLONG i;
+
+	Vehicle *veh = p_thing->Genus.Vehicle;
+
+	VEH_Obb me;
+
+	VEH_get_obb(p_thing, &me);
+
+	for (i = 0; i < VEH_col_upto; i++)
+	{
+		VEH_Col *vc      = &VEH_col[i];
+		Thing   *p_other = vc->veh;
+
+		if (p_other == NULL || p_other == p_thing || p_other->Class != CLASS_VEHICLE)
+		{
+			continue;
+		}
+
+		if (abs(p_other->WorldPos.Y - p_thing->WorldPos.Y) > (0x100 << 8))
+		{
+			continue;	// On a different level.
+		}
+
+		VEH_Obb him;
+
+		VEH_get_obb(p_other, &him);
+
+		float nx;
+		float nz;
+		float depth;
+
+		if (!VEH_obb_overlap(&me, &him, &nx, &nz, &depth))
+		{
+			continue;
+		}
+
+		//
+		// Push ourselves out of him.
+		//
+
+		float push = depth + 1.0F;
+
+		if (push > VEH_SEPARATE_MAX_PUSH)
+		{
+			push = VEH_SEPARATE_MAX_PUSH;
+		}
+
+		GameCoord new_pos = p_thing->WorldPos;
+
+		new_pos.X += SLONG(nx * push * 256.0F);
+		new_pos.Z += SLONG(nz * push * 256.0F);
+
+		move_thing_on_map(p_thing, &new_pos);
+
+		me.cx += nx * push;
+		me.cz += nz * push;
+
+		//
+		// Are we driving into him?
+		//
+
+		Vehicle *ov = p_other->Genus.Vehicle;
+
+		float vx = float(veh->VelX);
+		float vz = float(veh->VelZ);
+
+		float closing = (vx - float(ov->VelX)) * nx + (vz - float(ov->VelZ)) * nz;	// < 0 => into him
+
+		if (closing >= 0.0F)
+		{
+			continue;
+		}
+
+		//
+		// Lose our speed into him (with a little bounce)...
+		//
+
+		veh->VelX = SLONG(vx - closing * (1.0F + VEH_SEPARATE_BOUNCE) * nx);
+		veh->VelZ = SLONG(vz - closing * (1.0F + VEH_SEPARATE_BOUNCE) * nz);
+		veh->Skid = SKID_START;		// So the driving code doesn't put the speed straight back
+
+		//
+		// The engine speed too if we hit him with our front or back.
+		//
+
+		float fx = -float(SIN(veh->Angle & 2047)) * (1.0F / 65536.0F);	// Forwards
+		float fz = -float(COS(veh->Angle & 2047)) * (1.0F / 65536.0F);
+
+		float head_on = fabsf(fx * nx + fz * nz);
+
+		if (head_on > 0.5F)
+		{
+			p_thing->Velocity = SWORD(float(p_thing->Velocity) * (1.0F - 0.7F * head_on));
+			p_thing->Flags   |= FLAGS_COLLIDED;
+		}
+
+		//
+		// ...and shove him.
+		//
+
+		if (-closing > VEH_SEPARATE_MIN_SHOVE)
+		{
+			ov->VelX  += SLONG(closing * VEH_SEPARATE_SHOVE * nx);	// Away from us
+			ov->VelZ  += SLONG(closing * VEH_SEPARATE_SHOVE * nz);
+			ov->Skid   = SKID_START;
+			ov->Stable = 0;
+
+			p_other->StateFn = VEH_driving;		// Wake him up if he was parked
+
+			if (-closing > 6000.0F)
+			{
+				MFX_play_thing(THING_NUMBER(p_thing), SOUND_Range(S_CAR_SMASH_START,S_CAR_SMASH_END), 0, p_thing);
+			}
+			else
+			{
+				MFX_play_thing(THING_NUMBER(p_thing), S_CAR_BUMP, 0, p_thing);
+			}
+		}
+	}
+}
+
 static void do_car_input(Thing *p_thing);
 
 void VEH_driving(Thing *p_thing)
@@ -3248,6 +3776,14 @@ void VEH_driving(Thing *p_thing)
 	move_thing_on_map(p_thing, &new_pos);
 	veh->Angle += (veh->VelR * TICK_RATIO) >> TICK_SHIFT;
 	veh->Angle &= 2047;
+
+	//
+	// Make sure we haven't ended up inside another car.
+	//
+
+	VEH_separate_from_cars(p_thing);
+
+	VEH_flat_tyre_effects(p_thing);	// Sparks, spinning out on flat tyres
 
 	//
 	// Are there any people inside our bounding box? If there is
@@ -3766,6 +4302,142 @@ static inline void pedals(Vehicle* veh, VehInfo* vinfo, SLONG velocity, UBYTE& f
 //
 // handle inputs from the player
 
+//
+// Flat tyres: the car pulls towards the flat side and wobbles.
+//
+
+static void VEH_flat_tyre_steering(Thing *p_car)
+{
+	SLONG flat = VEH_flat[THING_NUMBER(p_car)];
+
+	if (!flat)
+	{
+		return;
+	}
+
+	Vehicle *veh = p_car->Genus.Vehicle;
+
+	if (veh->Flags & FLAG_VEH_IN_AIR)
+	{
+		return;
+	}
+
+	SLONG speed = abs(p_car->Velocity);
+
+	if (speed < 30)
+	{
+		return;
+	}
+
+	float fast = float(speed) / float(VEH_SPEED_LIMIT);	// 1.0 at the speed limit
+
+	if (fast > 2.0F)
+	{
+		fast = 2.0F;
+	}
+
+	//
+	// Pull: a flat on the left pulls left (negative wheel), on the right
+	// pulls right. Front tyres pull harder than back ones.
+	//
+
+	float pull = 0.0F;
+
+	if (flat & (1 << 2)) {pull -= 1.0F;}	// front left
+	if (flat & (1 << 3)) {pull += 1.0F;}	// front right
+	if (flat & (1 << 0)) {pull -= 0.5F;}	// rear left
+	if (flat & (1 << 1)) {pull += 0.5F;}	// rear right
+
+	if (p_car->Velocity < 0)
+	{
+		pull = -pull;	// Reversing
+	}
+
+	pull *= float(WHEELTIME) * (0.12F + 0.22F * fast);
+
+	//
+	// Wobble: the flat tyre flaps round- a shake that gets faster and bigger with speed.
+	//
+
+	SLONG flats = VEH_count_flats(flat);
+	SLONG phase = (GAME_TURN * (40 + (speed >> 4)) + THING_NUMBER(p_car) * 311) & 2047;
+
+	float wobble = float(SIN(phase)) * (1.0F / 65536.0F) * float(WHEELTIME) * (0.04F + 0.08F * fast) * float(flats);
+
+	wobble += float(SLONG(Random() & 0xff) - 0x80) * (1.0F / 128.0F) * float(WHEELTIME) * 0.03F * float(flats);
+
+	SLONG wheel = veh->Wheel + SLONG((pull + wobble) * 256.0F);
+	SLONG index = (wheel >> TICK_SHIFT) + WHEELTIME;
+
+	SATURATE(index, 0, 2 * WHEELTIME);
+
+	veh->WheelAngle = arctan_table[index];
+}
+
+//
+// Flat tyres: spinning out with a flat at the back, sparks and noise from the rims.
+//
+
+static void VEH_flat_tyre_effects(Thing *p_car)
+{
+	SLONG i;
+
+	SLONG flat = VEH_flat[THING_NUMBER(p_car)];
+
+	if (!flat)
+	{
+		return;
+	}
+
+	Vehicle *veh   = p_car->Genus.Vehicle;
+	SLONG    speed = abs(p_car->Velocity);
+
+	if (veh->Flags & FLAG_VEH_IN_AIR)
+	{
+		return;
+	}
+
+	//
+	// A flat at the back makes the back end step out in fast bends.
+	//
+
+	if ((flat & ((1 << 0) | (1 << 1))) && speed > 550 && abs(veh->WheelAngle) > 25 && veh->Skid < SKID_START)
+	{
+		if ((Random() & 0x1f) == 0)
+		{
+			veh->Skid = SKID_START;
+			veh->VelR += (veh->WheelAngle > 0) ? +12 : -12;
+		}
+	}
+
+	//
+	// Sparks off the bare rim.
+	//
+
+	if (speed > 300 && (Random() & 3) == 0)
+	{
+		for (i = 0; i < 4; i++)
+		{
+			if (!(flat & (1 << i)))
+			{
+				continue;
+			}
+
+			SLONG wx;
+			SLONG wz;
+
+			VEH_wheel_world_pos(p_car, i, &wx, &wz);
+
+			DIRT_new_sparks(wx, PAP_calc_map_height_at(wx, wz) + 4, wz, 1);
+		}
+
+		if ((Random() & 7) == 0)
+		{
+			MFX_play_thing(THING_NUMBER(p_car), SOUND_Range(S_CAR_SCRAPE_START,S_CAR_SCRAPE_END), MFX_MOVING, p_car);
+		}
+	}
+}
+
 static void do_car_input(Thing *p_thing)
 {
 	Vehicle*	veh = p_thing->Genus.Vehicle;
@@ -3796,6 +4468,8 @@ static void do_car_input(Thing *p_thing)
 	//
 
 	steering_wheel(veh, p_thing->Velocity, is_driven_by_player(p_thing));
+
+	VEH_flat_tyre_steering(p_thing);	// A flat tyre pulls the car to one side
 
 	//
 	// modify engine velocity
@@ -3840,6 +4514,15 @@ static void do_car_input(Thing *p_thing)
 
 		p_thing->Velocity = ((SLONG(p_thing->Velocity) << friction) - SLONG(p_thing->Velocity)) >> friction;
 		p_thing->Velocity += accel;
+
+		if (VEH_flat[THING_NUMBER(p_thing)])
+		{
+			//
+			// Driving on the rims is hard work.
+			//
+
+			p_thing->Velocity -= SWORD(SLONG(p_thing->Velocity) * VEH_count_flats(VEH_flat[THING_NUMBER(p_thing)]) / VEH_FLAT_DRAG);
+		}
 
 		SLONG	newvel = p_thing->Velocity;
 		SLONG	newmag = abs(newvel);
@@ -4436,6 +5119,11 @@ extern SLONG in_right_place_for_car(Thing *p_person, Thing *p_vehicle, SLONG *do
 			SLONG	papz = wz[wheel] + (p_car->WorldPos.Z >> 8);
 
 			height = PAP_calc_map_height_at(papx, papz) << 8;
+
+			if (VEH_flat[THING_NUMBER(p_car)] & (1 << wheel))
+			{
+				height -= VEH_FLAT_DROP;	// Flat tyre- this corner sits lower
+			}
 
 			if (ROAD_is_road(papx >> 8, papz >> 8))		on_road |= (1 << wheel);
 #ifndef		FINAL

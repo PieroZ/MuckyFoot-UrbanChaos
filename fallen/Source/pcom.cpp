@@ -31,6 +31,8 @@
 #include "DebugVars.h"
 #include "memory.h"
 #include "config_extras.h"
+#include "wmove.h"
+#include "..\DDEngine\Headers\map.h"
 #include <math.h>
 extern UBYTE stealth_debug;
 #ifndef PSX
@@ -6535,36 +6537,76 @@ void PCOM_process_driving_patrol(Thing *p_person)
 // ---------------------------------------------------------------------------
 // CARFLEE - drivers who run away from the player in their car.
 //
-// A wandering driver (PCOM_AI_DRIVER + PCOM_MOVE_WANDER) panics when
-//   - the player is close to his car (on foot or in any car), or
-//   - the player is coming at him in a police car (or has the siren on).
-// While panicking he puts his foot down, doesn't stop for traffic,
-// turns round if the player is in front of him and at every junction
-// takes the road that leads furthest away from the player. When he has
-// been left alone for a while he calms down and drives normally again.
+// The console cheat "uciekinier" (or "fugitive") puts a fugitive in a car on
+// a road near the player and marks him with a beacon on the map / scanner.
+// A fugitive panics when
+//   - the player gets close to his car (on foot or in any car), or
+//   - the player comes at him in a police car (or has the siren on).
+// While panicking he drives flat out (hardly braking for bends), ploughs
+// through the traffic instead of waiting for it, turns round if the player is
+// in front of him and at every junction takes the road that leads furthest
+// away from the player. Left alone for a while, he calms down again.
+// The beacon goes when he is dead or arrested.
 //
-// config.ini [Extra] car_flee = 0 off, 1 only criminals, 2 every driver (default)
-// Console: "carflee <0..2>"
+// config.ini [Extra] car_flee =
+//   0 nobody runs away
+//   1 only fugitives from the cheat (default)
+//   2 fugitives + criminal drivers (thugs, gang members, MIB...)
+//   3 fugitives + every driver wandering around the city
+// Console: "carflee <0..3>"
 // ---------------------------------------------------------------------------
 //
 
-#define CARFLEE_NEAR_RADIUS		0x700	// Player this close (on foot or in a car) => run. (0x100 = one mapsquare)
-#define CARFLEE_POLICE_RADIUS	0x1800	// A police car coming at you from this far => run.
-#define CARFLEE_POLICE_CLOSE	0xa00	// A police car this close => run, even if it isn't coming your way.
-#define CARFLEE_CLOSING_SPEED	150		// How fast the police car has to be coming at you (VEH_SPEED_LIMIT = 750).
-#define CARFLEE_CALM_TENTHS		80		// Keep running for 8 seconds after the last scare.
-#define CARFLEE_SPEED			1400	// Wanted speed while running away.
-#define CARFLEE_UTURN_RADIUS	0x1000	// Turn round when the player is in front of you and closer than this.
+#define CARFLEE_NEAR_RADIUS			0x700	// Player this close (on foot or in a car) => run. (0x100 = one mapsquare)
+#define CARFLEE_FUGITIVE_NEAR		0xa00	// The same for a fugitive.
+#define CARFLEE_POLICE_RADIUS		0x1800	// A police car coming at you from this far => run.
+#define CARFLEE_FUGITIVE_POLICE		0x2000	// The same for a fugitive.
+#define CARFLEE_POLICE_CLOSE		0xa00	// A police car this close => run, even if it isn't coming your way.
+#define CARFLEE_CLOSING_SPEED		150		// How fast the police car has to be coming at you (VEH_SPEED_LIMIT = 750).
+#define CARFLEE_CALM_TENTHS			80		// Keep running for 8 seconds after the last scare...
+#define CARFLEE_FUGITIVE_CALM		150		// ...15 seconds for a fugitive.
+#define CARFLEE_SPEED				1400	// Wanted speed while running away.
+#define CARFLEE_FUGITIVE_SPEED		1600	// A fugitive's wanted speed. He only eases off for really sharp turns...
+#define CARFLEE_FUGITIVE_MIN_SPEED	1000	// ...and never below this.
+#define CARFLEE_UTURN_RADIUS		0x1000	// Turn round when the player is in front of you and closer than this.
+#define CARFLEE_LEFT_TURN_DIST		0x500	// A fast car starts turning into the next road earlier (normal: 0x380)
+#define CARFLEE_RIGHT_TURN_DIST		0x3c0	// (normal: 0x280)
+
+#define CARFLEE_MAX_FUGITIVES		4
+#define CARFLEE_SPAWN_MIN			0x900	// Fugitives appear this far from the player...
+#define CARFLEE_SPAWN_MAX			0x1600	// ...but no further than this.
 
 static SLONG CARFLEE_left   [MAX_THINGS];	// How long this driver keeps running (PCOM ticks)
 static UBYTE CARFLEE_uturned[MAX_THINGS];	// Turned round already this time
 static SLONG CARFLEE_from_x [MAX_THINGS];	// Where the player was when last seen
 static SLONG CARFLEE_from_z [MAX_THINGS];
 
+static THING_INDEX CARFLEE_fugitive[CARFLEE_MAX_FUGITIVES];	// The driver
+static UBYTE       CARFLEE_beacon  [CARFLEE_MAX_FUGITIVES];	// His map beacon
+
 void CARFLEE_reset(void)
 {
-	memset(CARFLEE_left,    0, sizeof(CARFLEE_left));
-	memset(CARFLEE_uturned, 0, sizeof(CARFLEE_uturned));
+	memset(CARFLEE_left,     0, sizeof(CARFLEE_left));
+	memset(CARFLEE_uturned,  0, sizeof(CARFLEE_uturned));
+	memset(CARFLEE_fugitive, 0, sizeof(CARFLEE_fugitive));
+	memset(CARFLEE_beacon,   0, sizeof(CARFLEE_beacon));
+}
+
+static SLONG CARFLEE_is_fugitive(Thing *p_person)
+{
+	SLONG i;
+
+	THING_INDEX me = THING_NUMBER(p_person);
+
+	for (i = 0; i < CARFLEE_MAX_FUGITIVES; i++)
+	{
+		if (CARFLEE_fugitive[i] == me)
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
 }
 
 static SLONG CARFLEE_is_criminal(Thing *p_person)
@@ -6616,6 +6658,28 @@ static SLONG CARFLEE_can_flee(Thing *p_person, Thing *p_vehicle)
 		return FALSE;
 	}
 
+	//
+	// Only drivers wandering around the city. Drivers on a mission (patrols,
+	// waypoints) keep doing what the level script tells them.
+	//
+
+	if (p_person->Genus.Person->pcom_ai       != PCOM_AI_DRIVER   ||
+		p_person->Genus.Person->pcom_ai_state != PCOM_AI_STATE_NORMAL ||
+		p_person->Genus.Person->pcom_move     != PCOM_MOVE_WANDER)
+	{
+		return FALSE;
+	}
+
+	if (CARFLEE_is_fugitive(p_person))
+	{
+		return TRUE;
+	}
+
+	if (mode < 2)
+	{
+		return FALSE;
+	}
+
 	switch(p_person->Genus.Person->PersonType)
 	{
 		case PERSON_DARCI:
@@ -6631,19 +6695,7 @@ static SLONG CARFLEE_can_flee(Thing *p_person, Thing *p_vehicle)
 			return FALSE;
 	}
 
-	//
-	// Only drivers wandering around the city. Drivers on a mission (patrols,
-	// waypoints) keep doing what the level script tells them.
-	//
-
-	if (p_person->Genus.Person->pcom_ai       != PCOM_AI_DRIVER   ||
-		p_person->Genus.Person->pcom_ai_state != PCOM_AI_STATE_NORMAL ||
-		p_person->Genus.Person->pcom_move     != PCOM_MOVE_WANDER)
-	{
-		return FALSE;
-	}
-
-	if (mode == 1 && !CARFLEE_is_criminal(p_person))
+	if (mode == 2 && !CARFLEE_is_criminal(p_person))
 	{
 		return FALSE;
 	}
@@ -6655,7 +6707,7 @@ static SLONG CARFLEE_can_flee(Thing *p_person, Thing *p_vehicle)
 // Is the player scaring this driver right now?
 //
 
-static SLONG CARFLEE_scared_now(Thing *p_vehicle, SLONG *from_x, SLONG *from_z)
+static SLONG CARFLEE_scared_now(Thing *p_vehicle, SLONG fugitive, SLONG *from_x, SLONG *from_z)
 {
 	Thing *p_player = NET_PERSON(0);
 
@@ -6698,10 +6750,13 @@ static SLONG CARFLEE_scared_now(Thing *p_vehicle, SLONG *from_x, SLONG *from_z)
 		}
 	}
 
+	SLONG near_radius   = (fugitive) ? CARFLEE_FUGITIVE_NEAR   : CARFLEE_NEAR_RADIUS;
+	SLONG police_radius = (fugitive) ? CARFLEE_FUGITIVE_POLICE : CARFLEE_POLICE_RADIUS;
+
 	SLONG dx = (p_vehicle->WorldPos.X >> 8) - px;
 	SLONG dz = (p_vehicle->WorldPos.Z >> 8) - pz;
 
-	if (abs(dx) > CARFLEE_POLICE_RADIUS || abs(dz) > CARFLEE_POLICE_RADIUS)
+	if (abs(dx) > police_radius || abs(dz) > police_radius)
 	{
 		return FALSE;
 	}
@@ -6709,7 +6764,7 @@ static SLONG CARFLEE_scared_now(Thing *p_vehicle, SLONG *from_x, SLONG *from_z)
 	SLONG dist   = QDIST2(abs(dx), abs(dz));
 	SLONG scared = FALSE;
 
-	if (dist < CARFLEE_NEAR_RADIUS)
+	if (dist < near_radius)
 	{
 		scared = TRUE;
 	}
@@ -6721,7 +6776,7 @@ static SLONG CARFLEE_scared_now(Thing *p_vehicle, SLONG *from_x, SLONG *from_z)
 			scared = TRUE;
 		}
 		else
-		if (dist < CARFLEE_POLICE_RADIUS)
+		if (dist < police_radius)
 		{
 			//
 			// How fast is the police car coming towards us?
@@ -6762,7 +6817,9 @@ static SLONG CARFLEE_process(Thing *p_person, Thing *p_vehicle)
 		return FALSE;
 	}
 
-	if (CARFLEE_scared_now(p_vehicle, &fx, &fz))
+	SLONG fugitive = CARFLEE_is_fugitive(p_person);
+
+	if (CARFLEE_scared_now(p_vehicle, fugitive, &fx, &fz))
 	{
 		if (CARFLEE_left[me] <= 0)
 		{
@@ -6775,7 +6832,7 @@ static SLONG CARFLEE_process(Thing *p_person, Thing *p_vehicle)
 			MFX_play_thing(THING_NUMBER(p_person), SOUND_Range(S_CAR_HORN_START,S_CAR_HORN_END), MFX_REPLACE, p_person);
 		}
 
-		CARFLEE_left  [me] = PCOM_get_duration(CARFLEE_CALM_TENTHS);
+		CARFLEE_left  [me] = PCOM_get_duration((fugitive) ? CARFLEE_FUGITIVE_CALM : CARFLEE_CALM_TENTHS);
 		CARFLEE_from_x[me] = fx;
 		CARFLEE_from_z[me] = fz;
 	}
@@ -6947,6 +7004,395 @@ static void CARFLEE_maybe_uturn(Thing *p_person, Thing *p_vehicle)
 	p_person->Genus.Person->InsideRoom         = 0;		// The next road is chosen again
 
 	CARFLEE_uturned[me] = TRUE;
+}
+
+//
+// The fugitive cheat.
+//
+
+extern void set_person_in_vehicle(Thing *p_person, Thing *p_car);
+extern void set_generic_person_state_function(Thing *t_thing, UBYTE state);
+extern void set_thing_velocity(Thing *t_thing, SLONG vel);
+
+void CARFLEE_spawn_fugitive(void)
+{
+	SLONG i;
+	SLONG j;
+	SLONG slot;
+
+	Thing *p_player = NET_PERSON(0);
+
+	if (p_player == NULL)
+	{
+		return;
+	}
+
+	if (ConfigExtras::getInstance().mCarFlee <= 0)
+	{
+		CONSOLE_text("Fugitives are switched off - type carflee 1", 4000);
+
+		return;
+	}
+
+	//
+	// A free slot?
+	//
+
+	CARFLEE_process_fugitives();
+
+	slot = -1;
+
+	for (i = 0; i < CARFLEE_MAX_FUGITIVES; i++)
+	{
+		if (!CARFLEE_fugitive[i])
+		{
+			slot = i;
+
+			break;
+		}
+	}
+
+	if (slot < 0)
+	{
+		CONSOLE_text("There are too many fugitives on the run already!", 4000);
+
+		return;
+	}
+
+	if (ROAD_node_upto <= 1)
+	{
+		CONSOLE_text("There are no roads in this level", 4000);
+
+		return;
+	}
+
+	SLONG px = p_player->WorldPos.X >> 8;
+	SLONG pz = p_player->WorldPos.Z >> 8;
+
+	//
+	// Find a piece of road a little way from the player.
+	//
+
+	#define CARFLEE_MAX_CANDIDATES 64
+
+	UBYTE candidate[CARFLEE_MAX_CANDIDATES];
+	SLONG num_candidates = 0;
+
+	SLONG nearest_node = 0;
+	SLONG nearest_dist = 0x7fffffff;
+
+	for (i = 1; i < ROAD_node_upto; i++)
+	{
+		SLONG nx;
+		SLONG nz;
+
+		if (!ROAD_node_degree(i))
+		{
+			continue;
+		}
+
+		ROAD_node_pos(i, &nx, &nz);
+
+		SLONG dist = QDIST2(abs(nx - px), abs(nz - pz));
+
+		if (WITHIN(dist, CARFLEE_SPAWN_MIN, CARFLEE_SPAWN_MAX))
+		{
+			if (num_candidates < CARFLEE_MAX_CANDIDATES)
+			{
+				candidate[num_candidates++] = UBYTE(i);
+			}
+		}
+		else
+		if (dist > CARFLEE_SPAWN_MIN / 2 && dist < nearest_dist)
+		{
+			nearest_dist = dist;
+			nearest_node = i;
+		}
+	}
+
+	if (num_candidates == 0)
+	{
+		if (!nearest_node)
+		{
+			CONSOLE_text("Couldn't find a road for the fugitive", 4000);
+
+			return;
+		}
+
+		candidate[num_candidates++] = UBYTE(nearest_node);
+	}
+
+	//
+	// Try a few places until we find one that isn't blocked by another car.
+	//
+
+	SLONG found_place = FALSE;
+	SLONG n1 = 0;
+	SLONG n2 = 0;
+	SLONG car_x = 0;
+	SLONG car_z = 0;
+
+	for (j = 0; j < 16 && !found_place; j++)
+	{
+		n1 = candidate[Random() % num_candidates];
+
+		//
+		// Which road from this node?
+		//
+
+		ROAD_Node *rn = &ROAD_node[n1];
+
+		SLONG start = Random() & 3;
+
+		n2 = 0;
+
+		for (i = 0; i < 4; i++)
+		{
+			if (rn->c[(start + i) & 3])
+			{
+				n2 = rn->c[(start + i) & 3];
+
+				break;
+			}
+		}
+
+		if (!n2)
+		{
+			continue;
+		}
+
+		SLONG x1;
+		SLONG z1;
+		SLONG x2;
+		SLONG z2;
+
+		ROAD_node_pos(n1, &x1, &z1);
+		ROAD_node_pos(n2, &x2, &z2);
+
+		//
+		// A third of the way down the road, in the right lane.
+		//
+
+		SLONG dx = x2 - x1;
+		SLONG dz = z2 - z1;
+
+		car_x = x1 + dx / 3;
+		car_z = z1 + dz / 3;
+
+		SLONG len = QDIST2(abs(dx), abs(dz));
+
+		if (len < 0x300)
+		{
+			continue;	// Too short.
+		}
+
+		SLONG lx = -dz * 0x180 / len;
+		SLONG lz =  dx * 0x180 / len;
+
+		if (ROAD_signed_dist(n1, n2, car_x + lx, car_z + lz) < 0)
+		{
+			lx = -lx;
+			lz = -lz;
+		}
+
+		car_x += lx;
+		car_z += lz;
+
+		if (!WITHIN(car_x, 0x200, (PAP_SIZE_HI << 8) - 0x200) ||
+			!WITHIN(car_z, 0x200, (PAP_SIZE_HI << 8) - 0x200))
+		{
+			continue;
+		}
+
+		//
+		// Anything in the way?
+		//
+
+		THING_INDEX in_the_way[4];
+
+		if (THING_find_sphere(car_x, PAP_calc_height_at(car_x, car_z), car_z, 0x280, in_the_way, 4, 1 << CLASS_VEHICLE))
+		{
+			continue;
+		}
+
+		found_place = TRUE;
+	}
+
+	if (!found_place)
+	{
+		CONSOLE_text("Couldn't find a free bit of road for the fugitive - try somewhere else", 4000);
+
+		return;
+	}
+
+	//
+	// Create the car pointing down the road...
+	//
+
+	static const UBYTE fugitive_car[] = {VEH_TYPE_CAR, VEH_TYPE_SEDAN, VEH_TYPE_TAXI, VEH_TYPE_JEEP, VEH_TYPE_VAN};
+
+	SLONG x2;
+	SLONG z2;
+
+	ROAD_node_pos(n2, &x2, &z2);
+
+	SLONG yaw  = calc_angle(x2 - car_x, z2 - car_z) & 2047;	// VEH_create adds 1024 like the AI wants
+	SLONG type = fugitive_car[Random() % (sizeof(fugitive_car) / sizeof(fugitive_car[0]))];
+
+	THING_INDEX car = VEH_create(
+						car_x << 8,
+						(PAP_calc_height_at(car_x, car_z) + 0x40) << 8,
+						car_z << 8,
+						yaw, 0, 0,
+						type,
+						0,
+						Random());
+
+	if (!car)
+	{
+		CONSOLE_text("Couldn't create the fugitive's car", 4000);
+
+		return;
+	}
+
+	WMOVE_create(TO_THING(car));
+
+	//
+	// ...and a thug to drive it.
+	//
+
+	static const UBYTE fugitive_type[] = {PERSON_THUG_RASTA, PERSON_THUG_GREY, PERSON_THUG_RED};
+
+	THING_INDEX driver = PCOM_create_person(
+							fugitive_type[Random() % 3],
+							0,
+							0,
+							PCOM_AI_DRIVER,
+							0,
+							0,
+							PCOM_MOVE_WANDER,
+							0,
+							0,
+							0,
+							0,
+							0,
+							car_x << 8,
+							0,
+							car_z << 8,
+							0,
+							0,
+							0,
+							FLAG2_PERSON_GUILTY);
+
+	if (!driver)
+	{
+		CONSOLE_text("Couldn't create the fugitive", 4000);
+
+		return;
+	}
+
+	Thing *p_driver = TO_THING(driver);
+	Thing *p_car    = TO_THING(car);
+
+	//
+	// Straight into the driver's seat- no animation.
+	//
+
+	set_thing_velocity(p_driver, 0);
+	set_generic_person_state_function(p_driver, STATE_MOVEING);
+
+	p_driver->Genus.Person->Action = ACTION_INSIDE_VEHICLE;
+	p_driver->Genus.Person->Flags |= FLAG_PERSON_NON_INT_M | FLAG_PERSON_NON_INT_C;
+	p_driver->Genus.Person->InCar  = car;
+
+	set_person_in_vehicle(p_driver, p_car);
+
+	p_driver->WorldPos = p_car->WorldPos;
+
+	//
+	// Off he goes down the road.
+	//
+
+	PCOM_set_person_move_drive_down(p_driver, n1, n2);
+
+	CARFLEE_fugitive[slot] = driver;
+	CARFLEE_left[driver]   = 0;
+	CARFLEE_uturned[driver] = FALSE;
+
+	//
+	// Show him on the map.
+	//
+
+	CARFLEE_beacon[slot] = MAP_beacon_create(car_x, car_z, MAP_BEACON_MESS_FUGITIVE, car);
+
+	MFX_play_stereo(0, S_MENU_END, MFX_REPLACE);
+
+	CONSOLE_text("A fugitive is on the run! Catch him!", 4000);
+}
+
+//
+// Once a frame: keep the beacons on the fugitives and forget the ones that
+// have been caught.
+//
+
+void CARFLEE_process_fugitives(void)
+{
+	SLONG i;
+
+	for (i = 0; i < CARFLEE_MAX_FUGITIVES; i++)
+	{
+		if (!CARFLEE_fugitive[i])
+		{
+			continue;
+		}
+
+		Thing *p_driver = TO_THING(CARFLEE_fugitive[i]);
+
+		SLONG caught = FALSE;
+
+		if (p_driver->Class != CLASS_PERSON)
+		{
+			caught = TRUE;
+		}
+		else
+		if (p_driver->State == STATE_DEAD || (p_driver->Genus.Person->Flags & FLAG_PERSON_ARRESTED))
+		{
+			caught = TRUE;
+		}
+
+		if (caught)
+		{
+			if (CARFLEE_beacon[i])
+			{
+				MAP_beacon_remove(CARFLEE_beacon[i]);
+			}
+
+			CARFLEE_left[CARFLEE_fugitive[i]] = 0;
+
+			CARFLEE_fugitive[i] = 0;
+			CARFLEE_beacon  [i] = 0;
+
+			CONSOLE_text("Fugitive caught!", 4000);
+
+			continue;
+		}
+
+		//
+		// Track his car while he's in it- and him if he gets out.
+		//
+
+		if (CARFLEE_beacon[i])
+		{
+			THING_INDEX track = CARFLEE_fugitive[i];
+
+			if ((p_driver->Genus.Person->Flags & FLAG_PERSON_DRIVING) && p_driver->Genus.Person->InCar)
+			{
+				track = p_driver->Genus.Person->InCar;
+			}
+
+			MAP_beacon[CARFLEE_beacon[i]].track_thing = track;
+		}
+	}
 }
 
 //
@@ -7135,7 +7581,20 @@ extern SLONG WAND_find_good_start_point_for_car(SLONG* posx, SLONG* posz, SLONG*
 #define	LEFT_TURN_DIST		0x380	// distance from junction before left turn
 #define RIGHT_TURN_DIST		0x280	// distance from junction before right turn
 
-				if (dist < LEFT_TURN_DIST)
+				SLONG left_turn_dist  = LEFT_TURN_DIST;
+				SLONG right_turn_dist = RIGHT_TURN_DIST;
+
+				if (CARFLEE_fleeing(p_person))
+				{
+					//
+					// Driving fast- start turning into the next road earlier.
+					//
+
+					left_turn_dist  = CARFLEE_LEFT_TURN_DIST;
+					right_turn_dist = CARFLEE_RIGHT_TURN_DIST;
+				}
+
+				if (dist < left_turn_dist)
 				{
 					// find next road to drive down
 					if (!p_person->Genus.Person->InsideRoom)
@@ -7154,11 +7613,11 @@ extern SLONG WAND_find_good_start_point_for_car(SLONG* posx, SLONG* posz, SLONG*
 					if (ROAD_bend(p_person->Genus.Person->pcom_move_arg >> 8, p_person->Genus.Person->pcom_move_arg & 0xff, p_person->Genus.Person->InsideRoom) < 0)
 					{
 						// left turn - do it late
-						dist += LEFT_TURN_DIST - RIGHT_TURN_DIST;
+						dist += left_turn_dist - right_turn_dist;
 					}
 
 					// do turn
-					if (dist < LEFT_TURN_DIST)
+					if (dist < left_turn_dist)
 					{
 						if (p_person->Genus.Person->Flags & FLAG_PERSON_DRIVING)
 						{
@@ -13296,6 +13755,8 @@ void PCOM_process_person(Thing *p_person)
 
 	if (p_person->Genus.Person->PlayerID)
 	{
+		CARFLEE_process_fugitives();	// Beacons on the fugitives from the "uciekinier" cheat
+
 		//
 		// Keep track of how long the player has been idle.
 		//
@@ -14848,7 +15309,8 @@ void DriveCar(Thing* p_person)
 	// Is the player scaring us? (see CARFLEE)
 	//
 
-	SLONG fleeing = CARFLEE_process(p_person, p_vehicle);
+	SLONG fleeing  = CARFLEE_process(p_person, p_vehicle);
+	SLONG reckless = fleeing && CARFLEE_is_fugitive(p_person);	// A fugitive on the run doesn't care what he hits
 
 	if (fleeing)
 	{
@@ -14874,7 +15336,12 @@ void DriveCar(Thing* p_person)
 		// If the vehicle collided last time it moved, then we had better do something.
 		//
 
-		if (p_vehicle->Flags & FLAGS_COLLIDED)
+		//
+		// (A fugitive on the run just bounces off and keeps going- he only
+		// reverses out if he gets stuck.)
+		//
+
+		if ((p_vehicle->Flags & FLAGS_COLLIDED) && !(reckless && abs(p_vehicle->Velocity) > 250))
 		{
 			switch(p_person->Genus.Person->pcom_move_substate)
 			{
@@ -15041,6 +15508,25 @@ void DriveCar(Thing* p_person)
 					wspeed += wspeed;
 				}
 
+				if (reckless)
+				{
+					//
+					// Flat out! Only ease off a little for really sharp turns.
+					//
+
+					wspeed = CARFLEE_FUGITIVE_SPEED;
+
+					if (abs(dangle) > 350)
+					{
+						wspeed -= abs(dangle) - 350;
+					}
+
+					if (wspeed < CARFLEE_FUGITIVE_MIN_SPEED)
+					{
+						wspeed = CARFLEE_FUGITIVE_MIN_SPEED;
+					}
+				}
+				else
 				if (fleeing)
 				{
 					//
@@ -15100,6 +15586,23 @@ void DriveCar(Thing* p_person)
 
 	what = PCOM_find_runover_thing(p_person, dangle);
 
+	if (reckless)
+	{
+		//
+		// A fugitive doesn't stop, slow down or swerve for anyone- he just hoots
+		// and ploughs through.
+		//
+
+		if (what & (PCOM_RUNOVER_STOP | PCOM_RUNOVER_SLOW_DOWN | PCOM_RUNOVER_TURN_LEFT | PCOM_RUNOVER_TURN_RIGHT))
+		{
+			what |= PCOM_RUNOVER_BEEP_HORN;
+		}
+
+		what &= ~(PCOM_RUNOVER_STOP | PCOM_RUNOVER_SLOW_DOWN | PCOM_RUNOVER_REVERSE | PCOM_RUNOVER_RUNAWAY | PCOM_RUNOVER_TURN_LEFT | PCOM_RUNOVER_TURN_RIGHT);
+
+		p_person->Genus.Person->pcom_move_flag &= ~(PCOM_MOVE_FLAG_AVOID_LEFT | PCOM_MOVE_FLAG_AVOID_RIGHT);
+	}
+	else
 	if (fleeing)
 	{
 		//

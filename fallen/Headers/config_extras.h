@@ -41,8 +41,14 @@ struct ConfigExtras
 		// 0 = off (flat walls), 1 = always full 3D (default), 2 = original (grows in as you get near)
 		mCrinkleMode = static_cast<std::int16_t>(ENV_get_value_number("crinkle_mode", 1, "Extra"));
 
-		// Drivers running away from the player: 0 = off, 1 = only criminals, 2 = every driver
-		mCarFlee = static_cast<std::int16_t>(ENV_get_value_number("car_flee", 2, "Extra"));
+		// Drivers running away from the player:
+		// 0 = nobody, 1 = only fugitives from the "uciekinier" cheat, 2 = + criminals, 3 = + every driver
+		mCarFlee = static_cast<std::int16_t>(ENV_get_value_number("car_flee", 1, "Extra"));
+
+		// Chance (%) that a shot hitting a car bursts a tyre (shotguns: twice that)
+		mTyreShotChance = static_cast<std::int16_t>(ENV_get_value_number("tyre_shot_chance", 35, "Extra"));
+		if (mTyreShotChance < 0) { mTyreShotChance = 0; }
+		if (mTyreShotChance > 100) { mTyreShotChance = 100; }
 
 		mFogDistance = static_cast<std::int16_t>(ENV_get_value_number("fog_distance", 60, "Extra"));
 		if (mFogDistance < 10)
@@ -68,6 +74,7 @@ struct ConfigExtras
 	std::int16_t mDrawDistance = 64;
 	std::int16_t mFogStart = 70;
 	std::int16_t mCrinkleMode = 1;
-	std::int16_t mCarFlee = 2;
+	std::int16_t mCarFlee = 1;
+	std::int16_t mTyreShotChance = 35;
 	std::int16_t mFogDistance = 50;
 };

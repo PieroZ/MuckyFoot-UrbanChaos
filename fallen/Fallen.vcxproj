@@ -315,6 +315,7 @@
     <ClCompile Include="Source\briefing.cpp" />
     <ClCompile Include="Source\DebugVars.cpp" />
     <ClCompile Include="Source\killcam.cpp" />
+    <ClCompile Include="Source\driveby.cpp" />
     <ClCompile Include="Editor\Library\Draw2d.cpp" />
     <ClCompile Include="Editor\Library\DrawBox.cpp" />
     <ClCompile Include="Editor\Library\DrawCirc.cpp" />
@@ -1044,6 +1045,7 @@
     <ClInclude Include="DDLibrary\Headers\WindProcs.h" />
     <ClInclude Include="Headers\config_extras.h" />
     <ClInclude Include="Headers\killcam.h" />
+    <ClInclude Include="Headers\driveby.h" />
     <ClInclude Include="Source\DebugVars.h" />
     <ClInclude Include="Editor\Headers\Alert.hpp" />
     <ClInclude Include="Editor\Headers\Anim.h" />

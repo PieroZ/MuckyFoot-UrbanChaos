@@ -36,6 +36,7 @@
 #endif
 #include "PersonPZI.h"
 #include "config_extras.h"
+#include "driveby.h"
 #include "free_roam_camera.h"
 #include "helper_utils.h"
 
@@ -1394,10 +1395,20 @@ extern	void	set_person_turn_to_hug_wall(Thing *p_person);
 	if (p_thing->Genus.Person->Flags & FLAG_PERSON_BIKING)
 	{
 		//
-		// Get off the bike.
+		// Get off the bike- or at speed, jump off it (Trinity style).
 		//
 
-		set_person_dismount_bike(p_thing);
+		extern SLONG person_can_bail_bike(Thing *p_person);
+		extern void  set_person_bail_bike(Thing *p_person);
+
+		if (person_can_bail_bike(p_thing))
+		{
+			set_person_bail_bike(p_thing);
+		}
+		else
+		{
+			set_person_dismount_bike(p_thing);
+		}
 
 		return INPUT_MASK_ACTION;
 	}
@@ -9057,6 +9068,9 @@ void	process_hardware_level_input_for_player(Thing *p_player)
 #endif
 
 				processed  = apply_button_input_car(TO_THING(p_person->Genus.Person->InCar), input);
+
+				DRIVEBY_process(p_person);	// Shooting the pistol out of the window
+
 				processed |= apply_button_input(p_player, p_person, 0);//input & INPUT_MASK_ACTION);
 			}
 #ifndef PSX

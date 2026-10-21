@@ -15,6 +15,7 @@
 #define BIKE_MODE_MOUNTING		1		// Somebody is getting on this bike.
 #define BIKE_MODE_DRIVING		2		// Somebody is driving this bike.
 #define BIKE_MODE_DISMOUNTING	3		// Somebody is getting off this bike.
+#define BIKE_MODE_RIDERLESS		4		// The rider jumped off- it carries on by itself (and blows up if it hits something)
 
 
 //
@@ -128,6 +129,12 @@ void BIKE_set_mounting(Thing *p_bike, Thing *p_person);
 // 
 
 void BIKE_set_parked(Thing *p_bike);
+
+//
+// The rider has jumped off a moving bike: it carries on by itself.
+//
+
+void BIKE_set_riderless(Thing *p_bike);
 
 
 //

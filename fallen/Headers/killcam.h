@@ -36,4 +36,6 @@ SLONG KILLCAM_blend(void);		// 0 .. 256 how much the killcam camera / slow motio
 void KILLCAM_toggle(void);		// Console command
 void KILLCAM_reset(void);		// New level
 
+void KILLCAM_bullet_time(SLONG ms);	// Slow motion for a moment (no camera swing)
+
 #endif

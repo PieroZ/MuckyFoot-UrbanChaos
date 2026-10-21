@@ -187,7 +187,7 @@ typedef struct
 
 } VEH_Col;
 
-#define VEH_MAX_COL 8
+#define VEH_MAX_COL 24	// Was 8: a busy junction (cars + lamp posts + bins) filled it up and the rest were ignored
 
 extern VEH_Col VEH_col[VEH_MAX_COL];
 extern SLONG   VEH_col_upto;

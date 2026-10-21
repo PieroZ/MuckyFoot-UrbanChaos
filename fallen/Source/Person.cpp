@@ -6597,6 +6597,14 @@ extern void DIRT_create_brass(SLONG x,SLONG y,SLONG z,SLONG angle);
 					damage);
 
 				p_target->Genus.Vehicle->Flags |= FLAG_VEH_SHOT_AT;	// Tell the vehicle it is being attacked.
+
+				//
+				// Maybe burst a tyre.
+				//
+
+				extern void VEH_shot_at_tyres(Thing *p_car, Thing *p_shooter, SLONG gun_type);
+
+				VEH_shot_at_tyres(p_target, p_person, gun_type);
 			}
 			else
 			if (p_target->Class == CLASS_SPECIAL)
@@ -10642,6 +10650,124 @@ void	set_person_running_jump(Thing *p_person)
 
 }
 
+//
+// Jumping off a moving motorbike, Trinity style: D'arci leaps up and off to
+// the side doing a back flip (the one from back + jump), the world goes into
+// slow motion for a moment and the bike carries on without her (and blows up
+// if it hits something- see bike.cpp).
+//
+
+#ifdef BIKE
+
+#define BIKE_BAIL_MIN_SPEED	10	// BIKE_get_speed() - slower than this you just get off
+
+SLONG person_can_bail_bike(Thing *p_person)
+{
+	if (!(p_person->Genus.Person->Flags & FLAG_PERSON_BIKING) || !p_person->Genus.Person->InCar)
+	{
+		return FALSE;
+	}
+
+	if (p_person->SubState != SUB_STATE_RIDING_BIKE)
+	{
+		return FALSE;	// Getting on or off.
+	}
+
+	Thing *p_bike = TO_THING(p_person->Genus.Person->InCar);
+
+	return p_bike->Class == CLASS_BIKE && BIKE_get_speed(p_bike) >= BIKE_BAIL_MIN_SPEED;
+}
+
+void set_person_bail_bike(Thing *p_person)
+{
+	Thing *p_bike = TO_THING(p_person->Genus.Person->InCar);
+
+	SLONG speed = BIKE_get_speed(p_bike);		// Per half-frame (the bike moves twice a frame)
+	SLONG yaw   = p_bike->Genus.Bike->yaw;
+
+	//
+	// The bike is on its own now.
+	//
+
+	BIKE_set_riderless(p_bike);
+
+	p_person->Genus.Person->Flags &= ~(FLAG_PERSON_BIKING | FLAG_PERSON_NON_INT_M | FLAG_PERSON_NON_INT_C);
+	p_person->Genus.Person->InCar  =  0;
+	p_person->Draw.Tweened->Tilt   =  0;
+	p_person->Draw.Tweened->Roll   =  0;
+
+	//
+	// Which side to jump off? The side with room.
+	//
+
+	SLONG side = (Random() & 1) ? +180 : -180;
+	SLONG i;
+
+	for (i = 0; i < 2; i++)
+	{
+		SLONG angle = (yaw + side) & 2047;
+
+		SLONG x1 = p_person->WorldPos.X >> 8;
+		SLONG y1 = (p_person->WorldPos.Y >> 8) + 0x40;
+		SLONG z1 = p_person->WorldPos.Z >> 8;
+		SLONG x2 = x1 - (SIN(angle) * 0x180 >> 16);
+		SLONG z2 = z1 - (COS(angle) * 0x180 >> 16);
+
+		if (there_is_a_los(x1, y1, z1, x2, y1, z2, LOS_FLAG_IGNORE_PRIMS))
+		{
+			break;
+		}
+
+		side = -side;
+	}
+
+	p_person->Draw.Tweened->Angle   = (yaw + side) & 2047;
+	p_person->Draw.Tweened->AngleTo = p_person->Draw.Tweened->Angle;
+
+	//
+	// Up off the seat...
+	//
+
+	GameCoord pos = p_person->WorldPos;
+
+	pos.Y = p_bike->WorldPos.Y + (0x30 << 8);
+
+	move_thing_on_map(p_person, &pos);
+
+	//
+	// ...and flying, carrying on with most of the bike's speed.
+	//
+
+	SLONG vel = speed * 2 * 3 / 4;
+
+	SATURATE(vel, 20, 55);
+
+	set_generic_person_state_function(p_person, STATE_JUMPING);
+
+	set_anim(p_person, ANIM_BACK_FLIP);	// Played through in mid-air- see SUB_STATE_RUNNING_JUMP_FLY
+
+	p_person->Velocity              = vel;
+	p_person->DeltaVelocity         = 0;
+	p_person->DY                    = 24 << 8;
+	p_person->Flags                |= FLAGS_PROJECTILE_MOVEMENT;
+	p_person->Genus.Person->Action  = ACTION_RUN_JUMP;
+	p_person->SubState              = SUB_STATE_RUNNING_JUMP_FLY;
+	p_person->OnFace                = 0;
+
+	play_jump_sound(p_person);
+
+	//
+	// Bullet time.
+	//
+
+	if (ENV_get_value_number("bike_bail_slowmo", 1, "Extra"))
+	{
+		KILLCAM_bullet_time(1400);
+	}
+}
+
+#endif
+
 void	set_person_running_jump_lr(Thing *p_person,SLONG dir)
 {
 }
@@ -13705,7 +13831,7 @@ void	fn_person_jumping(Thing *p_person)
 				goto	jump_fly;
 
 		case	SUB_STATE_RUNNING_JUMP_FLY:
-				if(continue_moveing(p_person)&&!over_nogo(p_person))
+				if((continue_moveing(p_person) || p_person->Draw.Tweened->CurrentAnim == ANIM_BACK_FLIP)&&!over_nogo(p_person))	// (back flip = jumping off a bike)
 				{
 				//	change_velocity_to(p_person,50); //32); //25
 				}
@@ -13720,6 +13846,21 @@ void	fn_person_jumping(Thing *p_person)
 				//	set_thing_velocity(p_person,32); //25
 jump_fly:;
 
+				if (p_person->Draw.Tweened->CurrentAnim == ANIM_BACK_FLIP)
+				{
+					//
+					// The back flip off a motorbike: play the whole somersault in the
+					// air, then the normal falling pose until she lands.
+					//
+
+					end = person_normal_animate(p_person);
+
+					if (end == 1)
+					{
+						set_locked_anim(p_person, ANIM_MID_AIR_TWEEN_LEFT, 0);
+					}
+				}
+				else
 				if (p_person->Draw.Tweened->CurrentAnim == ANIM_PLUNGE_START ||
 					p_person->Draw.Tweened->CurrentAnim == ANIM_PLUNGE_FORWARDS)
 				{

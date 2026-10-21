@@ -15,6 +15,7 @@
 #include "font2d.h"
 
 #include "killcam.h"
+#include "driveby.h"
 
 #ifdef TARGET_DC
 #include "DIManager.h"
@@ -1329,6 +1330,72 @@ static void FC_killcam_apply(FC_Cam *fc)
 }
 
 
+//
+// Aiming out of the car window (driveby.cpp, right mouse button): the camera
+// moves to the window and looks where you aim. Uses the same save / restore as
+// the killcam above.
+//
+
+static void FC_driveby_apply(FC_Cam *fc)
+{
+	if (FC_kc_overridden)
+	{
+		return;		// The killcam has the camera.
+	}
+
+	SLONG cx;
+	SLONG cy;
+	SLONG cz;
+	SLONG lx;
+	SLONG ly;
+	SLONG lz;
+
+	SLONG w = DRIVEBY_camera(&cx, &cy, &cz, &lx, &ly, &lz);	// 0..256
+
+	if (w <= 0)
+	{
+		return;
+	}
+
+	SLONG nx = fc->x >> 8;
+	SLONG ny = fc->y >> 8;
+	SLONG nz = fc->z >> 8;
+
+	SLONG fx = fc->focus_x >> 8;
+	SLONG fy = fc->focus_y + fc->lookabove >> 8;
+	SLONG fz = fc->focus_z >> 8;
+
+	SLONG bx = nx + ((cx - nx) * w >> 8);
+	SLONG by = ny + ((cy - ny) * w >> 8);
+	SLONG bz = nz + ((cz - nz) * w >> 8);
+
+	SLONG tx = fx + ((lx - fx) * w >> 8);
+	SLONG ty = fy + ((ly - fy) * w >> 8);
+	SLONG tz = fz + ((lz - fz) * w >> 8);
+
+	FC_kc_saved[0] = fc->x;
+	FC_kc_saved[1] = fc->y;
+	FC_kc_saved[2] = fc->z;
+	FC_kc_saved[3] = fc->yaw;
+	FC_kc_saved[4] = fc->pitch;
+	FC_kc_saved[5] = fc->roll;
+
+	FC_kc_overridden = TRUE;
+
+	fc->x = bx << 8;
+	fc->y = by << 8;
+	fc->z = bz << 8;
+
+	SLONG dx  = tx - bx;
+	SLONG dy  = ty - by;
+	SLONG dz  = tz - bz;
+	SLONG dxz = QDIST2(abs(dx), abs(dz));
+
+	fc->yaw   = (-Arctan(dx, dz) & 2047) << 8;
+	fc->pitch = ( Arctan(dy, dxz) & 2047) << 8;
+	fc->roll  = 1024 << 8;
+}
+
 void FC_process()
 {
 	SLONG i;
@@ -2128,6 +2195,7 @@ extern	SLONG	EWAY_cam_jumped;
 		if (cam == 0)
 		{
 			FC_killcam_apply(fc);
+			FC_driveby_apply(fc);
 		}
 	}
 }

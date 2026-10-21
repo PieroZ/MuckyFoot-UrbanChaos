@@ -32,6 +32,7 @@
 
 
 #include "overlay.h"
+#include "driveby.h"
 extern	void	add_damage_text(SWORD x,SWORD y,SWORD z,CBYTE *text);
 
 
@@ -754,6 +755,9 @@ void	OVERLAY_draw_gun_sights(void)
 
 	// Playing as the Balrog: his health and the fireball sight.
 	BAT_player_draw_overlay();
+
+	// Shooting out of the car window: the sight on the target.
+	DRIVEBY_draw_overlay();
 
 	// draw a grenade aim target
 extern SLONG person_holding_special(Thing* p_person, UBYTE special);	// I am so naughty.  I blame Mark.
@@ -1915,7 +1919,7 @@ void PANEL_draw_crosshair(void)
 	}
 
 	extern void HandleMouseInput(Thing * target);
-	if (!(GAME_FLAGS & GF_PAUSED))
+	if (!(GAME_FLAGS & GF_PAUSED) && !DRIVEBY_active())	// In a car the mouse buttons shoot out of the window
 	{
 		HandleMouseInput(target);
 	}

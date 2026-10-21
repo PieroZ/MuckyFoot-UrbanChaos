@@ -19,6 +19,10 @@ MouseY = 0;
 
 volatile SLONG    MouseDX = 0, MouseDY = 0;
 
+// All the mouse movement since someone last took it (driveby.cpp). The moves made by
+// RecenterMouse() count as 0 because it sets OldMouseX/Y to where it puts the cursor.
+volatile SLONG    MouseAccDX = 0, MouseAccDY = 0;
+
 SLONG    OldMouseX = 0, OldMouseY = 0;
 
 // existing structures (assumed declared in some header)
@@ -44,6 +48,8 @@ LRESULT CALLBACK MouseProc(int code, WPARAM wParam, LPARAM lParam)
 
         MouseDX = MouseX - OldMouseX;
         MouseDY = MouseY - OldMouseY;
+        MouseAccDX += MouseDX;
+        MouseAccDY += MouseDY;
         MousePoint.X = MouseX;
         MousePoint.Y = MouseY;
         MouseMoved = 1;

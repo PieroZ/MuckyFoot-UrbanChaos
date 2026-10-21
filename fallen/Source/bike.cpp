@@ -23,6 +23,114 @@
 #include "mfx.h"
 #include "sound_id.h"
 
+//
+// Handling (config.ini [Extra]):
+//   bike_speed = top speed in % of the original (default 160)
+//   bike_turn  = how sharply it can turn in % (default 100)
+//   bike_air   = how much a ramp throws it into the air in % (default 100, 0 = never leaves the ground)
+//
+
+#include "config_extras.h"
+#include "pyro.h"
+
+static SLONG BIKE_tuned;
+static SLONG BIKE_accel_gain = 256;	// 8-bit fixed point: how hard the engine pushes
+static SLONG BIKE_drag       = 16;	// Speed / BIKE_drag is lost every pass on the ground (was 16)
+static SLONG BIKE_turn       = 100;	// %
+static SLONG BIKE_air        = 100;	// %
+static SLONG BIKE_top_speed  = 35;	// BIKE_get_speed() flat out on tarmac
+
+#define BIKE_FLAG_WRECKED        (1 << 3)	// Blew up- can't ride it any more.
+
+#define BIKE_RIDERLESS_DRAG		96		// A bike with nobody on it rolls a long way...
+#define BIKE_RIDERLESS_EXPLODE	14		// ...and blows up if it hits something at this speed (BIKE_get_speed())
+#define BIKE_RIDERLESS_STOP		2		// Slower than this it just falls over and lies there.
+
+static void BIKE_tune(void)
+{
+	if (BIKE_tuned)
+	{
+		return;
+	}
+
+	BIKE_tuned = TRUE;
+
+	SLONG speed = ENV_get_value_number("bike_speed", 160, "Extra");
+	SLONG turn  = ENV_get_value_number("bike_turn",  100, "Extra");
+	SLONG air   = ENV_get_value_number("bike_air",   100, "Extra");
+
+	SATURATE(speed, 50, 250);
+	SATURATE(turn,  50, 250);
+	SATURATE(air,    0, 300);
+
+	//
+	// Top speed = drag * push. Share the increase between a stronger engine
+	// (so it gets there quickly) and less drag.
+	//
+
+	float s = float(speed) / 100.0F;
+	float g = 1.0F + (s - 1.0F) * 0.45F;
+
+	BIKE_accel_gain = SLONG(g * 256.0F);
+	BIKE_drag       = SLONG(16.0F * s / g + 0.5F);
+	BIKE_turn       = turn;
+	BIKE_air        = air;
+	BIKE_top_speed  = 35 * speed / 100;	// The original bike did about 35
+
+	if (BIKE_drag < 4) {BIKE_drag = 4;}
+}
+
+//
+// Is the wheel driving up a ramp (a slope that has been going on for a
+// while, not a kerb)? Returns how fast it's climbing: 16-bits per pixel per
+// pass, like the suspension velocities. Everything else in 16-bit too.
+//
+
+static SLONG BIKE_ramp_climb(SLONG x, SLONG z, SLONG vx, SLONG vz)
+{
+	SLONG speed = QDIST2(abs(vx), abs(vz));
+
+	if (speed < 0x800 || BIKE_air <= 0)
+	{
+		return 0;
+	}
+
+	float ux = float(vx) / float(speed);
+	float uz = float(vz) / float(speed);
+
+	SLONG wx = x >> 8;
+	SLONG wz = z >> 8;
+
+	SLONG h0 = PAP_calc_map_height_at(wx,                     wz);
+	SLONG h1 = PAP_calc_map_height_at(wx - SLONG(ux * 24.0F), wz - SLONG(uz * 24.0F));
+	SLONG h2 = PAP_calc_map_height_at(wx - SLONG(ux * 48.0F), wz - SLONG(uz * 48.0F));
+
+	SLONG s1 = h0 - h1;	// Climb over the last 24 units
+	SLONG s2 = h1 - h2;	// ...and the 24 before that
+
+	if (s1 < 5 || s2 < 4)
+	{
+		return 0;		// Not going up a ramp (the camber of a road or a gentle hill doesn't count).
+	}
+
+	if (s1 > 30 || s2 > 30)
+	{
+		return 0;		// Too steep- that's a step or a wall, not a ramp.
+	}
+
+	if (s2 * 2 < s1)
+	{
+		return 0;		// The slope has only just started- a kerb.
+	}
+
+	SLONG climb = (speed * s1 / 24) * BIKE_air / 100;
+
+	if (climb > 0x1800) {climb = 0x1800;}
+
+	return climb;
+}
+
+
 extern	void	add_debug_line(SLONG x1,SLONG y1,SLONG z1,SLONG x2,SLONG y2,SLONG z2,SLONG colour);
 
 //
@@ -252,7 +360,8 @@ SLONG BIKE_process_suspension(
 		SLONG *frame_y,
 		SLONG *frame_dy,
 		SLONG *wheel_y,
-		SLONG *wheel_dy)
+		SLONG *wheel_dy,
+		SLONG  launch)		// How fast the ground under the wheel is rising (a ramp), see BIKE_ramp_climb()
 {
 	SLONG onground = FALSE;
 
@@ -297,6 +406,18 @@ SLONG BIKE_process_suspension(
 	fdy -= ddy / 128;	// Was 64
 
 	//
+	// The wheel can't drop further from the frame than the suspension goes
+	// (in the air it used to hang off below the bike).
+	//
+
+	if (fy - wy > (BIKE_WHEEL_SUS * 2 << 8))
+	{
+		wy = fy - (BIKE_WHEEL_SUS * 2 << 8);
+
+		if (wdy < fdy) {wdy = fdy;}
+	}
+
+	//
 	// Treat wheels that are slightly above the ground as being on the ground
 	// so we can grip better...
 	//
@@ -312,8 +433,32 @@ SLONG BIKE_process_suspension(
 
 	if (wy <= ground + (BIKE_WHEEL_RADIUS << 8))
 	{	
-		wdy = abs(wdy) - (abs(wdy) >> 2);
+		if (wdy < -0x600)
+		{
+			//
+			// Landing after a jump: the tyre and the suspension soak it up
+			// (it used to bounce back with 3/4 of the speed).
+			//
+
+			wdy = (-wdy) >> 3;
+		}
+		else
+		{
+			wdy = abs(wdy) - (abs(wdy) >> 2);
+		}
+
 		wy  = ground + (BIKE_WHEEL_RADIUS << 8);
+
+		//
+		// Going up a ramp: the wheel (and the bike) move upwards as fast as the
+		// ramp rises, so at the top of the ramp it keeps going- into the air.
+		//
+
+		if (launch > 0)
+		{
+			if (wdy < launch) {wdy = launch;}
+			if (fdy < launch) {fdy = launch;}
+		}
 	}
 
 	//
@@ -406,10 +551,18 @@ SLONG BIKE_collide_sphere(
 		MAV_Opt mo = MAV_opt[MAV_NAV(map_x,map_z)];
 
 		//
+		// You can't walk off the edge of a drop, but a bike can fly off it.
+		//
+
+		SLONG here = MAVHEIGHT(map_x, map_z);
+
+		#define BIKE_DROP(nx,nz) (MAVHEIGHT((nx),(nz)) < here)
+
+		//
 		// The mapsquare edges.
 		// 
 
-		if (!(mo.opt[MAV_DIR_XS] & (MAV_CAPS_GOTO)) || (map_x > 0 && MAVHEIGHT(map_x - 1, map_z) > maxup))
+		if ((!(mo.opt[MAV_DIR_XS] & (MAV_CAPS_GOTO)) && !(map_x > 0 && BIKE_DROP(map_x - 1, map_z))) || (map_x > 0 && MAVHEIGHT(map_x - 1, map_z) > maxup))
 		{
 			//
 			// The sphere shouldn't be near the (x-small) bit of this mapsquare.
@@ -424,7 +577,7 @@ SLONG BIKE_collide_sphere(
 			}
 		}
 
-		if (!(mo.opt[MAV_DIR_XL] & (MAV_CAPS_GOTO)) || (map_x < (PAP_SIZE_HI - 1) && MAVHEIGHT(map_x + 1, map_z) > maxup))
+		if ((!(mo.opt[MAV_DIR_XL] & (MAV_CAPS_GOTO)) && !(map_x < (PAP_SIZE_HI - 1) && BIKE_DROP(map_x + 1, map_z))) || (map_x < (PAP_SIZE_HI - 1) && MAVHEIGHT(map_x + 1, map_z) > maxup))
 		{
 			//
 			// The sphere shouldn't be near the (x-large) bit of this mapsquare.
@@ -439,7 +592,7 @@ SLONG BIKE_collide_sphere(
 			}
 		}
 
-		if (!(mo.opt[MAV_DIR_ZS] & (MAV_CAPS_GOTO)) || (map_z > 0 && MAVHEIGHT(map_x, map_z - 1) > maxup))
+		if ((!(mo.opt[MAV_DIR_ZS] & (MAV_CAPS_GOTO)) && !(map_z > 0 && BIKE_DROP(map_x, map_z - 1))) || (map_z > 0 && MAVHEIGHT(map_x, map_z - 1) > maxup))
 		{
 			//
 			// The sphere shouldn't be near the (z-small) bit of this mapsquare.
@@ -454,7 +607,7 @@ SLONG BIKE_collide_sphere(
 			}
 		}
 
-		if (!(mo.opt[MAV_DIR_ZL] & (MAV_CAPS_GOTO)) || (map_z < (PAP_SIZE_HI - 1) && MAVHEIGHT(map_x, map_z + 1) > maxup))
+		if ((!(mo.opt[MAV_DIR_ZL] & (MAV_CAPS_GOTO)) && !(map_z < (PAP_SIZE_HI - 1) && BIKE_DROP(map_x, map_z + 1))) || (map_z < (PAP_SIZE_HI - 1) && MAVHEIGHT(map_x, map_z + 1) > maxup))
 		{
 			//
 			// The sphere shouldn't be near the (z-large) bit of this mapsquare.
@@ -561,6 +714,11 @@ SLONG BIKE_collide_sphere(
 	{
 		vc = &VEH_col[i];
 
+		if ((sy >> 8) - BIKE_WHEEL_RADIUS > vc->mid_y + vc->height)
+		{
+			continue;	// Flying over it.
+		}
+
 		switch(vc->type)
 		{
 			case VEH_COL_TYPE_BBOX:
@@ -659,6 +817,10 @@ void BIKE_process_normal(Thing *p_bike)
 	UBYTE surface;
 
 	BIKE_Bike *bb = p_bike->Genus.Bike;
+
+	BIKE_tune();
+
+	SLONG hit_something = FALSE;	// For a bike with nobody on it
 
 	if (bb->mode == BIKE_MODE_PARKED   ||
 		bb->mode == BIKE_MODE_MOUNTING ||
@@ -772,8 +934,8 @@ again:;
 			// Accelerate the back wheel.
 			//
 
-			bb->back_dx += (bb->accel * vector[0] >> 8) * (friction + 256) >> 13;
-			bb->back_dz += (bb->accel * vector[2] >> 8) * (friction + 256) >> 13;
+			bb->back_dx += ((bb->accel * vector[0] >> 8) * (friction + 256) >> 13) * BIKE_accel_gain >> 8;
+			bb->back_dz += ((bb->accel * vector[2] >> 8) * (friction + 256) >> 13) * BIKE_accel_gain >> 8;
 		
 			//
 			// Stop the wheel sliding on over the surface.
@@ -859,15 +1021,22 @@ again:;
 			&bb->back_z))
 	{
 		bb->accel >>= 1;
+
+		hit_something = TRUE;
 	}
 
 	//
 	// Damping of steering
 	//
 
-	bb->steer -= bb->steer / (2*2);
+	if (bb->mode != BIKE_MODE_DRIVING)
+	{
+		// (A rider's steering is eased in and out in BIKE_control_set().)
 
-	if (abs(bb->steer) < 2*2) {bb->steer = 0;}
+		bb->steer -= bb->steer / (2*2);
+
+		if (abs(bb->steer) < 2*2) {bb->steer = 0;}
+	}
 
 	if ((bb->flag & (BIKE_FLAG_ONGROUND_FRONT|BIKE_FLAG_ONGROUND_BACK)) && bb->SlideTimer==0)
 	{	
@@ -906,8 +1075,10 @@ again:;
 	else
 	if ((bb->flag & BIKE_FLAG_ONGROUND_BACK))// && bb->SlideTimer==0)
 	{
-		bb->back_dx -= bb->back_dx / (8*2);
-		bb->back_dz -= bb->back_dz / (8*2);
+		SLONG drag = (bb->mode == BIKE_MODE_RIDERLESS) ? BIKE_RIDERLESS_DRAG : BIKE_drag;	// (was 8*2)
+
+		bb->back_dx -= bb->back_dx / drag;
+		bb->back_dz -= bb->back_dz / drag;
 
 		if (abs(bb->back_dx) < 8*2) {bb->back_dx = 0;}
 		if (abs(bb->back_dz) < 8*2) {bb->back_dz = 0;}
@@ -974,6 +1145,8 @@ again:;
 
 	if (col)
 	{
+		hit_something = TRUE;
+
 		//
 		// Slow down if we've collided.
 		//
@@ -1187,6 +1360,22 @@ again:;
 	// Suspension on front and back.
 	//
 
+	//
+	// Both wheels in the air: keep the bike in one piece- the front and the
+	// back move up and down together instead of each doing its own thing.
+	//
+
+	if (!(bb->flag & (BIKE_FLAG_ONGROUND_FRONT | BIKE_FLAG_ONGROUND_BACK)))
+	{
+		SLONG avg = bb->front_dy + bb->back_dy >> 1;
+
+		bb->front_dy += avg - bb->front_dy >> 3;
+		bb->back_dy  += avg - bb->back_dy  >> 3;
+
+		bb->wheel_dy_front += bb->front_dy - bb->wheel_dy_front >> 2;
+		bb->wheel_dy_back  += bb->back_dy  - bb->wheel_dy_back  >> 2;
+	}
+
 	bb->flag &= ~(BIKE_FLAG_ONGROUND_FRONT | BIKE_FLAG_ONGROUND_BACK);
 
 	if (BIKE_process_suspension(
@@ -1195,7 +1384,8 @@ again:;
 		   &bb->front_y,
 		   &bb->front_dy,
 		   &bb->wheel_y_front,
-		   &bb->wheel_dy_front))
+		   &bb->wheel_dy_front,
+		    BIKE_ramp_climb(bb->front_x, bb->front_z, bb->back_dx, bb->back_dz)))	// Ramps throw the bike into the air
 	{
 		bb->flag |= BIKE_FLAG_ONGROUND_FRONT;
 	}
@@ -1206,7 +1396,8 @@ again:;
 		   &bb->back_y,
 		   &bb->back_dy,
 		   &bb->wheel_y_back,
-		   &bb->wheel_dy_back))
+		   &bb->wheel_dy_back,
+		    BIKE_ramp_climb(bb->back_x, bb->back_z, bb->back_dx, bb->back_dz)))
 	{
 		bb->flag |= BIKE_FLAG_ONGROUND_BACK;
 	}
@@ -1409,6 +1600,72 @@ again:;
 				}
 			}
 
+			break;
+
+		case BIKE_MODE_RIDERLESS:
+			{
+				DrawTween *dt = p_bike->Draw.Tweened;
+
+				//
+				// Nobody holding it up- it slowly leans over as it goes.
+				//
+
+				if (bb->padding < 255) {bb->padding += 1;}
+
+				SLONG lean = bb->padding * 3;
+
+				if (lean > 0x180) {lean = 0x180;}
+
+				dt->Angle = bb->yaw;
+				dt->Tilt  = -bb->pitch & 2047;
+				dt->Roll  = (THING_NUMBER(p_bike) & 1) ? lean : (-lean & 2047);
+
+				if (hit_something && BIKE_get_speed(p_bike) >= BIKE_RIDERLESS_EXPLODE)
+				{
+					//
+					// Crashed into something: BANG!
+					//
+
+					Thing *pyro = PYRO_create(p_bike->WorldPos, PYRO_FIREBOMB);
+
+					if (pyro)
+					{
+						pyro->Genus.Pyro->Flags |= PYRO_FLAGS_WAVE;
+					}
+
+					MFX_play_xyz(THING_NUMBER(p_bike), S_EXPLODE_MEDIUM, 0, p_bike->WorldPos.X, p_bike->WorldPos.Y, p_bike->WorldPos.Z);
+
+					create_shockwave(
+						p_bike->WorldPos.X >> 8,
+						p_bike->WorldPos.Y >> 8,
+						p_bike->WorldPos.Z >> 8,
+						0x200,
+						150,
+						NET_PERSON(0));
+
+					bb->flag   |= BIKE_FLAG_WRECKED;
+					bb->back_dx = 0;
+					bb->back_dz = 0;
+
+					BIKE_set_parked(p_bike);
+
+					go_again = 0;
+				}
+				else
+				if (BIKE_get_speed(p_bike) < BIKE_RIDERLESS_STOP && (bb->flag & BIKE_FLAG_ONGROUND_BACK))
+				{
+					//
+					// Rolled to a stop: it lies where it is.
+					//
+
+					bb->back_dx = 0;
+					bb->back_dz = 0;
+
+					BIKE_set_parked(p_bike);
+
+					go_again = 0;
+				}
+			}
 			break;
 
 		case BIKE_MODE_DRIVING:
@@ -1655,6 +1912,8 @@ void BIKE_control_set(Thing *p_bike, BIKE_Control bc)
 
 	SATURATE(tspeed, 7, 25);
 
+	BIKE_tune();
+
 	ASSERT(p_bike->Class == CLASS_BIKE);
 	
 	if(bc.accel==0 && bc.brake)
@@ -1663,7 +1922,55 @@ void BIKE_control_set(Thing *p_bike, BIKE_Control bc)
 		bc.accel=-1;
 	}
 	accel=p_bike->Genus.Bike->accel + bc.accel*5; //was 20
-	steer=p_bike->Genus.Bike->steer + bc.steer*tspeed;
+	//
+	// Steering. How far you can turn the handlebars depends on how fast you're
+	// going (otherwise a fast bike snaps round 90 degrees at once), and they
+	// turn smoothly towards that, not in one go.
+	//
+
+	{
+		float fast = float(abs(speed)) / float(MAX(BIKE_top_speed, 1));
+
+		if (fast > 1.0F) {fast = 1.0F;}
+
+		SLONG max_steer = SLONG((60.0F - 47.0F * fast) * float(BIKE_turn) / 100.0F);	// 60 at walking pace, 13 flat out
+		steer = p_bike->Genus.Bike->steer;
+
+		//
+		// The player says which way (-1, 0, +1). The AI (pcom.cpp) hands back the
+		// current steering plus or minus a bit, so for them it's the difference.
+		//
+
+		SLONG dir = bc.steer;
+		SLONG ai  = TRUE;
+
+		if (p_bike->Genus.Bike->driver)
+		{
+			Thing *p_driver = TO_THING(p_bike->Genus.Bike->driver);
+
+			if (p_driver->Class == CLASS_PERSON && p_driver->Genus.Person->PlayerID)
+			{
+				ai = FALSE;
+			}
+		}
+
+		if (ai)
+		{
+			dir = bc.steer - steer;
+		}
+
+		SLONG want = (dir > 0) ? max_steer : (dir < 0) ? -max_steer : 0;
+
+		SLONG rate = 3;					// Per frame, turning in
+
+		if (want == 0 || (want > 0) != (steer > 0))
+		{
+			rate = 6;					// Letting go / turning the other way is quicker
+		}
+
+		if (steer < want) {steer += rate; if (steer > want) {steer = want;}}
+		if (steer > want) {steer -= rate; if (steer < want) {steer = want;}}
+	}
 
 
 	if(bc.wheelie)
@@ -1703,6 +2010,16 @@ SLONG BIKE_person_can_mount(Thing *p_person)
 					p_person->WorldPos.Z >> 8,
 					0x100,
 					1 << CLASS_BIKE);
+
+	if (ans)
+	{
+		BIKE_Bike *bb = TO_THING(ans)->Genus.Bike;
+
+		if ((bb->flag & BIKE_FLAG_WRECKED) || bb->mode == BIKE_MODE_RIDERLESS)
+		{
+			return NULL;	// Burnt out / still rolling along on its own.
+		}
+	}
 
 	return ans;
 }
@@ -1841,6 +2158,18 @@ void BIKE_set_parked(Thing *p_bike)
 
 	MFX_stop_attached(p_bike);
 
+}
+
+void BIKE_set_riderless(Thing *p_bike)
+{
+	BIKE_Bike *bb = p_bike->Genus.Bike;
+
+	bb->mode    = BIKE_MODE_RIDERLESS;
+	bb->driver  = NULL;				// Nobody on it any more
+	bb->accel   = 0;
+	bb->steer   = 0;
+	bb->padding = 0;				// How long it's been on its own (it leans more and more)
+	bb->SlideTimer = 0;				// (braking just before jumping off doesn't count)
 }
 
 void BIKE_set_dismounting(Thing *p_bike)
