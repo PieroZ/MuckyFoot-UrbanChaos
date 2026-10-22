@@ -1750,7 +1750,43 @@ void	load_walkables(MFFileHandle	handle,SLONG save_type)
 	FileRead(handle,&next_dwalkable,2);
 	FileRead(handle,&next_roof_face4,2);
 	FileRead(handle,&dwalkables[0],sizeof(struct DWalkable)*next_dwalkable);
-	FileRead(handle,&roof_faces4[0],sizeof(struct RoofFace4)*next_roof_face4);
+
+	if (PAP_IS_BIG_MAP())
+	{
+		//
+		// Big maps store the roof faces as they are in memory.
+		//
+
+		FileRead(handle,&roof_faces4[0],sizeof(struct RoofFace4)*next_roof_face4);
+	}
+	else
+	{
+		//
+		// The old 10-byte faces with the flags in bit 7 of RX and RZ.
+		//
+
+		for(c0=0;c0<next_roof_face4;c0++)
+		{
+			struct RoofFace4Old old;
+			struct RoofFace4   *rf = &roof_faces4[c0];
+
+			FileRead(handle,&old,sizeof(old));
+
+			rf->Y         = old.Y;
+			rf->DY[0]     = old.DY[0];
+			rf->DY[1]     = old.DY[1];
+			rf->DY[2]     = old.DY[2];
+			rf->DrawFlags = old.DrawFlags;
+			rf->RX        = old.RX & 127;
+			rf->RZ        = old.RZ & 127;
+			rf->Next      = old.Next;
+			rf->RFlags    = 0;
+			rf->RSpare    = 0;
+
+			if (old.RX & 128) {rf->RFlags |= RFACE_RFLAG_SPLIT_FUNNY;}
+			if (old.RZ & 128) {rf->RFlags |= RFACE_RFLAG_SLOPED;}
+		}
+	}
 
 
 /*	
@@ -1840,9 +1876,9 @@ void	load_walkables(MFFileHandle	handle,SLONG save_type)
 		for(c0=0;c0<next_roof_face4;c0++)
 		{
 			if(p_roof->DY[0] ||p_roof->DY[1] ||p_roof->DY[2])
-				p_roof->RZ|=(1<<7);
+				p_roof->RFlags|=RFACE_RFLAG_SLOPED;
 			else
-				p_roof->RZ&=127;
+				p_roof->RFlags&=~RFACE_RFLAG_SLOPED;
 			p_roof++;
 		}
 	}
@@ -1932,6 +1968,8 @@ void	save_walkables(MFFileHandle	handle)
 
 			p_roof->RX=prim_points[p_quad->Points[0]].X>>8;
 			p_roof->RZ=prim_points[p_quad->Points[0]].Z>>8;
+			p_roof->RFlags=0;
+			p_roof->RSpare=0;
 			p_roof->Y=prim_points[p_quad->Points[0]].Y&(~63);
 
 			p_roof->DY[0]=((prim_points[p_quad->Points[1]].Y&(~63))-(prim_points[p_quad->Points[0]].Y&(~63)))>>ROOF_SHIFT;
@@ -1939,11 +1977,11 @@ void	save_walkables(MFFileHandle	handle)
 			p_roof->DY[2]=((prim_points[p_quad->Points[2]].Y&(~63))-(prim_points[p_quad->Points[0]].Y&(~63)))>>ROOF_SHIFT;
 
 			if(roof_split_funny(p_roof))
-				p_roof->RX|=(1<<7);
+				p_roof->RFlags|=RFACE_RFLAG_SPLIT_FUNNY;
 
 			if(p_roof->DY[0] ||p_roof->DY[1] ||p_roof->DY[2] || building_list[building].BuildingType == BUILDING_TYPE_WAREHOUSE || building_list[building].BuildingType == BUILDING_TYPE_CRATE_IN)
 			{
-				p_roof->RZ|=(1<<7);
+				p_roof->RFlags|=RFACE_RFLAG_SLOPED;
 
 				tx = (p_quad->UV[0][0] + p_quad->UV[1][0] + p_quad->UV[2][0] + p_quad->UV[3][0]) >> 2;
 				ty = (p_quad->UV[0][1] + p_quad->UV[1][1] + p_quad->UV[2][1] + p_quad->UV[3][1]) >> 2;
@@ -1970,7 +2008,26 @@ void	save_walkables(MFFileHandle	handle)
 	FileWrite(handle,&next_dwalkable,2);
 	FileWrite(handle,&next_roof_face4,2);
 	FileWrite(handle,&dwalkables[0],sizeof(struct DWalkable)*next_dwalkable);
-	FileWrite(handle,&roof_faces4[0],sizeof(struct RoofFace4)*next_roof_face4);
+	//
+	// The editor saves 128x128 maps: old 10-byte faces with the flags in bit 7.
+	//
+
+	for(c0=0;c0<next_roof_face4;c0++)
+	{
+		struct RoofFace4Old old;
+		struct RoofFace4   *rf = &roof_faces4[c0];
+
+		old.Y         = rf->Y;
+		old.DY[0]     = rf->DY[0];
+		old.DY[1]     = rf->DY[1];
+		old.DY[2]     = rf->DY[2];
+		old.DrawFlags = rf->DrawFlags;
+		old.RX        = (rf->RX & 127) | ((rf->RFlags & RFACE_RFLAG_SPLIT_FUNNY) ? 128 : 0);
+		old.RZ        = (rf->RZ & 127) | ((rf->RFlags & RFACE_RFLAG_SLOPED)      ? 128 : 0);
+		old.Next      = rf->Next;
+
+		FileWrite(handle,&old,sizeof(old));
+	}
 
 
 }
@@ -2196,7 +2253,14 @@ void	save_ob_ob(MFFileHandle	handle)
 		}
 		FileWrite(handle,(UBYTE*)&OB_ob_upto,sizeof(OB_ob_upto));
 		FileWrite(handle,(UBYTE*)&OB_ob[0],sizeof(OB_Ob)*OB_ob_upto);
-		FileWrite(handle,(UBYTE*)&OB_mapwho[0][0],sizeof(OB_Mapwho)*OB_SIZE*OB_SIZE);
+		{
+			SLONG x;
+
+			for (x = 0; x < OB_SIZE; x++)
+			{
+				FileWrite(handle,(UBYTE*)&OB_mapwho[x][0],sizeof(OB_Mapwho)*OB_SIZE);
+			}
+		}
 
 }
 
@@ -2315,7 +2379,14 @@ void	load_super_map(MFFileHandle	handle,SLONG save_type)
 		// Notice that strangely they have their very own mapwho
 		//
 
-		FileRead(handle,(UBYTE*)&OB_mapwho[0][0],sizeof(OB_Mapwho)*OB_SIZE*OB_SIZE);
+		{
+			SLONG x;
+
+			for (x = 0; x < OB_SIZE; x++)
+			{
+				FileRead(handle,(UBYTE*)&OB_mapwho[x][0],sizeof(OB_Mapwho)*OB_SIZE);
+			}
+		}
 	}
 }
 

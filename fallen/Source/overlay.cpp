@@ -65,9 +65,9 @@ struct	DamageValue
 	CBYTE	*text_ptr;
 	SWORD	Age;
 	SWORD	Value;
-	SWORD	X;
-	SWORD	Y;
-	SWORD	Z;
+	SLONG	X;
+	SLONG	Y;
+	SLONG	Z;
 
 };
 
@@ -1520,7 +1520,7 @@ void	free_damage_index(SLONG index)
 	damage_values[index].Age=-1;
 }
 #endif
-void	add_damage_value(SWORD x,SWORD y,SWORD z,SLONG value)
+void	add_damage_value(SLONG x,SLONG y,SLONG z,SLONG value)
 {
 #ifdef	DAMAGE_TEXT
 	SLONG	index;

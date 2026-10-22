@@ -3741,10 +3741,10 @@ void	clear_reflective_flag(SLONG min_x,SLONG min_z,SLONG max_x,SLONG max_z)
 	minz=min_z>>ELE_SHIFT;
 	maxz=max_z>>ELE_SHIFT;
 
-	SATURATE(minx,0,127);
-	SATURATE(maxx,0,127);
-	SATURATE(minz,0,127);
-	SATURATE(maxz,0,127);
+	SATURATE(minx,0,PAP_SIZE_HI-1);
+	SATURATE(maxx,0,PAP_SIZE_HI-1);
+	SATURATE(minz,0,PAP_SIZE_HI-1);
+	SATURATE(maxz,0,PAP_SIZE_HI-1);
 
 	for(x=minx;x<maxx;x++)
 	for(z=minz;z<maxz;z++)
@@ -10361,7 +10361,7 @@ void	clear_map2(void)
 	//
 	// clear pap lo
 	//
-	memset((UBYTE*) &PAP_lo[0][0],0,sizeof(PAP_Lo)*PAP_SIZE_LO*PAP_SIZE_LO);
+	memset((UBYTE*) &PAP_lo[0][0],0,sizeof(PAP_Lo)*PAP_SIZE_LO_MAX*PAP_SIZE_LO_MAX);
 
 
 	for(x=0;x<EDIT_MAP_WIDTH;x++)

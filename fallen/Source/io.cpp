@@ -627,6 +627,36 @@ void load_level_anim_prims(void)
 	}
 }
 
+//
+// Looks at the start of a .iam file and sets the map size (128 or 256) so
+// that everything initialised before the map is loaded uses the right size.
+//
+
+void	peek_game_map_size(CBYTE *name)
+{
+	CBYTE	fname[100];
+	SLONG	save_type = 0;
+	SLONG	map_size  = PAP_SIZE_HI_SMALL;
+
+	sprintf(fname,"%s%s",DATA_DIR,name);
+
+	MFFileHandle handle = FileOpen(fname);
+
+	if (handle != FILE_OPEN_ERROR)
+	{
+		FileRead(handle,(UBYTE*)&save_type,4);
+
+		if (save_type >= PAP_BIG_MAP_SAVE_TYPE)
+		{
+			FileRead(handle,(UBYTE*)&map_size,4);
+		}
+
+		FileClose(handle);
+	}
+
+	PAP_set_map_size(map_size);
+}
+
 void	load_game_map(CBYTE *name)
 {
 	UWORD	i;
@@ -657,14 +687,42 @@ void	load_game_map(CBYTE *name)
 	{
 		FileRead(handle,(UBYTE*)&save_type,4);
 
+		//
+		// Big maps: save_type is the normal version + PAP_BIG_MAP_SAVE_TYPE and
+		// the size of the map (in mapsquares, 256) comes straight after it.
+		//
+
+		if (save_type >= PAP_BIG_MAP_SAVE_TYPE)
+		{
+			SLONG map_size;
+
+			save_type -= PAP_BIG_MAP_SAVE_TYPE;
+
+			FileRead(handle,(UBYTE*)&map_size,4);
+
+			PAP_set_map_size(map_size);
+		}
+		else
+		{
+			PAP_set_map_size(PAP_SIZE_HI_SMALL);
+		}
+
 		// extra 'ob' info
 		if (save_type>23) {
 			FileRead(handle,(UBYTE*)&ob_size,4);
 		}
 
-		FileRead(handle,(UBYTE*)&PAP_2HI(0,0),sizeof(PAP_Hi)*PAP_SIZE_HI*PAP_SIZE_HI);
+		//
+		// The file has PAP_SIZE_HI rows of PAP_SIZE_HI squares, the array in
+		// memory always has rows of PAP_SIZE_HI_MAX.
+		//
 
-extern	UWORD WARE_roof_tex[PAP_SIZE_HI][PAP_SIZE_HI];
+		for (x = 0; x < PAP_SIZE_HI; x++)
+		{
+			FileRead(handle,(UBYTE*)&PAP_2HI(x,0),sizeof(PAP_Hi)*PAP_SIZE_HI);
+		}
+
+extern	UWORD WARE_roof_tex[PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
 
 		if(save_psx&&save_type>=26)
 		{
@@ -677,13 +735,16 @@ extern	UWORD WARE_roof_tex[PAP_SIZE_HI][PAP_SIZE_HI];
 			FileRead(handle,(UBYTE*)&check,4);
 			ASSERT(check==sizeof(UWORD)*PAP_SIZE_HI * PAP_SIZE_HI);
 
-			FileRead(handle,WARE_roof_tex, sizeof(UWORD)*PAP_SIZE_HI * PAP_SIZE_HI);
+			for (x = 0; x < PAP_SIZE_HI; x++)
+			{
+				FileRead(handle,(UBYTE*)&WARE_roof_tex[x][0], sizeof(UWORD)*PAP_SIZE_HI);
+			}
 			FileRead(handle,(UBYTE*)&check,4);
 			ASSERT(check==666);
 		}
 		else
 		{
-			memset((UBYTE*)WARE_roof_tex,0,sizeof(UWORD)*PAP_SIZE_HI * PAP_SIZE_HI);
+			memset((UBYTE*)WARE_roof_tex,0,sizeof(WARE_roof_tex));
 		}
 
 
@@ -760,7 +821,10 @@ extern	UWORD WARE_roof_tex[PAP_SIZE_HI][PAP_SIZE_HI];
 			// Notice that strangely they have their very own mapwho
 			//
 
-			FileRead(handle,(UBYTE*)&OB_mapwho[0][0],sizeof(OB_Mapwho)*OB_SIZE*OB_SIZE);
+			for (x = 0; x < OB_SIZE; x++)
+			{
+				FileRead(handle,(UBYTE*)&OB_mapwho[x][0],sizeof(OB_Mapwho)*OB_SIZE);
+			}
 		}
 
 		for (i = 1; i < OB_ob_upto; i++)

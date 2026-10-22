@@ -4170,8 +4170,8 @@ void FACET_draw_walkable(SLONG build)
 
 				pp = &POLY_buffer[0];
 
-				px=(float)((p_f4->RX&127)<<8);
-				pz=(float)((p_f4->RZ&127)<<8);
+				px=(float)((p_f4->RX)<<8);
+				pz=(float)((p_f4->RZ)<<8);
 				py=(float)(p_f4->Y);
 				sy=py;
 				POLY_transform(px,py,pz,pp);
@@ -4250,8 +4250,8 @@ void FACET_draw_walkable(SLONG build)
 					{
 						SLONG	x,z,y;
 
-						x=(p_f4->RX&127)<<8;
-						z=(p_f4->RZ&127)<<8;
+						x=(p_f4->RX)<<8;
+						z=(p_f4->RZ)<<8;
 						y=p_f4->Y;
 						//
 						// Draw the slide-edges
@@ -4326,7 +4326,7 @@ void FACET_draw_walkable(SLONG build)
 					else
 					{
 						PAP_Hi	*ph;
-						ph = &PAP_2HI(p_f4->RX&127,p_f4->RZ&127);
+						ph = &PAP_2HI(p_f4->RX,p_f4->RZ);
 
 						TEXTURE_get_minitexturebits_uvs(
 								ph->Texture,
@@ -4516,7 +4516,7 @@ void FACET_draw_walkable(SLONG build)
 						}
 						else
 						{
-							if(p_f4->RX&(1<<7))
+							if(p_f4->RFlags & RFACE_RFLAG_SPLIT_FUNNY)
 							{
 								tri[0] = quad[0];
 								tri[1] = quad[1];

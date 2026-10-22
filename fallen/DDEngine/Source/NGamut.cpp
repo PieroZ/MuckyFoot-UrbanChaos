@@ -6,7 +6,7 @@
 #include "ngamut.h"
 
 
-NGAMUT_Gamut NGAMUT_gamut[NGAMUT_SIZE];
+NGAMUT_Gamut NGAMUT_gamut[NGAMUT_SIZE_MAX];
 SLONG        NGAMUT_zmin;
 SLONG        NGAMUT_zmax;
 SLONG        NGAMUT_xmin;
@@ -204,7 +204,7 @@ void NGAMUT_view_square(float mid_x, float mid_z, float radius)
 }
 
 
-NGAMUT_Gamut NGAMUT_point_gamut[NGAMUT_SIZE];
+NGAMUT_Gamut NGAMUT_point_gamut[NGAMUT_SIZE_MAX];
 SLONG        NGAMUT_point_zmin;
 SLONG        NGAMUT_point_zmax;
 
@@ -227,7 +227,7 @@ void NGAMUT_calculate_point_gamut(void)
 	NGAMUT_point_gamut[NGAMUT_point_zmax].xmax = NGAMUT_gamut[NGAMUT_zmax].xmax + 1;
 }
 
-NGAMUT_Gamut NGAMUT_out_gamut[NGAMUT_SIZE];
+NGAMUT_Gamut NGAMUT_out_gamut[NGAMUT_SIZE_MAX];
 SLONG        NGAMUT_out_zmin;
 SLONG        NGAMUT_out_zmax;
 
@@ -278,7 +278,7 @@ void NGAMUT_calculate_out_gamut(void)
 	}
 }
 
-NGAMUT_Gamut NGAMUT_lo_gamut[NGAMUT_SIZE_LO];
+NGAMUT_Gamut NGAMUT_lo_gamut[NGAMUT_SIZE_LO_MAX];
 SLONG        NGAMUT_lo_zmin;
 SLONG        NGAMUT_lo_zmax;
 
@@ -295,8 +295,8 @@ void NGAMUT_calculate_lo_gamut()
 	SLONG out_xmin;
 	SLONG out_xmax;
 
-	NGAMUT_lo_zmin = (NGAMUT_point_zmin - 1) / (NGAMUT_SIZE / NGAMUT_SIZE_LO);
-	NGAMUT_lo_zmax = (NGAMUT_point_zmax + 1) / (NGAMUT_SIZE / NGAMUT_SIZE_LO);
+	NGAMUT_lo_zmin = (NGAMUT_point_zmin - 1) / NGAMUT_LO_RATIO;
+	NGAMUT_lo_zmax = (NGAMUT_point_zmax + 1) / NGAMUT_LO_RATIO;
 
 	SATURATE(NGAMUT_lo_zmin, 0, NGAMUT_SIZE_LO - 1);
 	SATURATE(NGAMUT_lo_zmax, 0, NGAMUT_SIZE_LO - 1);
@@ -306,15 +306,15 @@ void NGAMUT_calculate_lo_gamut()
 		xmin = +INFINITY;
 		xmax = -INFINITY;
 
-		for (j = 0; j < (NGAMUT_SIZE / NGAMUT_SIZE_LO); j++)
+		for (j = 0; j < NGAMUT_LO_RATIO; j++)
 		{
-			z  = i * (NGAMUT_SIZE / NGAMUT_SIZE_LO);
+			z  = i * NGAMUT_LO_RATIO;
 			z += j;
 
 			if (WITHIN(z, NGAMUT_point_zmin, NGAMUT_point_zmax))
 			{
-				out_xmin = (NGAMUT_point_gamut[z].xmin - 1) / (NGAMUT_SIZE / NGAMUT_SIZE_LO);
-				out_xmax = (NGAMUT_point_gamut[z].xmax + 1) / (NGAMUT_SIZE / NGAMUT_SIZE_LO);
+				out_xmin = (NGAMUT_point_gamut[z].xmin - 1) / NGAMUT_LO_RATIO;
+				out_xmax = (NGAMUT_point_gamut[z].xmax + 1) / NGAMUT_LO_RATIO;
 
 				if (out_xmin < xmin) {xmin = out_xmin;}
 				if (out_xmax > xmax) {xmax = out_xmax;}

@@ -569,8 +569,8 @@ round_again:;
 						{
 							rf	 = &roof_faces4[-face];	
 
-							grab_px[0]=(rf->RX&127)<<8;
-							grab_pz[0]=(rf->RZ&127)<<8;
+							grab_px[0]=(rf->RX)<<8;
+							grab_pz[0]=(rf->RZ)<<8;
 							grab_py[0]=rf->Y;
 							grab_py[1]=rf->Y+(rf->DY[0]<<ROOF_SHIFT);
 							grab_py[2]=rf->Y+(rf->DY[2]<<ROOF_SHIFT);

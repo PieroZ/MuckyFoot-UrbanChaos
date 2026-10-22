@@ -34,7 +34,7 @@ POW_Pow POW_pow[POW_MAX_POWS];
 UBYTE   POW_pow_free;
 UBYTE	POW_pow_used;
 
-UBYTE POW_mapwho[PAP_SIZE_LO];
+UBYTE POW_mapwho[PAP_SIZE_LO_MAX];
 
 //
 // POW flags. They remember if the've spawned a child yet.

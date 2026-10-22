@@ -12,12 +12,24 @@
 #undef ELE_SIZE
 
 
-#define	MAP_HEIGHT_SHIFT		(7)
-#define	MAP_WIDTH_SHIFT			(7)
-#define	MAP_HEIGHT				(128)
-#define	MAP_WIDTH				(128)
-#define	MAP_SIZE				(MAP_HEIGHT*MAP_WIDTH)
-#define	MAP_INDEX(x,y)			(((x)<<MAP_WIDTH_SHIFT)|(y))
+//
+// MAP_WIDTH / MAP_HEIGHT are the size of the map that's loaded now (128 or
+// 256 mapsquares, see pap.h). The MAP array itself is always 256 x 256, so
+// MAP_INDEX() always uses a stride of 256.
+//
+
+extern SLONG PAP_size_hi;
+
+#define	MAP_WIDTH_MAX			(256)
+#define	MAP_HEIGHT_MAX			(256)
+#define	MAP_STRIDE_SHIFT		(8)		// log2(MAP_WIDTH_MAX)
+
+#define	MAP_HEIGHT_SHIFT		((PAP_size_hi > 128) ? 8 : 7)
+#define	MAP_WIDTH_SHIFT			((PAP_size_hi > 128) ? 8 : 7)
+#define	MAP_HEIGHT				(PAP_size_hi)
+#define	MAP_WIDTH				(PAP_size_hi)
+#define	MAP_SIZE				(MAP_HEIGHT_MAX*MAP_WIDTH_MAX)
+#define	MAP_INDEX(x,y)			(((x)<<MAP_STRIDE_SHIFT)|(y))
 #define	ELE_SHIFT				(8)
 #define	ELE_SIZE				(256)
 

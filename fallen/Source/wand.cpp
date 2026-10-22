@@ -573,8 +573,8 @@ SLONG WAND_find_good_start_point_for_car(SLONG* posx, SLONG* posz, SLONG* yaw, S
 
 	if (anywhere)
 	{
-		x = ((Random() % 112) + 8) << 8;
-		z = ((Random() % 112) + 8) << 8;
+		x = ((Random() % (PAP_SIZE_HI - 16)) + 8) << 8;
+		z = ((Random() % (PAP_SIZE_HI - 16)) + 8) << 8;
 	}
 	else
 	{

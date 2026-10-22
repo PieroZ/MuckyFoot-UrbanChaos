@@ -379,13 +379,13 @@ void	move_thing_on_map(Thing *t_thing,GameCoord *new_position)
 
 	if (t_thing->Class != CLASS_VEHICLE)
 	{
-		SATURATE(new_position->X,0,(128<<16)-1);
-		SATURATE(new_position->Z,0,(128<<16)-1);
+		SATURATE(new_position->X,0,(PAP_SIZE_HI<<16)-1);
+		SATURATE(new_position->Z,0,(PAP_SIZE_HI<<16)-1);
 
 		ASSERT(new_position->X>=0);
-		ASSERT(new_position->X>>16<128);
+		ASSERT(new_position->X>>16<PAP_SIZE_HI);
 		ASSERT(new_position->Z>=0);
-		ASSERT(new_position->Z>>16<128);
+		ASSERT(new_position->Z>>16<PAP_SIZE_HI);
 	}
 
 	if (cur_mx != new_mx ||

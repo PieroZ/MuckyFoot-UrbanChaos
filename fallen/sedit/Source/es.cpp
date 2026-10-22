@@ -18,8 +18,8 @@
 // The map.
 // 
 
-ES_Hi ES_hi[PAP_SIZE_HI][PAP_SIZE_HI];
-ES_Lo ES_lo[PAP_SIZE_LO][PAP_SIZE_LO];
+ES_Hi ES_hi[PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
+ES_Lo ES_lo[PAP_SIZE_LO_MAX][PAP_SIZE_LO_MAX];
 
 ES_Thing ES_thing[ES_MAX_THINGS];
 
@@ -28,8 +28,8 @@ ES_Thing ES_thing[ES_MAX_THINGS];
 // Water in the city.
 //
 
-UBYTE ES_city_water_on   [PAP_SIZE_HI][PAP_SIZE_HI];
-SBYTE ES_city_water_level[PAP_SIZE_LO][PAP_SIZE_LO];
+UBYTE ES_city_water_on   [PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
+SBYTE ES_city_water_level[PAP_SIZE_LO_MAX][PAP_SIZE_LO_MAX];
 
 
 //
@@ -38,11 +38,11 @@ SBYTE ES_city_water_level[PAP_SIZE_LO][PAP_SIZE_LO];
 
 typedef struct
 {
-	ES_Hi    es_hi              [PAP_SIZE_HI][PAP_SIZE_HI];
-	ES_Lo    es_lo              [PAP_SIZE_LO][PAP_SIZE_LO];
+	ES_Hi    es_hi              [PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
+	ES_Lo    es_lo              [PAP_SIZE_LO_MAX][PAP_SIZE_LO_MAX];
 	ES_Thing es_thing           [ES_MAX_THINGS];
-	UBYTE    es_city_water_on   [PAP_SIZE_HI][PAP_SIZE_HI];
-	SBYTE    es_city_water_level[PAP_SIZE_LO][PAP_SIZE_LO];
+	UBYTE    es_city_water_on   [PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
+	SBYTE    es_city_water_level[PAP_SIZE_LO_MAX][PAP_SIZE_LO_MAX];
 
 } ES_Undo;
 
@@ -459,10 +459,10 @@ void ES_build_sewers()
 		this_top       = 0;
 		this_top_count = 0;
 
-		if (eh[PAP_SIZE_HI *  0 - 0].type == ES_TYPE_ROCK) {this_top_count += 1; this_top += eh[PAP_SIZE_HI *  0 - 0].height;}
-		if (eh[PAP_SIZE_HI *  0 - 1].type == ES_TYPE_ROCK) {this_top_count += 1; this_top += eh[PAP_SIZE_HI *  0 - 1].height;}
-		if (eh[PAP_SIZE_HI * -1 - 0].type == ES_TYPE_ROCK) {this_top_count += 1; this_top += eh[PAP_SIZE_HI * -1 - 0].height;}
-		if (eh[PAP_SIZE_HI * -1 - 1].type == ES_TYPE_ROCK) {this_top_count += 1; this_top += eh[PAP_SIZE_HI * -1 - 1].height;}
+		if (eh[PAP_SIZE_HI_MAX *  0 - 0].type == ES_TYPE_ROCK) {this_top_count += 1; this_top += eh[PAP_SIZE_HI_MAX *  0 - 0].height;}
+		if (eh[PAP_SIZE_HI_MAX *  0 - 1].type == ES_TYPE_ROCK) {this_top_count += 1; this_top += eh[PAP_SIZE_HI_MAX *  0 - 1].height;}
+		if (eh[PAP_SIZE_HI_MAX * -1 - 0].type == ES_TYPE_ROCK) {this_top_count += 1; this_top += eh[PAP_SIZE_HI_MAX * -1 - 0].height;}
+		if (eh[PAP_SIZE_HI_MAX * -1 - 1].type == ES_TYPE_ROCK) {this_top_count += 1; this_top += eh[PAP_SIZE_HI_MAX * -1 - 1].height;}
 
 		if (this_top_count)
 		{

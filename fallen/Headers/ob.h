@@ -10,7 +10,8 @@
 // defines
 
 #define OB_MAX_OBS			2048
-#define OB_SIZE				PAP_SIZE_LO
+#define OB_SIZE				PAP_SIZE_LO		// The map that's loaded now
+#define OB_SIZE_MAX			PAP_SIZE_LO_MAX	// Array size
 #define OB_MAX_PER_SQUARE	31
 
 #define	OB_FLAG_ON_FLOOR	(1<<0)
@@ -75,7 +76,7 @@ typedef struct
 // Data
 //
 
-typedef	OB_Mapwho  OB_workaround[OB_SIZE];
+typedef	OB_Mapwho  OB_workaround[OB_SIZE_MAX];
 extern OB_workaround *OB_mapwho; //[OB_SIZE][OB_SIZE];
 extern OB_Ob     *OB_ob;//[OB_MAX_OBS];
 extern SLONG     OB_ob_upto;

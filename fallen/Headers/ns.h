@@ -55,7 +55,7 @@ typedef struct
 
 } NS_Hi;
 
-extern NS_Hi NS_hi[PAP_SIZE_HI][PAP_SIZE_HI];
+extern NS_Hi NS_hi[PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
 
 //
 // Each low-res mapsquare has its points and faces pre-calculated
@@ -239,7 +239,7 @@ typedef struct
 
 } NS_Lo;
 
-extern NS_Lo NS_lo[PAP_SIZE_LO][PAP_SIZE_LO];
+extern NS_Lo NS_lo[PAP_SIZE_LO_MAX][PAP_SIZE_LO_MAX];
 
 
 

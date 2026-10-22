@@ -86,7 +86,7 @@ typedef struct
 
 NIGHT_Smap_2d *NIGHT_smap;
 
-UWORD	floor_psx_col[PAP_SIZE_HI][PAP_SIZE_HI];
+UWORD	floor_psx_col[PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
 UBYTE	floor_lum[32][32];
 SBYTE	lum_off_x;
 SBYTE	lum_off_z;
@@ -119,7 +119,7 @@ UBYTE        NIGHT_dlight_used;
 // 1D mapwho for dynamic lights.
 //
 
-UBYTE NIGHT_dlight_mapwho[PAP_SIZE_LO];
+UBYTE NIGHT_dlight_mapwho[PAP_SIZE_LO_MAX];
 
 
 //

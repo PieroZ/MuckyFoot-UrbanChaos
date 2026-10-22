@@ -48,7 +48,7 @@ void MAV_init()
 {
 	SLONG i;
 
-	MAV_nav_pitch = 128;
+	MAV_nav_pitch = PAP_SIZE_HI;
 	MAV_opt_upto  = 0;
 
 	//
@@ -210,7 +210,7 @@ void MAV_calc_height_array(SLONG ignore_warehouses)
 					// Mark this mapsquare as being inside a warehouse (top bit!)
 					//
 
-					ph = &PAP_2HI(rf->RX&127,rf->RZ&127);
+					ph = &PAP_2HI(rf->RX,rf->RZ);
 
 					ph->Texture |= 1 << 15;
 				}
@@ -220,9 +220,9 @@ void MAV_calc_height_array(SLONG ignore_warehouses)
 
 				SATURATE(height, -127, +127);
 
-				if (MAVHEIGHT(rf->RX&127,rf->RZ&127) < height)
+				if (MAVHEIGHT(rf->RX,rf->RZ) < height)
 				{
-					MAVHEIGHT(rf->RX&127,rf->RZ&127) = height;
+					MAVHEIGHT(rf->RX,rf->RZ) = height;
 				}
 			}
 		}
@@ -1738,14 +1738,14 @@ SLONG      MAV_node_upto;
 // to say whether we have been here or not.
 //
 
-UBYTE MAV_flag[MAP_HEIGHT][MAP_WIDTH / 2];
+UBYTE MAV_flag[MAP_HEIGHT_MAX][MAP_WIDTH_MAX / 2];
 
 //
 // Each UBYTE is four squares-worth of the direction
 // we have come from.
 //
 
-UBYTE MAV_dir[MAP_HEIGHT][MAP_WIDTH / 4];
+UBYTE MAV_dir[MAP_HEIGHT_MAX][MAP_WIDTH_MAX / 4];
 
 
 

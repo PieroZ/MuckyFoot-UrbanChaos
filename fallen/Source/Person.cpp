@@ -61,7 +61,7 @@
 #include "PersonPZI.h"
 
 #ifndef PSX
-UBYTE	player_visited[16][128];
+UBYTE	player_visited[PAP_SIZE_HI_MAX >> 3][PAP_SIZE_HI_MAX];
 extern	SLONG	save_psx;
 #else
 #define save_psx (1)
@@ -478,8 +478,8 @@ SWORD health[PERSON_NUM_TYPES]=
 void	set_player_visited(UBYTE x,UBYTE z)
 {
 	UWORD	bit;
-	ASSERT(WITHIN(x, 0, 127));
-	ASSERT(WITHIN(z, 0, 127));
+	ASSERT(WITHIN(x, 0, PAP_SIZE_HI - 1));
+	ASSERT(WITHIN(z, 0, PAP_SIZE_HI - 1));
 	bit=x&7;
 	x=x>>3;
 	player_visited[x][z]|=1<<bit;
@@ -1504,7 +1504,7 @@ void person_splash(
 
 			mx=(track_x-(dx*0x1ff))>>16;
 			mz=(track_z-(dz*0x1ff))>>16;
-			if(mx>=0 && mz<128 && mz>=0 && mz<128)
+			if(mx>=0 && mx<PAP_SIZE_HI && mz>=0 && mz<PAP_SIZE_HI)
 				if(!(MAV_SPARE(mx ,mz) & MAV_SPARE_FLAG_WATER))
 					p_person->Genus.Person->muckyfootprint=TRACKS_Add(track_x-(dx*0x1ff),track_y-(dy*0x1ff),track_z-(dz*0x1ff),dx*2,dy*2,dz*2,type,p_person->Genus.Person->muckyfootprint);
 		}
@@ -1531,7 +1531,7 @@ void person_splash(
 
 			mx=(track_x-(dx*0x1ff))>>16;
 			mz=(track_z-(dz*0x1ff))>>16;
-			if(mx>=0 && mz<128 && mz>=0 && mz<128)
+			if(mx>=0 && mx<PAP_SIZE_HI && mz>=0 && mz<PAP_SIZE_HI)
 				if(!(MAV_SPARE(mx ,mz) & MAV_SPARE_FLAG_WATER))
 					p_person->Genus.Person->muckyfootprint=TRACKS_Add(track_x-(dx*0x1ff),track_y-(dy*0x1ff),track_z-(dz*0x1ff),dx*2,dy*2,dz*2,type,p_person->Genus.Person->muckyfootprint);
 		}
@@ -4845,7 +4845,7 @@ SLONG	check_on_slippy_slope(Thing *p_person)
 		}
 
 		if(p_person->OnFace==0 &&p_person->Genus.Person->Ware==0)
-	 	if (PAP_2HI((p_person->WorldPos.X >> 16)&127, (p_person->WorldPos.Z >> 16)&127).Flags & PAP_FLAG_NOGO)
+	 	if (PAP_2HI(PAP_clamp_hi(p_person->WorldPos.X >> 16), PAP_clamp_hi(p_person->WorldPos.Z >> 16)).Flags & PAP_FLAG_NOGO)
 		{
 			//
 			// shit its a nogo, so lets ping to nearest normal space
@@ -4858,7 +4858,7 @@ SLONG	check_on_slippy_slope(Thing *p_person)
 					SLONG	dx,dz;
 					dx=(COS(angle)*step)>>8;
 					dz=(SIN(angle)*step)>>8;
-				 	if (!(PAP_2HI(((p_person->WorldPos.X+dx) >> 16)&127, ((p_person->WorldPos.Z+dz) >> 16)&127).Flags & PAP_FLAG_NOGO))
+				 	if (!(PAP_2HI(PAP_clamp_hi((p_person->WorldPos.X+dx) >> 16), PAP_clamp_hi((p_person->WorldPos.Z+dz) >> 16)).Flags & PAP_FLAG_NOGO))
 					{
 						GameCoord newpos;
 
@@ -5033,8 +5033,8 @@ void person_normal_move_dxdz(Thing *p_person,SLONG dx,SLONG dz)
 
 			mx=(p_person->WorldPos.X+dx) >> 16;
 			mz=(p_person->WorldPos.Z+dz) >> 16;
-			mx&=127;
-			mz&=127;
+			SATURATE(mx, 0, PAP_SIZE_HI - 1);
+			SATURATE(mz, 0, PAP_SIZE_HI - 1);
 
 
 			if (PAP_2HI(mx,mz).Flags & PAP_FLAG_HIDDEN)
@@ -5226,7 +5226,7 @@ void person_normal_move_check(Thing *p_person)
 	x=dx+p_person->WorldPos.X;
 	z=dz+p_person->WorldPos.Z;
 
-	if(x<0||z<0||x>=(128<<16)||z>=(128<<16))
+	if(x<0||z<0||x>=(PAP_SIZE_HI<<16)||z>=(PAP_SIZE_HI<<16))
 		return;
 
 	person_normal_move_dxdz(p_person,dx,dz);
@@ -13555,9 +13555,9 @@ SLONG	over_nogo(Thing *p_person)
 		return(0);
 	mx=p_person->WorldPos.X>>16;
 	mz=p_person->WorldPos.Z>>16;
-	if(mx>=0&&mx<128 && mz>=0 && mz<=128)
+	if(mx>=0&&mx<PAP_SIZE_HI && mz>=0 && mz<PAP_SIZE_HI)
 	{
-	 	if (PAP_2HI((mx)&127, (mz)&127).Flags & PAP_FLAG_NOGO)
+	 	if (PAP_2HI(mx, mz).Flags & PAP_FLAG_NOGO)
 		{
 			return	1;
 		}
@@ -21683,7 +21683,7 @@ SLONG	check_near_facet(Thing *p_person,SLONG max_dist,SLONG max_end_dist,SLONG p
 		}
 		loop--;
 		exit   = FALSE;
-		if(mx>=0 && mz>=0 && mx<32 && mz<32)
+		if(mx>=0 && mz>=0 && mx<PAP_SIZE_LO && mz<PAP_SIZE_LO)
 		{
 			f_list = PAP_2LO(mx,mz).ColVectHead;
 

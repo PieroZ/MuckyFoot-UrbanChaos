@@ -63,7 +63,7 @@ void OB_init()
 
 	OB_ob_upto = 1;
 
-	memset((UBYTE*)OB_mapwho,  0, sizeof(OB_Mapwho ) * OB_SIZE * OB_SIZE);
+	memset((UBYTE*)OB_mapwho,  0, sizeof(OB_Mapwho ) * OB_SIZE_MAX * OB_SIZE_MAX);
 	memset((UBYTE*)OB_hydrant, 0, sizeof(OB_Hydrant) * OB_MAX_HYDRANTS);
 }
 #else

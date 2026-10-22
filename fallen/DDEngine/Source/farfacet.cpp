@@ -20,7 +20,8 @@
 //
 
 #define FARFACET_RATIO (4)			// 4x4 lo-res mapsqures in a FARFACET_square
-#define FARFACET_SIZE  (PAP_SIZE_LO / FARFACET_RATIO)
+#define FARFACET_SIZE  (PAP_SIZE_LO / FARFACET_RATIO)		// The map that's loaded now
+#define FARFACET_SIZE_MAX (PAP_SIZE_LO_MAX / FARFACET_RATIO)	// Array size
 
 
 
@@ -59,7 +60,7 @@ typedef struct
 
 } FARFACET_Square;
 
-FARFACET_Square FARFACET_square[FARFACET_SIZE][FARFACET_SIZE];
+FARFACET_Square FARFACET_square[FARFACET_SIZE_MAX][FARFACET_SIZE_MAX];
 
 
 //

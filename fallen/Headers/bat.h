@@ -30,9 +30,9 @@ typedef struct
 	UWORD target;
 	UWORD timer;
 	UWORD flag;
-	SWORD want_x;
-	SWORD want_y;
-	SWORD want_z;
+	SLONG want_x;	// SLONG for 256x256 maps.
+	SLONG want_y;
+	SLONG want_z;
 	UWORD glow;	// How much bane glows...
 	SLONG dx;
 	SLONG dy;

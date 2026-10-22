@@ -348,8 +348,8 @@ void ELEV_load_level(CBYTE *fname_level)
 				{
 SLONG	WAND_find_good_start_point_near(SLONG *mapx,SLONG *mapz);
 
-					mx=(Random()%100)+14;
-					mz=(Random()%100)+14;
+					mx=(Random()%(PAP_SIZE_HI-28))+14;
+					mz=(Random()%(PAP_SIZE_HI-28))+14;
 
 
 
@@ -2207,6 +2207,14 @@ SLONG ELEV_game_init(
 	//
 
 	strcpy(ELEV_last_map_loaded, fname_map);
+
+	//
+	// 128x128 or 256x256? Needed before anything below clears its map arrays.
+	//
+
+extern void peek_game_map_size(CBYTE *name);
+
+	peek_game_map_size(fname_map);
 
 	//
 	// Sets the prim arrays to be just after all the person points

@@ -670,8 +670,8 @@ void	attach_walkable_to_map(SLONG face)
 	else
 	{
 
-		roof_faces4[-face].Next=PAP_2LO((roof_faces4[-face].RX&127)>>2,(roof_faces4[-face].RZ&127)>>2).Walkable;
-		PAP_2LO((roof_faces4[-face].RX&127)>>2,(roof_faces4[-face].RZ&127)>>2).Walkable=face;
+		roof_faces4[-face].Next=PAP_2LO((roof_faces4[-face].RX)>>2,(roof_faces4[-face].RZ)>>2).Walkable;
+		PAP_2LO((roof_faces4[-face].RX)>>2,(roof_faces4[-face].RZ)>>2).Walkable=face;
 	}
 
 }

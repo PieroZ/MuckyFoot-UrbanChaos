@@ -1349,8 +1349,8 @@ void calc_slide_edges_roof()
 		SLONG	x,z;
 		//rf1->DrawFlags|=0x78;
 
-		x=(rf1->RX&127)<<8;
-		z=(rf1->RZ&127)<<8;
+		x=(rf1->RX)<<8;
+		z=(rf1->RZ)<<8;
 
 		//
 		// check for fences above
@@ -1379,8 +1379,8 @@ void calc_slide_edges_roof()
 			SLONG	pap[4],roof[4];
 			SLONG	d1,d2,c1;
 			SLONG	mx,mz;
-			mx=(rf1->RX&127)<<8;
-			mz=(rf1->RZ&127)<<8;
+			mx=(rf1->RX)<<8;
+			mz=(rf1->RZ)<<8;
 
 			pap[0]=PAP_calc_height_at(mx,mz);
 			pap[1]=PAP_calc_height_at(mx+256,mz);
@@ -1415,8 +1415,8 @@ void calc_slide_edges_roof()
 
 		{
 			SLONG	mx,mz;
-			mx=((rf1->RX&127)>>2)+dx;
-			mz=((rf1->RZ&127)>>2)+dz;
+			mx=((rf1->RX)>>2)+dx;
+			mz=((rf1->RZ)>>2)+dz;
 
 			if(mx>=0 && mz>=0 && mx<PAP_SIZE_LO && mz<PAP_SIZE_LO)
 			{
@@ -1430,9 +1430,9 @@ void calc_slide_edges_roof()
 						rf2=&roof_faces4[-index];
 //						if(rf1!=rf2)
 						{
-							if((rf1->RX&127)==(rf2->RX&127))
+							if((rf1->RX)==(rf2->RX))
 							{
-								if((rf1->RZ&127)==(rf2->RZ&127)+1)
+								if((rf1->RZ)==(rf2->RZ)+1)
 								{
 									SLONG	d1,d2;
 									// rf2
@@ -1445,7 +1445,7 @@ void calc_slide_edges_roof()
 									if(d1>=0 && d1<SLIDE_EDGE_HEIGHT && d2>=0&&d2<=SLIDE_EDGE_HEIGHT)
 										rf1->DrawFlags&=~RFACE_FLAG_SLIDE_EDGE_0;
 								}
-								if((rf1->RZ&127)==(rf2->RZ&127)-1)
+								if((rf1->RZ)==(rf2->RZ)-1)
 								{
 									// rf1
 									// rf2
@@ -1459,9 +1459,9 @@ void calc_slide_edges_roof()
 										rf1->DrawFlags&=~RFACE_FLAG_SLIDE_EDGE_2;
 								}
 							}
-							if((rf1->RZ&127)==(rf2->RZ&127))
+							if((rf1->RZ)==(rf2->RZ))
 							{
-								if((rf1->RX&127)==(rf2->RX&127)+1)
+								if((rf1->RX)==(rf2->RX)+1)
 								{
 									//  rf2 rf1
 									//
@@ -1470,7 +1470,7 @@ void calc_slide_edges_roof()
 									if(d1>=0 && d1<SLIDE_EDGE_HEIGHT && d2>=0&&d2<=SLIDE_EDGE_HEIGHT)
 										rf1->DrawFlags&=~RFACE_FLAG_SLIDE_EDGE_3;
 								}
-								if((rf1->RX&127)==(rf2->RX&127)-1)
+								if((rf1->RX)==(rf2->RX)-1)
 								{
 									//  rf1 rf2
 									//

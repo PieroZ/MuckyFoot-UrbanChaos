@@ -15,7 +15,7 @@
 #define	EDGE_RIGHT	(1<<2)
 #define	EDGE_BOTTOM	(1<<3)
 
-extern	UBYTE	player_visited[16][128];
+extern	UBYTE	player_visited[PAP_SIZE_HI_MAX >> 3][PAP_SIZE_HI_MAX];
 
 
 
@@ -387,7 +387,7 @@ extern UBYTE* image_mem;
 		for(x=minx;x<maxx;x++)
 		{
 			
-			if(x>1&&x<127&&z>1&&z<127)
+			if(x>1&&x<PAP_SIZE_HI-1&&z>1&&z<PAP_SIZE_HI-1)
 			{
 				if(player_visited[x>>3][z]&(1<<(x&7)))
 				{

@@ -119,7 +119,7 @@ extern	float POLY_cam_z;
 			{
 				p=128-(px&0xff);
 
-				if(px>(127<<8))
+				if(px>((PAP_SIZE_HI-1)<<8))
 					height2=0;
 				else
 					height2=MAVHEIGHT((px>>8)+1,pz>>8)<<6;
@@ -147,7 +147,7 @@ extern	float POLY_cam_z;
 			if((pz&0xff)<128)
 			{
 				p=128-(pz&0xff);
-				if(pz>(127<<8))
+				if(pz>((PAP_SIZE_HI-1)<<8))
 					height2=0;
 				else
 					height2=MAVHEIGHT(px>>8,(pz>>8)+1)<<6;

@@ -49,7 +49,7 @@ UBYTE        NIGHT_dlight_used;
 NIGHT_Square  NIGHT_square[NIGHT_MAX_SQUARES];
 UWORD         NIGHT_square_free;
 SLONG         NIGHT_square_num_used;
-UWORD         NIGHT_cache[PAP_SIZE_LO][PAP_SIZE_LO];
+UWORD         NIGHT_cache[PAP_SIZE_LO_MAX][PAP_SIZE_LO_MAX];
 
 NIGHT_Dfcache NIGHT_dfcache[NIGHT_MAX_DFCACHES];
 UBYTE         NIGHT_dfcache_free;
@@ -181,7 +181,7 @@ void NIGHT_slight_compress()
 
 void NIGHT_slight_init()
 {
-	memset((UBYTE*)NIGHT_smap, 0, sizeof(UWORD) * PAP_SIZE_LO * PAP_SIZE_LO);
+	memset((UBYTE*)NIGHT_smap, 0, sizeof(NIGHT_Smap) * PAP_SIZE_LO_MAX * PAP_SIZE_LO_MAX);
 
 	NIGHT_slight_upto = 0;
 }
@@ -373,7 +373,7 @@ void NIGHT_slight_delete(
 
 void NIGHT_slight_delete_all()
 {
-	memset((UBYTE*)NIGHT_smap, 0, sizeof(UBYTE) * PAP_SIZE_LO * PAP_SIZE_LO);
+	memset((UBYTE*)NIGHT_smap, 0, sizeof(NIGHT_Smap) * PAP_SIZE_LO_MAX * PAP_SIZE_LO_MAX);
 
 	NIGHT_slight_upto = 0;
 }
@@ -3460,7 +3460,7 @@ SLONG NIGHT_check_index(SLONG walkable_prim_point_index)
 #endif
 
 NIGHT_Colour NIGHT_roof_walkable[MAX_ROOF_FACE4*4];
-UWORD	hidden_roof_index[128][128];
+UWORD	hidden_roof_index[PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
 
 void	calc_lighting__for_point(SLONG prim_x,SLONG prim_y,SLONG prim_z,NIGHT_Colour *nc)
 {
@@ -3690,8 +3690,8 @@ void	NIGHT_generate_roof_walkable()
 				SLONG	roof_face_x,roof_face_z;
 
 				rf=&roof_faces4[i];
-				roof_face_x=(rf->RX&127)<<8;
-				roof_face_z=(rf->RZ&127)<<8;
+				roof_face_x=(rf->RX)<<8;
+				roof_face_z=(rf->RZ)<<8;
 
 				if (i > max_face)
 				{
@@ -3751,9 +3751,9 @@ void	NIGHT_generate_roof_walkable()
 		amb_green = NIGHT_amb_green * amb_amount >> 8;
 		amb_blue  = NIGHT_amb_blue  * amb_amount >> 8;
 
-		for(x=0;x<128;x++)
+		for(x=0;x<PAP_SIZE_HI;x++)
 		{
-			for(z=0;z<128;z++)
+			for(z=0;z<PAP_SIZE_HI;z++)
 			{
 				if(PAP_hi[x][z].Flags&PAP_FLAG_ROOF_EXISTS)
 				{

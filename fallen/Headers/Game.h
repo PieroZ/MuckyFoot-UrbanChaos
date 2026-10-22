@@ -393,11 +393,11 @@ extern	UBYTE			VIOLENCE;
 #ifdef TARGET_DC
 // Don't use these!
 #define	MAP						(ASSERT(FALSE),the_game.Map)
-#define	MAP2(x,y)				(ASSERT(FALSE),the_game.Map[(y)+((x)*MAP_WIDTH)])
+#define	MAP2(x,y)				(ASSERT(FALSE),the_game.Map[(y)+((x)*MAP_WIDTH_MAX)])
 #define	MAP_WHO(i)				(ASSERT(FALSE),MAP[i].MapWho)
 #else
 #define	MAP						(the_game.Map)
-#define	MAP2(x,y)				(the_game.Map[(y)+((x)*MAP_WIDTH)])
+#define	MAP2(x,y)				(the_game.Map[(y)+((x)*MAP_WIDTH_MAX)])
 #define	MAP_WHO(i)				(MAP[i].MapWho)
 #endif
 

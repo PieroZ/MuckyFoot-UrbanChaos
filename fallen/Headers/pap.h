@@ -11,9 +11,47 @@ struct	Thing;
 // The size of the map and the number of blocks per map square.
 //
 
-#define PAP_SIZE_HI	128
-#define PAP_SIZE_LO	32
-#define PAP_BLOCKS	(PAP_SIZE_HI / PAP_SIZE_LO)
+//
+// The arrays are always big enough for the largest map (256 x 256 mapsquares),
+// PAP_SIZE_HI / PAP_SIZE_LO are the size of the map that is loaded now:
+// 128 x 128 for all the original missions, 256 x 256 for the big maps.
+//
+// Arrays must be declared with the _MAX sizes. Loops and bounds checks use
+// PAP_SIZE_HI / PAP_SIZE_LO.
+//
+
+#define PAP_SIZE_HI_MAX	256
+#define PAP_SIZE_LO_MAX	64
+
+#define PAP_SIZE_HI_SMALL	128		// The original map size
+#define PAP_SIZE_LO_SMALL	32
+
+extern SLONG PAP_size_hi;			// 128 or 256
+
+#define PAP_SIZE_HI	(PAP_size_hi)
+#define PAP_SIZE_LO	(PAP_size_hi >> 2)
+#define PAP_BLOCKS	4
+
+//
+// Is the map that is loaded one of the big ones?
+//
+
+#define PAP_IS_BIG_MAP() (PAP_size_hi > PAP_SIZE_HI_SMALL)
+
+void PAP_set_map_size(SLONG size_hi);
+
+//
+// .iam files of big maps have this added to their save_type, followed by the
+// map size. Old 128x128 maps are unchanged.
+//
+
+#define PAP_BIG_MAP_SAVE_TYPE 100
+
+//
+// A mapsquare coordinate forced onto the map.
+//
+
+#define PAP_clamp_hi(v) (((v) < 0) ? 0 : (((v) >= PAP_SIZE_HI) ? (PAP_SIZE_HI - 1) : (v)))		// 128 or 256
 
 
 
@@ -94,8 +132,8 @@ typedef struct
 
 
 
-typedef	PAP_Lo  MEM_PAP_Lo[PAP_SIZE_LO];
-typedef	PAP_Hi  MEM_PAP_Hi[PAP_SIZE_HI];
+typedef	PAP_Lo  MEM_PAP_Lo[PAP_SIZE_LO_MAX];
+typedef	PAP_Hi  MEM_PAP_Hi[PAP_SIZE_HI_MAX];
 
 extern	MEM_PAP_Lo *PAP_lo; //[PAP_SIZE_LO][PAP_SIZE_LO];
 extern	MEM_PAP_Hi *PAP_hi; //[PAP_SIZE_HI][PAP_SIZE_HI];

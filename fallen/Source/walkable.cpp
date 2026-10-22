@@ -344,7 +344,7 @@ SLONG	is_thing_on_this_quad(SLONG x,SLONG z,SLONG face)
 		rf=&roof_faces4[-face];
 		x>>=8;
 		z>>=8;
-		if(x==(rf->RX&127) && z==(rf->RZ&127))
+		if(x==(rf->RX) && z==(rf->RZ))
 			return(1);
 		else
 			return(0);
@@ -400,12 +400,12 @@ SLONG calc_height_on_rface(SLONG x, SLONG z,SWORD	face,SLONG *ret_y)
 
 	rf=&roof_faces4[face];
 
-	if(x>>8!=(rf->RX&127) ||z>>8!=(rf->RZ&127))
+	if(x>>8!=(rf->RX) ||z>>8!=(rf->RZ))
 		return(0);
 
 
 	h0 = rf->Y;
-	if(!(rf->RZ&128))
+	if(!(rf->RFlags & RFACE_RFLAG_SLOPED))
 	{
 		*ret_y=h0;
 		return(face);
@@ -416,7 +416,7 @@ SLONG calc_height_on_rface(SLONG x, SLONG z,SWORD	face,SLONG *ret_y)
 	h3 = h0+(rf->DY[1]<<ROOF_SHIFT);
 
 	{
-		if(rf->RX&1<<7)
+		if(rf->RFlags & RFACE_RFLAG_SPLIT_FUNNY)
 		{
 			xfrac = x & 0xff;
 			zfrac = z & 0xff;
@@ -732,13 +732,13 @@ SLONG	RFACE_on_slope(SLONG face,SLONG x,SLONG z,SLONG *angle)
 		return(0);
 
 	rf=&roof_faces4[face];
-	if(!(rf->RZ&128))
+	if(!(rf->RFlags & RFACE_RFLAG_SLOPED))
 	{
 		*angle=0;
 		return(0);
 	}
 
-	if(x>>8!=(rf->RX&127) ||z>>8!=(rf->RZ&127))
+	if(x>>8!=(rf->RX) ||z>>8!=(rf->RZ))
 		return(0);
 
 
@@ -773,7 +773,7 @@ SLONG	RFACE_on_slope(SLONG face,SLONG x,SLONG z,SLONG *angle)
 		xfrac = x & 0xff;
 		zfrac = z & 0xff;
 
-		if(rf->RX&(1<<7))
+		if(rf->RFlags & RFACE_RFLAG_SPLIT_FUNNY)
 		{
 			if (xfrac + (256-zfrac) < 0x100)
 			{
@@ -941,8 +941,8 @@ void WALKABLE_remove_rface(UBYTE map_x, UBYTE map_z)
 		{
 			rf = &roof_faces4[-next];
 
-			if ((rf->RX&127) == map_x &&
-				(rf->RZ&127) == map_z)
+			if ((rf->RX) == map_x &&
+				(rf->RZ) == map_z)
 			{
 				//
 				// We have found the face to get rid of.  Take it out of the linked list

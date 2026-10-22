@@ -73,7 +73,7 @@ SLONG       SPARK_spark_last;
 // The spark mapwho.
 //
 
-UBYTE SPARK_mapwho[MAP_HEIGHT];
+UBYTE SPARK_mapwho[MAP_HEIGHT_MAX];
 
 
 void SPARK_init()

@@ -325,10 +325,30 @@ struct	RoofFace4
 	SWORD	Y;
 	SBYTE	DY[3];
 	UBYTE	DrawFlags;
+	UBYTE	RX;		// Mapsquare (0..255). Old 128x128 files kept two flags in bit 7 of
+	UBYTE	RZ;		// these; they're moved into RFlags when the map is loaded.
+	SWORD	Next; //link list of walkables off floor 
+	UBYTE	RFlags;	// RFACE_RFLAG_*
+	UBYTE	RSpare;
+
+};
+
+#define RFACE_RFLAG_SPLIT_FUNNY	(1 << 0)	// Was bit 7 of RX: split the quad along the other diagonal.
+#define RFACE_RFLAG_SLOPED		(1 << 1)	// Was bit 7 of RZ: not flat (or a warehouse roof).
+
+//
+// How roof faces are stored in .iam files of 128x128 maps (10 bytes each).
+// Big maps store struct RoofFace4 as it is.
+//
+
+struct	RoofFace4Old
+{
+	SWORD	Y;
+	SBYTE	DY[3];
+	UBYTE	DrawFlags;
 	UBYTE	RX;
 	UBYTE	RZ;
-	SWORD	Next; //link list of walkables off floor 
-
+	SWORD	Next;
 };
 
 #ifdef	PSX

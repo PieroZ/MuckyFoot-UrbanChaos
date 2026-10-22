@@ -128,8 +128,8 @@ void SHADOW_do()
 	{
 		rf = &roof_faces4[i];
 
-		map_x = rf->RX&127;
-		map_z = rf->RZ&127;
+		map_x = rf->RX;
+		map_z = rf->RZ;
 
 		if (WITHIN(map_x, 1, PAP_SIZE_HI - 2) &&
 			WITHIN(map_z, 1, PAP_SIZE_HI - 2))

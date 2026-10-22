@@ -620,7 +620,7 @@ SLONG	projectile_move_thing(Thing *p_thing,SLONG flag)
 				y2 = y1 + dy;
 				z2 = z1 - dz;
 
-				if(x2<0||(x2>>16)>127 || z2<0 || (z2>>16)>127)
+				if(x2<0||(x2>>16)>PAP_SIZE_HI-1 || z2<0 || (z2>>16)>PAP_SIZE_HI-1)
 					return(0);
 
 #if !defined(PSX) && !defined(TARGET_DC)
@@ -815,7 +815,7 @@ SLONG	projectile_move_thing(Thing *p_thing,SLONG flag)
 	new_position.Z	-=	dz;
 	new_position.Y	+=	dy;
 
-	if(new_position.X<0||(new_position.X>>16)>127 || new_position.Z<0 || (new_position.Z>>16)>127)
+	if(new_position.X<0||(new_position.X>>16)>PAP_SIZE_HI-1 || new_position.Z<0 || (new_position.Z>>16)>PAP_SIZE_HI-1)
 		return(0);
 
 	SATURATE(new_position.X, 0, (PAP_SIZE_HI << 16) - 1);

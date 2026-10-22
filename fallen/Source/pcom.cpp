@@ -13961,7 +13961,7 @@ struct	Noise
 {
 	UWORD	Type;
 	UWORD	Person;
-	SWORD	X,Y,Z;
+	SLONG	X,Y,Z;
 };
 
 

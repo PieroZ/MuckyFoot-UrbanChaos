@@ -4734,8 +4734,8 @@ UBYTE AENG_aa_buffer[AENG_AA_BUF_SIZE][AENG_AA_BUF_SIZE];
 #endif
 
 #ifndef	NEW_FLOOR
-POLY_Point AENG_upper[MAP_WIDTH / 2 + MAP_SIZE_TWEAK][MAP_HEIGHT / 2 + MAP_SIZE_TWEAK];
-POLY_Point AENG_lower[MAP_WIDTH / 2 + MAP_SIZE_TWEAK*2][MAP_HEIGHT / 2 + MAP_SIZE_TWEAK*2];
+POLY_Point AENG_upper[128 / 2 + MAP_SIZE_TWEAK][128 / 2 + MAP_SIZE_TWEAK];		// A ring buffer (& 63) - not the size of the map
+POLY_Point AENG_lower[128 / 2 + MAP_SIZE_TWEAK*2][128 / 2 + MAP_SIZE_TWEAK*2];
 #endif
 
 
@@ -7745,7 +7745,7 @@ extern	SLONG	tick_tock_unclipped;
 			ASSERT(WITHIN(x, 0, MAP_WIDTH  - 1));
 			ASSERT(WITHIN(z, 0, MAP_HEIGHT - 1));
 
-extern	UBYTE	player_visited[16][128];
+extern	UBYTE	player_visited[PAP_SIZE_HI_MAX >> 3][PAP_SIZE_HI_MAX];
 //			player_visited[x>>3][z]|=1<<(x&7);
 
 			ph = &PAP_2HI(x,z);
@@ -8488,8 +8488,8 @@ extern	UBYTE	player_visited[16][128];
 								else
 								{
 									SLONG	mx,mz;
-									mx=(rf->RX&127)<<8;
-									mz=(rf->RZ&127)<<8;
+									mx=(rf->RX)<<8;
+									mz=(rf->RZ)<<8;
 
 									poly[0].X=(float)(mx);
 									poly[0].Y=(float)(rf->Y);
@@ -9469,7 +9469,7 @@ extern	void SKY_draw_poly_sky_old(float world_camera_x,float world_camera_y,floa
 						POLY_transform((x+1)<<8,y, (z+1)<<8, &fake_roof[2]);
 
 
-	extern	UWORD	hidden_roof_index[128][128];
+	extern	UWORD	hidden_roof_index[PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
 
 						light_lookup=hidden_roof_index[x][z];
 
@@ -12415,8 +12415,8 @@ void AENG_draw_warehouse()
 							{
 								SLONG	mx,mz;
 
-								mx=(rf->RX&127)<<8;
-								mz=(rf->RZ&127)<<8;
+								mx=(rf->RX)<<8;
+								mz=(rf->RZ)<<8;
 
 
 

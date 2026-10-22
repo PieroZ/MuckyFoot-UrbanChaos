@@ -376,8 +376,8 @@ void	release_memory(void)
 struct MemTable save_table[]=
 {
 
-	{M_("Pap_Hi")		,(void**)&PAP_hi				,MEM_STATIC, 0							,0							,PAP_SIZE_HI*PAP_SIZE_HI	,sizeof(PAP_Hi)					,0}, //0
-	{M_("Pap_Lo")		,(void**)&PAP_lo				,MEM_STATIC, 0							,0							,PAP_SIZE_LO*PAP_SIZE_LO	,sizeof(PAP_Lo)					,0}, //1
+	{M_("Pap_Hi")		,(void**)&PAP_hi				,MEM_STATIC, 0							,0							,PAP_SIZE_HI_MAX*PAP_SIZE_HI_MAX	,sizeof(PAP_Hi)					,0}, //0
+	{M_("Pap_Lo")		,(void**)&PAP_lo				,MEM_STATIC, 0							,0							,PAP_SIZE_LO_MAX*PAP_SIZE_LO_MAX	,sizeof(PAP_Lo)					,0}, //1
 	{M_("net_peep")		,(void**)&NETPERSON				,MEM_STATIC, 0							,0							,10							,sizeof(Thing*)					,0}, //2
 	{M_("net_plyr")		,(void**)&NETPLAYERS			,MEM_STATIC, 0							,0							,10							,sizeof(Thing*)					,0}, //3
 	{M_("f-links")		,(void**)&facet_links			,MEM_DYNAMIC,0							,(UWORD*)&next_facet_link	,MAX_FACET_LINK				,sizeof(SWORD)					,0}, //4
@@ -404,7 +404,7 @@ struct MemTable save_table[]=
 */
 																																										
 	{M_("ob_ob")		,(void**)&OB_ob					,MEM_DYNAMIC,&OB_ob_upto				,0							,OB_MAX_OBS					,sizeof(OB_Ob)					,0}, //20				
-	{M_("ob_ mapwho")	,(void**)&OB_mapwho				,MEM_STATIC, 0							,0							,OB_SIZE*OB_SIZE			,sizeof(OB_Mapwho)				,0}, //21
+	{M_("ob_ mapwho")	,(void**)&OB_mapwho				,MEM_STATIC, 0							,0							,OB_SIZE_MAX*OB_SIZE_MAX	,sizeof(OB_Mapwho)				,0}, //21
 	{M_("EWAY_mess")	,(void**)&EWAY_mess				,MEM_DYNAMIC,&EWAY_mess_upto			,0							,EWAY_MAX_MESSES			,sizeof(CBYTE*)					,0}, //22
 	{M_("EWAY_mess buf"),(void**)&EWAY_mess_buffer		,MEM_DYNAMIC,&EWAY_mess_buffer_upto		,0							,EWAY_MESS_BUFFER_SIZE		,sizeof(CBYTE)					,0}, //23
 #ifdef	NEW_LEVELS
@@ -441,14 +441,14 @@ struct MemTable save_table[]=
 
 	//{M_("mav height")	,(void**)&MAV_height			,MEM_STATIC, 0							,0							,PAP_SIZE_HI*PAP_SIZE_HI	,sizeof(SBYTE)					},			
 
-	{M_("mav_nav")		,(void**)&MAV_nav				,MEM_STATIC, 0							,0							,PAP_SIZE_HI*PAP_SIZE_HI	,sizeof(UWORD)					,0}, //48			
+	{M_("mav_nav")		,(void**)&MAV_nav				,MEM_STATIC, 0							,0							,PAP_SIZE_HI_MAX*PAP_SIZE_HI_MAX	,sizeof(UWORD)					,0}, //48			
 	{M_("road_noads")	,(void**)&ROAD_node				,MEM_DYNAMIC,&ROAD_node_upto			,0							,ROAD_MAX_NODES				,sizeof(ROAD_Node)				,0}, //49			
 	{M_("balloons")		,(void**)&BALLOON_balloon		,MEM_DYNAMIC,&BALLOON_balloon_upto		,0							,BALLOON_MAX_BALLOONS		,sizeof(BALLOON_Balloon)		,0}, //50			
 	{M_("tracks")		,(void**)&tracks				,MEM_STATIC, 0							,0							,TRACK_BUFFER_LENGTH		,sizeof(Track)					,0}, //51			
 	{M_("roofface4")	,(void**)&roof_faces4			,MEM_DYNAMIC,0							,&next_roof_face4			,MAX_ROOF_FACE4				,sizeof(struct RoofFace4)		,0}, //52			
-	{M_("fastnav")		,(void**)&COLLIDE_fastnav		,MEM_STATIC, 0							,0							,PAP_SIZE_HI*PAP_SIZE_HI>>3 ,sizeof(UBYTE)					,0}, //53
+	{M_("fastnav")		,(void**)&COLLIDE_fastnav		,MEM_STATIC, 0							,0							,PAP_SIZE_HI_MAX*PAP_SIZE_HI_MAX>>3 ,sizeof(UBYTE)					,0}, //53
 	{M_("night_slight")	,(void**)&NIGHT_slight			,MEM_DYNAMIC,&NIGHT_slight_upto			,0							,NIGHT_MAX_SLIGHTS			,sizeof(NIGHT_Slight)			,0}, //54
-	{M_("night_smap")	,(void**)&NIGHT_smap			,MEM_STATIC	,0							,0							,PAP_SIZE_LO*PAP_SIZE_LO	,sizeof(NIGHT_Smap)				,0}, //55
+	{M_("night_smap")	,(void**)&NIGHT_smap			,MEM_STATIC	,0							,0							,PAP_SIZE_LO_MAX*PAP_SIZE_LO_MAX	,sizeof(NIGHT_Smap)				,0}, //55
 	{M_("night_dlight")	,(void**)&NIGHT_dlight			,MEM_STATIC	,0							,0							,NIGHT_MAX_DLIGHTS			,sizeof(NIGHT_Dlight)			,0}, //56
 	{M_("WARE_ware")	,(void**)&WARE_ware				,MEM_DYNAMIC,0							,&WARE_ware_upto			,WARE_MAX_WARES				,sizeof(WARE_Ware)				,0}, //57
 	{M_("WARE_nav")		,(void**)&WARE_nav				,MEM_DYNAMIC,0							,&WARE_nav_upto				,WARE_MAX_NAVS				,sizeof(UWORD)					,0}, //58
@@ -3281,9 +3281,15 @@ void MEMORY_quick_save(const CBYTE* filename)
 	// Save out a version number.
 	//
 
-	SLONG version = 1;
+	//
+	// Version 2: map arrays are stored at their full 256x256 capacity and the
+	// map size (128 or 256) follows the version number.
+	//
+
+	SLONG version = 2;
 
 	if (fwrite(&version, sizeof(SLONG), 1, handle) != 1) goto file_error;
+	if (fwrite(&PAP_size_hi, sizeof(SLONG), 1, handle) != 1) goto file_error;
 
 	//
 	// Go through the memory table and save all arrays.
@@ -3469,7 +3475,7 @@ void MEMORY_quick_save(const CBYTE* filename)
 
 	if (fwrite( NIGHT_square,       sizeof(NIGHT_Square),      NIGHT_MAX_SQUARES        , handle) != NIGHT_MAX_SQUARES        ) goto file_error;
 	if (fwrite(&NIGHT_square_free,  sizeof(NIGHT_square_free), 1                        , handle) != 1                        ) goto file_error;
-	if (fwrite( NIGHT_cache,        sizeof(NIGHT_cache[0][0]), PAP_SIZE_LO * PAP_SIZE_LO, handle) != PAP_SIZE_LO * PAP_SIZE_LO) goto file_error;
+	if (fwrite( NIGHT_cache,        sizeof(NIGHT_cache[0][0]), PAP_SIZE_LO_MAX * PAP_SIZE_LO_MAX, handle) != PAP_SIZE_LO_MAX * PAP_SIZE_LO_MAX) goto file_error;
 
 	if (fwrite( NIGHT_dfcache,      sizeof(NIGHT_Dfcache),     NIGHT_MAX_DFCACHES       , handle) != NIGHT_MAX_DFCACHES       ) goto file_error;
 	if (fwrite(&NIGHT_dfcache_used, sizeof(UBYTE),             1                        , handle) != 1                        ) goto file_error;
@@ -3533,7 +3539,24 @@ SLONG MEMORY_quick_load(const CBYTE* filename)
 
 	if (fread(&version, sizeof(SLONG), 1, handle) != 1) goto file_error;
 
-	ASSERT(version == 1);
+	if (version != 2)
+	{
+		//
+		// Saved by an older build with differently sized map arrays.
+		//
+
+		MF_Fclose(handle);
+
+		return FALSE;
+	}
+
+	{
+		SLONG map_size;
+
+		if (fread(&map_size, sizeof(SLONG), 1, handle) != 1) goto file_error;
+
+		PAP_set_map_size(map_size);
+	}
 
 	//
 	// Go through the memory table and load all arrays.
@@ -3702,7 +3725,7 @@ SLONG MEMORY_quick_load(const CBYTE* filename)
 
 	if (fread( NIGHT_square,       sizeof(NIGHT_Square),      NIGHT_MAX_SQUARES        , handle) != NIGHT_MAX_SQUARES        ) goto file_error;
 	if (fread(&NIGHT_square_free,  sizeof(NIGHT_square_free), 1                        , handle) != 1                        ) goto file_error;
-	if (fread( NIGHT_cache,        sizeof(NIGHT_cache[0][0]), PAP_SIZE_LO * PAP_SIZE_LO, handle) != PAP_SIZE_LO * PAP_SIZE_LO) goto file_error;
+	if (fread( NIGHT_cache,        sizeof(NIGHT_cache[0][0]), PAP_SIZE_LO_MAX * PAP_SIZE_LO_MAX, handle) != PAP_SIZE_LO_MAX * PAP_SIZE_LO_MAX) goto file_error;
 
 	if (fread( NIGHT_dfcache,      sizeof(NIGHT_Dfcache),     NIGHT_MAX_DFCACHES       , handle) != NIGHT_MAX_DFCACHES       ) goto file_error;
 	if (fread(&NIGHT_dfcache_used, sizeof(UBYTE),             1                        , handle) != 1                        ) goto file_error;

@@ -451,7 +451,7 @@ void COLLIDE_find_seethrough_fences(void);
 // The fastnav bits array.
 // 
 
-typedef UBYTE COLLIDE_Fastnavrow[PAP_SIZE_HI >> 3];
+typedef UBYTE COLLIDE_Fastnavrow[PAP_SIZE_HI_MAX >> 3];
 
 extern COLLIDE_Fastnavrow *COLLIDE_fastnav;
 

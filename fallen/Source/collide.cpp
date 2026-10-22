@@ -1736,7 +1736,7 @@ SLONG	calc_height_at(SLONG x,SLONG z)
 	if( (x>>8) >=(MAP_WIDTH))
 		h0=h1;
 	else
-		h0=((me+MAP_WIDTH)->Alt)<<FLOOR_HEIGHT_SHIFT;            //my_big_map[(new_x.L.HWord+1)+((new_z.L.HWord)*MAP_WIDTH)].Alt;
+		h0=((me+MAP_WIDTH_MAX)->Alt)<<FLOOR_HEIGHT_SHIFT;            //my_big_map[(new_x.L.HWord+1)+((new_z.L.HWord)*MAP_WIDTH)].Alt;
 
 	if( (z>>8) >=(MAP_HEIGHT))
 	{
@@ -1746,7 +1746,7 @@ SLONG	calc_height_at(SLONG x,SLONG z)
 	else
 	{
 		h2=((me+1)->Alt)<<FLOOR_HEIGHT_SHIFT;     //my_big_map[(new_x.L.HWord)+((new_z.L.HWord+1)*MAP_WIDTH)].Alt;
-		h3=((me+MAP_WIDTH+1)->Alt)<<FLOOR_HEIGHT_SHIFT;   //my_big_map[(new_x.L.HWord+1)+((new_z.L.HWord+1)*MAP_WIDTH)].Alt;
+		h3=((me+MAP_WIDTH_MAX+1)->Alt)<<FLOOR_HEIGHT_SHIFT;   //my_big_map[(new_x.L.HWord+1)+((new_z.L.HWord+1)*MAP_WIDTH)].Alt;
 	}
 	if(h0==h1&&h1==h2&&h2==h3)
 	{
@@ -2131,9 +2131,9 @@ void	highlight_rface(SLONG rface)
 		SLONG	x,y,z;
 //		SLONG	wall,storey,building;
 
-		x=(roof_faces4[rface].RX&127)<<8;
+		x=(roof_faces4[rface].RX)<<8;
 		y=roof_faces4[rface].Y;
-		z=(roof_faces4[rface].RZ&127)<<8;
+		z=(roof_faces4[rface].RZ)<<8;
 
 
 
@@ -5269,8 +5269,8 @@ void slide_along_redges(
 	else
 	{
 		f4      = &roof_faces4[face4];
-		mx      =  f4->RX & 127;
-		mz      =  f4->RZ & 127;
+		mx      =  f4->RX;
+		mz      =  f4->RZ;
 		height1 =  0;
 	}
 
@@ -5435,8 +5435,8 @@ void slide_along_redges(
 	else
 	{
 		f4 = &roof_faces4[face4];
-		ox=(f4->RX&127)<<8;
-		oz=(f4->RZ&127)<<8;
+		ox=(f4->RX)<<8;
+		oz=(f4->RZ)<<8;
 	}
 
 
@@ -6586,7 +6586,7 @@ ULONG move_thing(
 	y2 = my_y1 + dy;
 	z2 = z1 + dz;
 
-	if(x2<0 || x2>=128<<16 || z2<0 || z2>=128<<16)
+	if(x2<0 || x2>=PAP_SIZE_HI<<16 || z2<0 || z2>=PAP_SIZE_HI<<16)
 	{
 		//
 		// move off the map, no thanks
@@ -11176,7 +11176,7 @@ void COLLIDE_calc_fastnav_bits()
 	// Mark all squares as being fastnav.
 	//
 
-	memset(COLLIDE_fastnav, -1, PAP_SIZE_HI * PAP_SIZE_HI >> 3);
+	memset(COLLIDE_fastnav, -1, PAP_SIZE_HI_MAX * PAP_SIZE_HI_MAX >> 3);
 
 	//
 	// Go through all the facets and mark neighbouring squares

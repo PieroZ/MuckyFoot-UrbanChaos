@@ -519,7 +519,7 @@ void	save_prim_map(CBYTE *name)
 	CBYTE*ptr;
 	SLONG copied;
 	UBYTE buff[100];
-	OB_Mapwho dummy_OB_mapwho[OB_SIZE][OB_SIZE];
+	OB_Mapwho dummy_OB_mapwho[OB_SIZE_MAX][OB_SIZE_MAX];
 	OB_Ob dummy_OB_ob[OB_MAX_OBS];
 	SLONG dummy_obctr;
 

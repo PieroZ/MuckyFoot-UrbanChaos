@@ -810,7 +810,7 @@ void	NewLoadWaveList(CBYTE *names[]) {
 
 void	SOUND_SewerPrecalc() {
 /*	NS_Hi *ns;
-	SBYTE temp_map[PAP_SIZE_HI][PAP_SIZE_HI];
+	SBYTE temp_map[PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
 	SLONG x,y,sx,sy;
 	SLONG h,item,ctr,debugctr,debug2;
 

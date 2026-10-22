@@ -165,7 +165,7 @@ void WARE_bounding_box(SLONG dbuilding,
 // The rooftop layer of textures.
 //
 
-UWORD WARE_roof_tex[PAP_SIZE_HI][PAP_SIZE_HI];
+UWORD WARE_roof_tex[PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
 
 void WARE_init()
 {
@@ -230,7 +230,7 @@ extern	SLONG	save_psx;
 
 		if (!handle)
 		{
-			memset(WARE_roof_tex, 0, sizeof(UWORD) * PAP_SIZE_HI * PAP_SIZE_HI);
+			memset(WARE_roof_tex, 0, sizeof(WARE_roof_tex));
 		}
 		else
 		{
@@ -239,7 +239,16 @@ extern	SLONG	save_psx;
 			fseek(handle, WARE_OFFSET_TO_ROOFTEXTURES, SEEK_SET);
 
 
-			fread(WARE_roof_tex, sizeof(UWORD), PAP_SIZE_HI * PAP_SIZE_HI, handle);
+			//
+			// The editor's .map files are always 128x128.
+			//
+
+			memset(WARE_roof_tex, 0, sizeof(WARE_roof_tex));
+
+			for (SLONG row = 0; row < PAP_SIZE_HI_SMALL; row++)
+			{
+				fread(&WARE_roof_tex[row][0], sizeof(UWORD), PAP_SIZE_HI_SMALL, handle);
+			}
 
 			MF_Fclose(handle);
 		}
@@ -466,10 +475,10 @@ extern	SLONG	save_psx;
 
 				ASSERT(WITHIN(WARE_rooftex_upto, 0, WARE_MAX_ROOFTEXES - 1));
 
-				ASSERT(WITHIN(p_f4->RX&127, 0, PAP_SIZE_HI - 1));
-				ASSERT(WITHIN(p_f4->RZ&127, 0, PAP_SIZE_HI - 1));
+				ASSERT(WITHIN(p_f4->RX, 0, PAP_SIZE_HI - 1));
+				ASSERT(WITHIN(p_f4->RZ, 0, PAP_SIZE_HI - 1));
 
-				WARE_rooftex[WARE_rooftex_upto++] = WARE_roof_tex[p_f4->RX&127][p_f4->RZ&127];
+				WARE_rooftex[WARE_rooftex_upto++] = WARE_roof_tex[p_f4->RX][p_f4->RZ];
 			}
 		}
 

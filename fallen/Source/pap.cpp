@@ -22,14 +22,29 @@
 // The maps.
 // 
 
-MEM_PAP_Lo *PAP_lo; //[PAP_SIZE_LO][PAP_SIZE_LO];
-MEM_PAP_Hi *PAP_hi; //[PAP_SIZE_HI][PAP_SIZE_HI];
+MEM_PAP_Lo *PAP_lo; //[PAP_SIZE_LO_MAX][PAP_SIZE_LO_MAX];
+MEM_PAP_Hi *PAP_hi; //[PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
 
+//
+// The size of the map that's loaded now (see pap.h).
+//
+
+SLONG PAP_size_hi = PAP_SIZE_HI_SMALL;
+
+void PAP_set_map_size(SLONG size_hi)
+{
+	if (size_hi != PAP_SIZE_HI_MAX)
+	{
+		size_hi = PAP_SIZE_HI_SMALL;
+	}
+
+	PAP_size_hi = size_hi;
+}
 
 void	PAP_clear(void)
 {
-	memset((UBYTE*) &PAP_lo[0][0],0,sizeof(PAP_Lo)*PAP_SIZE_LO*PAP_SIZE_LO);
-	memset((UBYTE*) &PAP_hi[0][0],0,sizeof(PAP_Hi)*PAP_SIZE_HI*PAP_SIZE_HI);
+	memset((UBYTE*) &PAP_lo[0][0],0,sizeof(PAP_Lo)*PAP_SIZE_LO_MAX*PAP_SIZE_LO_MAX);
+	memset((UBYTE*) &PAP_hi[0][0],0,sizeof(PAP_Hi)*PAP_SIZE_HI_MAX*PAP_SIZE_HI_MAX);
 }
 
 #ifndef PSX
@@ -125,8 +140,8 @@ SLONG PAP_calc_height_at(SLONG x, SLONG z)
 
 	h0 = ph[              0].Alt;
 	h1 = ph[              1].Alt;
-	h2 = ph[PAP_SIZE_HI + 0].Alt;
-	h3 = ph[PAP_SIZE_HI + 1].Alt;
+	h2 = ph[PAP_SIZE_HI_MAX + 0].Alt;
+	h3 = ph[PAP_SIZE_HI_MAX + 1].Alt;
 
 	if (h0 == h1 && h1 == h2 && h2 == h3)
 	{
@@ -267,8 +282,8 @@ SLONG PAP_calc_map_height_at(SLONG x, SLONG z)
 
 	h0 = ph[              0].Alt;
 	h1 = ph[              1].Alt;
-	h2 = ph[PAP_SIZE_HI + 0].Alt;
-	h3 = ph[PAP_SIZE_HI + 1].Alt;
+	h2 = ph[PAP_SIZE_HI_MAX + 0].Alt;
+	h3 = ph[PAP_SIZE_HI_MAX + 1].Alt;
 
 	if (h0 == h1 && h1 == h2 && h2 == h3)
 	{
@@ -386,8 +401,8 @@ SLONG PAP_calc_height_noroads(SLONG x, SLONG z)
 
 	h0 = ph[              0].Alt;
 	h1 = ph[              1].Alt;
-	h2 = ph[PAP_SIZE_HI + 0].Alt;
-	h3 = ph[PAP_SIZE_HI + 1].Alt;
+	h2 = ph[PAP_SIZE_HI_MAX + 0].Alt;
+	h3 = ph[PAP_SIZE_HI_MAX + 1].Alt;
 
 	if (h0 == h1 && h1 == h2 && h2 == h3)
 	{
@@ -494,8 +509,8 @@ SLONG	PAP_on_slope(SLONG x,SLONG z,SLONG *angle)
 
 	h0 = ph[              0].Alt;
 	h1 = ph[              1].Alt;
-	h2 = ph[PAP_SIZE_HI + 0].Alt;
-	h3 = ph[PAP_SIZE_HI + 1].Alt;
+	h2 = ph[PAP_SIZE_HI_MAX + 0].Alt;
+	h3 = ph[PAP_SIZE_HI_MAX + 1].Alt;
 
 	if (h0 == h1 && h1 == h2 && h2 == h3)
 	{

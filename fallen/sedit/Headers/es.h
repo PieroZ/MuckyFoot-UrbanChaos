@@ -31,14 +31,14 @@ typedef struct
 
 } ES_Hi;
 
-extern ES_Hi ES_hi[PAP_SIZE_HI][PAP_SIZE_HI];
+extern ES_Hi ES_hi[PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
 
 //
 // Water in the city.
 //
 
-extern UBYTE ES_city_water_on   [PAP_SIZE_HI][PAP_SIZE_HI];
-extern SBYTE ES_city_water_level[PAP_SIZE_LO][PAP_SIZE_LO];
+extern UBYTE ES_city_water_on   [PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
+extern SBYTE ES_city_water_level[PAP_SIZE_LO_MAX][PAP_SIZE_LO_MAX];
 
 
 //
@@ -87,7 +87,7 @@ typedef struct
 
 } ES_Lo;
 
-extern ES_Lo ES_lo[PAP_SIZE_LO][PAP_SIZE_LO];
+extern ES_Lo ES_lo[PAP_SIZE_LO_MAX][PAP_SIZE_LO_MAX];
 
 
 //

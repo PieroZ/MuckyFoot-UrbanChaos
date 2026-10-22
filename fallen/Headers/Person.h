@@ -220,8 +220,8 @@ typedef struct
 	UBYTE	Escape;
 	UBYTE	Ware;							// The warehouse this person is in.
 	UBYTE   FightRating;			//96	// bit field
-	SWORD	TargetX;
-	SWORD	TargetZ;				//100
+	SLONG	TargetX;			// SLONG for 256x256 maps (WorldPos >> 8).
+	SLONG	TargetZ;
 
 	SWORD	Agression;
 	UBYTE	ammo_packs_pistol;

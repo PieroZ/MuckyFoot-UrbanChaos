@@ -90,7 +90,7 @@ extern UBYTE   POW_pow_used;
 // The POW 1D mapwho- thats only 32 bytes!
 //
 
-extern UBYTE POW_mapwho[PAP_SIZE_LO];
+extern UBYTE POW_mapwho[PAP_SIZE_LO_MAX];
 
 
 

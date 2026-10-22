@@ -1281,8 +1281,8 @@ void plan_view_shot()
 		green = red - 4;
 		blue  = red + 4;
 
-		px = (rf->RX&127) * 3;
-		py = (rf->RZ&127) * 3;
+		px = (rf->RX) * 3;
+		py = (rf->RZ) * 3;
 
 		shadow = rf->DrawFlags & 0x7;
 

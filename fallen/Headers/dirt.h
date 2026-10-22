@@ -69,9 +69,9 @@ typedef struct
 	SWORD pitch;
 	SWORD roll;
 
-	SWORD x;
-	SWORD y;
-	SWORD z;
+	SLONG x;	// SLONG so a 256x256 map fits (world coords >> 8 go up to 65535).
+	SLONG y;
+	SLONG z;
 
 	SWORD dx;
 	SWORD dy;	// dy is now shifted up TICK_SHIFT bits to allow for frame-rate independent gravity ;)

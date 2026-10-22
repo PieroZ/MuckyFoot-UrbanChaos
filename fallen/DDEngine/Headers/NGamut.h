@@ -10,8 +10,17 @@
 // The size of the gamut mapwho.
 //
 
-#define NGAMUT_SIZE		128
-#define NGAMUT_SIZE_LO	32
+// Arrays are sized for the biggest map (256x256), the gamut itself is kept
+// within the map that's loaded now.
+//
+
+extern SLONG PAP_size_hi;
+
+#define NGAMUT_SIZE_MAX		256
+#define NGAMUT_SIZE_LO_MAX	64
+#define NGAMUT_SIZE			(PAP_size_hi)
+#define NGAMUT_SIZE_LO		(PAP_size_hi >> 2)
+#define NGAMUT_LO_RATIO		4		// NGAMUT_SIZE / NGAMUT_SIZE_LO
 
 //
 // The gamut for squares.
@@ -24,7 +33,7 @@ typedef struct
 
 } NGAMUT_Gamut;
 
-extern NGAMUT_Gamut NGAMUT_gamut[NGAMUT_SIZE];
+extern NGAMUT_Gamut NGAMUT_gamut[NGAMUT_SIZE_MAX];
 extern SLONG        NGAMUT_xmin;
 extern SLONG        NGAMUT_zmin;
 extern SLONG        NGAMUT_zmax;
@@ -56,7 +65,7 @@ void NGAMUT_view_square(float mid_x, float mid_z, float radius);
 // out the gamut for points.
 //
 
-extern NGAMUT_Gamut NGAMUT_point_gamut[NGAMUT_SIZE];
+extern NGAMUT_Gamut NGAMUT_point_gamut[NGAMUT_SIZE_MAX];
 extern SLONG        NGAMUT_point_zmin;
 extern SLONG        NGAMUT_point_zmax;
 
@@ -66,7 +75,7 @@ void NGAMUT_calculate_point_gamut(void);
 // This is the square gamut expanded by one in each direction.
 //
 
-extern NGAMUT_Gamut NGAMUT_out_gamut[NGAMUT_SIZE];
+extern NGAMUT_Gamut NGAMUT_out_gamut[NGAMUT_SIZE_MAX];
 extern SLONG        NGAMUT_out_zmin;
 extern SLONG        NGAMUT_out_zmax;
 
@@ -78,7 +87,7 @@ void NGAMUT_calculate_out_gamut(void);
 // make sure you have calculated that one already.
 //
 
-extern NGAMUT_Gamut NGAMUT_lo_gamut[NGAMUT_SIZE_LO];
+extern NGAMUT_Gamut NGAMUT_lo_gamut[NGAMUT_SIZE_LO_MAX];
 extern SLONG        NGAMUT_lo_zmin;
 extern SLONG        NGAMUT_lo_zmax;
 

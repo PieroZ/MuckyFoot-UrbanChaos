@@ -54,7 +54,7 @@ typedef struct
 
 } NIGHT_Smap;
 
-typedef	NIGHT_Smap	NIGHT_Smap_2d[PAP_SIZE_LO];
+typedef	NIGHT_Smap	NIGHT_Smap_2d[PAP_SIZE_LO_MAX];
 
 extern	NIGHT_Smap_2d *NIGHT_smap; //[PAP_SIZE_LO][PAP_SIZE_LO];
 
@@ -147,7 +147,7 @@ typedef struct
 // so the cache can never run out whatever the draw distance.
 //
 
-#define NIGHT_MAX_SQUARES (PAP_SIZE_LO * PAP_SIZE_LO + 1)
+#define NIGHT_MAX_SQUARES (PAP_SIZE_LO_MAX * PAP_SIZE_LO_MAX + 1)
 
 extern NIGHT_Square NIGHT_square[NIGHT_MAX_SQUARES];
 extern UWORD        NIGHT_square_free;
@@ -158,10 +158,10 @@ extern UWORD        NIGHT_square_free;
 // for that square.
 //
 
-extern UWORD NIGHT_cache[PAP_SIZE_LO][PAP_SIZE_LO];
+extern UWORD NIGHT_cache[PAP_SIZE_LO_MAX][PAP_SIZE_LO_MAX];
 
 #ifdef	PSX
-extern	UWORD	floor_psx_col[PAP_SIZE_HI][PAP_SIZE_HI];
+extern	UWORD	floor_psx_col[PAP_SIZE_HI_MAX][PAP_SIZE_HI_MAX];
 #endif
 
 //

@@ -103,9 +103,9 @@ void OVAL_project_onto_mapsquare(UBYTE map_x, UBYTE map_z, SLONG page)
 	else
 	{
 		world_y[0] = ph[0              ].Alt << PAP_ALT_SHIFT;
-		world_y[1] = ph[0 + PAP_SIZE_HI].Alt << PAP_ALT_SHIFT;
+		world_y[1] = ph[0 + PAP_SIZE_HI_MAX].Alt << PAP_ALT_SHIFT;
 		world_y[2] = ph[1              ].Alt << PAP_ALT_SHIFT;
-		world_y[3] = ph[1 + PAP_SIZE_HI].Alt << PAP_ALT_SHIFT;
+		world_y[3] = ph[1 + PAP_SIZE_HI_MAX].Alt << PAP_ALT_SHIFT;
 
 		if (ph->Flags & PAP_FLAG_SINK_SQUARE)
 		{
