@@ -33,6 +33,8 @@
 
 #include "overlay.h"
 #include "driveby.h"
+#include "cnet.h"
+#include "lanplay.h"
 #include "grapple.h"
 extern	void	add_damage_text(SWORD x,SWORD y,SWORD z,CBYTE *text);
 
@@ -1033,6 +1035,12 @@ void	OVERLAY_handle(void)
 		}
 	}
 
+	//
+	// LAN game messages (connected / waiting / out of sync).
+	//
+
+	LANPLAY_draw_status();
+
 
 
 //	OVERLAY_draw_damage_values();
@@ -1923,7 +1931,8 @@ void PANEL_draw_crosshair(void)
 	}
 
 	extern void HandleMouseInput(Thing * target);
-	if (!(GAME_FLAGS & GF_PAUSED) && !DRIVEBY_active() && !GRAPPLE_active())	// In a car the mouse buttons shoot out of the window
+	if (!(GAME_FLAGS & GF_PAUSED) && !DRIVEBY_active() && !GRAPPLE_active()
+		&& !CNET_network_game)	// LAN game: mouse aiming isn't shared between the PCs (yet)	// In a car the mouse buttons shoot out of the window
 	{
 		HandleMouseInput(target);
 	}

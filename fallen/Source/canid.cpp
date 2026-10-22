@@ -18,6 +18,15 @@
 // just for debug
 #include	"dirt.h"
 
+//
+// LAN game: game-logic random numbers must be the same on both PCs (the
+// C library's rand() is also used by effects that only one PC draws).
+// In single player this is still plain rand().
+//
+
+#include "lanplay.h"
+#define rand() LANPLAY_sim_rand()
+
 //--------------------------------------------------------------------------
 // Defines
 

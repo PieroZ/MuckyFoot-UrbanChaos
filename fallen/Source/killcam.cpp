@@ -8,6 +8,7 @@
 #include "eway.h"
 #include "mfx.h"
 #include "killcam.h"
+#include "cnet.h"
 #include "config_extras.h"
 #include "..\DDEngine\Headers\console.h"
 
@@ -41,6 +42,11 @@ static SLONG KILLCAM_bt_total;
 
 void KILLCAM_bullet_time(SLONG ms)
 {
+	if (CNET_network_game)
+	{
+		return;	// Slow motion would have to happen on both PCs at once.
+	}
+
 	KILLCAM_bt_left  = ms;
 	KILLCAM_bt_total = ms;
 }

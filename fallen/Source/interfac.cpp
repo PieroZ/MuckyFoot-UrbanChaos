@@ -38,6 +38,7 @@
 #include "config_extras.h"
 #include "driveby.h"
 #include "grapple.h"
+#include "lanplay.h"
 #include "free_roam_camera.h"
 #include "helper_utils.h"
 
@@ -2480,6 +2481,15 @@ SLONG	get_camera_angle(void)
 	if(EWAY_grab_camera(&cam_x,&cam_y,&cam_z,&cam_yaw,&cam_pitch,&cam_roll,&cam_lens))
 	{
 		ca=cam_yaw>>8;
+	}
+	else
+	if (LANPLAY_current())
+	{
+		//
+		// LAN game: the camera of the PC this player sits at.
+		//
+
+		ca = LANPLAY_current()->cam_yaw;
 	}
 	else
 	{
@@ -7674,7 +7684,7 @@ extern UBYTE PAD_Type;
 //		if(input==(INPUT_MASK_PUNCH|INPUT_MASK_KICK|INPUT_MASK_ACTION|INPUT_MASK_JUMP|INPUT_MASK_RUN))
 //			PYRO_create(NET_PERSON(0)->WorldPos, PYRO_GAMEOVER);
 
-		if(input==(INPUT_MASK_PUNCH|INPUT_MASK_KICK|INPUT_MASK_ACTION|INPUT_MASK_JUMP|INPUT_MASK_RIGHT))
+		if(input==(INPUT_MASK_PUNCH|INPUT_MASK_KICK|INPUT_MASK_ACTION|INPUT_MASK_JUMP|INPUT_MASK_RIGHT) && !CNET_network_game)	// LAN: no cheats on one PC
 		{
 			if(NET_PERSON(0)->Genus.Person->Health!=1000)
 			{
@@ -8351,19 +8361,13 @@ ULONG	pre_process_input(SLONG mode,ULONG input)
 
 SLONG	FirstPersonMode = FALSE;
 
-ULONG	apply_button_input_first_person(Thing *p_player, Thing *p_person,ULONG input,ULONG *processed)
+//
+// Is the first-person-look key held on this PC?
+//
+
+SLONG INTERFAC_first_person_key(void)
 {
-	static SLONG look_ami   = FALSE;
-	SLONG fpm = FALSE;
-	SLONG	gun=0;
-
-	*processed=0;
-
-	//
-	// Should we be in first person mode?
-	//
-
-#ifndef PSX	
+#ifndef PSX
 	extern DIJOYSTATE the_state;
 
 #ifdef REMAP_KEYBOARD
@@ -8375,6 +8379,38 @@ ULONG	apply_button_input_first_person(Thing *p_player, Thing *p_person,ULONG inp
 #else
 	if ((Keys[KB_A] && !ShiftFlag) || the_state.rgbButtons[joypad_button_use[JOYPAD_BUTTON_1STPERSON]])
 #endif
+	{
+		return TRUE;
+	}
+#endif
+
+	return FALSE;
+}
+
+ULONG	apply_button_input_first_person(Thing *p_player, Thing *p_person,ULONG input,ULONG *processed)
+{
+	static SLONG look_ami_player[2] = {FALSE, FALSE};	// One each for a LAN game
+	SLONG &look_ami = look_ami_player[(p_person->Genus.Person->PlayerID == 2) ? 1 : 0];
+	SLONG fpm = FALSE;
+	SLONG	gun=0;
+
+	*processed=0;
+
+	//
+	// Should we be in first person mode?
+	//
+
+#ifndef PSX	
+	if (LANPLAY_current())
+	{
+		//
+		// LAN game: was the key held on the PC this player sits at?
+		//
+
+		fpm = (LANPLAY_current()->flags & LANPLAY_FLAG_FIRST_PERSON) ? TRUE : FALSE;
+	}
+	else
+	if (INTERFAC_first_person_key())
 	{
 		fpm = TRUE;
 	}
@@ -8443,7 +8479,14 @@ ULONG	apply_button_input_first_person(Thing *p_player, Thing *p_person,ULONG inp
 
 			p_person->Genus.Person->Flags2|=FLAG2_PERSON_LOOK;
 			look_ami    =  TRUE;
-			look_pitch  = -FC_cam[p_person->Genus.Person->PlayerID-1].pitch >> 8;
+			if (LANPLAY_current())
+			{
+				look_pitch = -(LANPLAY_current()->cam_pitch << 8) >> 8;
+			}
+			else
+			{
+				look_pitch  = -FC_cam[p_person->Genus.Person->PlayerID-1].pitch >> 8;
+			}
 			look_pitch &= 2047;
 
 			if (look_pitch > 1024) {look_pitch -= 2048;}
@@ -8624,14 +8667,43 @@ SLONG can_darci_change_weapon(Thing *p_person)
 
 int g_iPlayerCameraMode = 0;
 
+static void process_hardware_level_input_for_player_core(Thing *p_player);
+
 void	process_hardware_level_input_for_player(Thing *p_player)
+{
+	if (CNET_network_game)
+	{
+		//
+		// LAN game: while this player is processed, the mouse, number keys,
+		// shift etc. the code below reads are the ones from that player's PC.
+		//
+
+		LANPLAY_begin_player(p_player->Genus.Player->PlayerID);
+
+		process_hardware_level_input_for_player_core(p_player);
+
+		LANPLAY_end_player();
+	}
+	else
+	{
+		process_hardware_level_input_for_player_core(p_player);
+	}
+}
+
+static void process_hardware_level_input_for_player_core(Thing *p_player)
 {
 	SLONG  i;
 
 	ULONG  input;
 	ULONG  last;
 	ULONG  processed = 0;
-	SLONG  tick = GetTickCount();
+
+	//
+	// For double-clicks. A LAN game counts game turns instead of real time
+	// so both PCs see the same double-clicks.
+	//
+
+	SLONG  tick = CNET_network_game ? (SLONG) LANPLAY_game_ms() : (SLONG) GetTickCount();
 
 	Thing *p_person;		  
 	p_person = p_player->Genus.Player->PlayerPerson;
@@ -8660,7 +8732,8 @@ void	process_hardware_level_input_for_player(Thing *p_player)
 #ifndef TARGET_DC
 	// Saner system.
 	static bool bChangeCameraModePressedLastTime = FALSE;
-	if ( pl->Pressed&INPUT_MASK_CAMERA )
+	if ( (pl->Pressed&INPUT_MASK_CAMERA) &&
+		 (!CNET_network_game || p_person->Genus.Person->PlayerID-1==PLAYER_ID) )	// LAN: only our own camera
 	{
 		if ( !bChangeCameraModePressedLastTime )
 		{
@@ -8683,9 +8756,13 @@ void	process_hardware_level_input_for_player(Thing *p_player)
 				}
 			}
 			else
-#else
-			ASSERT (!CNET_network_game);
 #endif
+			if (CNET_network_game)
+			{
+				FC_change_camera_type(0,g_iPlayerCameraMode);
+				FC_force_camera_behind(0);
+			}
+			else
 			{
 				FC_change_camera_type(p_person->Genus.Person->PlayerID-1,g_iPlayerCameraMode);
 				FC_force_camera_behind(p_person->Genus.Person->PlayerID-1);
@@ -8744,7 +8821,7 @@ void	process_hardware_level_input_for_player(Thing *p_player)
 		{
 			if(p_person->Genus.Person->PlayerID-1==PLAYER_ID)
 			{
-				FC_rotate_left(p_person->Genus.Person->PlayerID-1);
+				FC_rotate_left(0);
 			}
 		}
 		else
@@ -8758,7 +8835,7 @@ void	process_hardware_level_input_for_player(Thing *p_player)
 		{
 			if(p_person->Genus.Person->PlayerID-1==PLAYER_ID)
 			{
-				FC_rotate_left(0);
+				FC_rotate_right(0);
 			}
 		}
 		else

@@ -21,6 +21,7 @@
 #include "config_extras.h"
 #include "fc.h"
 #include "driveby.h"
+#include "cnet.h"
 #include <math.h>
 
 extern SLONG VEH_flat_tyres     (Thing *p_car);
@@ -117,6 +118,11 @@ static void DRIVEBY_init(void)
 
 SLONG DRIVEBY_active(void)
 {
+	if (CNET_network_game)
+	{
+		return FALSE;
+	}
+
 	return DRIVEBY.active;
 }
 
@@ -936,6 +942,16 @@ static void DRIVEBY_fire(Thing *p_person, Thing *p_car, SLONG has_target, DRIVEB
 
 void DRIVEBY_process(Thing *p_person)
 {
+	if (CNET_network_game)
+	{
+		//
+		// Not in a LAN game (yet): aiming reads this PC's mouse and camera
+		// straight away, the other PC wouldn't know.
+		//
+
+		return;
+	}
+
 	DRIVEBY_init();
 
 	DRIVEBY.active = FALSE;

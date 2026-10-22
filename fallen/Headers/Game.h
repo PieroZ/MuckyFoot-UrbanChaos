@@ -528,7 +528,15 @@ inline UWORD Random(void)
 }
 */
 //#define	Random()    (DebugText("random  file %s line %d %d\n",__FILE__,__LINE__,RAND_SEED),(UWORD)((RAND_SEED = ((RAND_SEED*69069)+1) )>>7))
-#define	Random()    ((UWORD)((RAND_SEED = ((RAND_SEED*69069)+1) )>>7))
+//
+// LAN game: every call can be logged (file + line) so that when the two PCs
+// stop agreeing we can see exactly which Random() only one of them made.
+//
+
+extern UBYTE LANPLAY_trace;
+void         LANPLAY_trace_random(const char *file, int line);
+
+#define	Random()    ((LANPLAY_trace ? LANPLAY_trace_random(__FILE__, __LINE__) : (void) 0), (UWORD)((RAND_SEED = ((RAND_SEED*69069)+1) )>>7))
 
 
 

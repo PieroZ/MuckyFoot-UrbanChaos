@@ -56,6 +56,8 @@
 
 #include "memory.h"
 #include "combat.h"
+#include "cnet.h"
+#include "lanplay.h"
 #include "config_extras.h"
 #include "..\DDEngine\Headers\console.h"
 #include "road.h"
@@ -1415,6 +1417,15 @@ SLONG	advance_keyframe(DrawTween *draw_info);
 }
 
 
+//
+// Drawing only - and only on the PC that can see the car - so its random
+// numbers (smoke, lights) must not come from the game's own sequence.
+//
+
+#pragma push_macro("Random")
+#undef  Random
+#define Random() LANPLAY_cosmetic_rand()
+
 void	draw_car(Thing *p_car)
 {
 	SLONG	x[8],y[8],z[8];
@@ -1823,6 +1834,9 @@ void AENG_set_bike_wheel_rotation(UWORD rot, UBYTE prim);
 	}
 
 }
+
+#pragma pop_macro("Random")
+
 
 #define	WHEEL_GRAV	(5<<8)
 
@@ -2640,7 +2654,7 @@ static SLONG CollideCar(Thing* p_car, SLONG step)
 	car_hit_flags=0;
 	
 //#ifdef _DEBUG
-	if (Keys[KB_H] && is_driven_by_player(p_car))	return 0;
+	if (Keys[KB_H] && is_driven_by_player(p_car) && !CNET_network_game)	return 0;
 //#endif
 
 	// hit the kerb?

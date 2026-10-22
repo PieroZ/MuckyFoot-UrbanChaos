@@ -893,6 +893,8 @@
     <ClCompile Include="Source\killcam.cpp" />
     <ClCompile Include="Source\driveby.cpp" />
     <ClCompile Include="Source\grapple.cpp" />
+    <ClCompile Include="Source\lanplay.cpp" />
+    <ClCompile Include="Source\lansock.cpp" />
     <ClCompile Include="Source\AllToAnmConverter.cpp" />
     <ClCompile Include="Source\PersonPZI.cpp" />
     <ClCompile Include="Source\bang.cpp" />
@@ -1763,6 +1765,8 @@
     <ClInclude Include="Headers\killcam.h" />
     <ClInclude Include="Headers\driveby.h" />
     <ClInclude Include="Headers\grapple.h" />
+    <ClInclude Include="Headers\lanplay.h" />
+    <ClInclude Include="Headers\lansock.h" />
     <ClInclude Include="DDEngine\Headers\save_selector.h" />
     <ClInclude Include="DDEngine\Headers\free_roam_camera.h" />
     <ClInclude Include="DDEngine\Headers\helper_utils.h" />

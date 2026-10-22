@@ -25,6 +25,7 @@ extern SLONG MFX_OnKey,MFX_OffKey;
 
 
 #include "eway.h"
+#include "lanplay.h"
 #include "mission.h"
 #include "night.h"
 #include "ob.h"
@@ -256,10 +257,10 @@ void ELEV_load_level(CBYTE *fname_level)
 	iamapsx=ENV_get_value_number("iamapsx", FALSE);
 
 	//
-	// Start off with no players.
+	// Start off with no players. (In a LAN game too: the mission's own
+	// player waypoints create them, see EWAY_create_player().)
 	//
-	if(!CNET_network_game)
-		NO_PLAYERS = 0;
+	NO_PLAYERS = 0;
 
 	//
 	// Load the level.
@@ -2456,6 +2457,12 @@ extern void MAP_pulse_init();
 	loading_screen_active = FALSE;
 
 	EWAY_process(); //pre process map, stick it here Or we get stack overflow
+
+	//
+	// LAN game on a mission with only one player: add the second one.
+	//
+
+	LANPLAY_ensure_players();
 //	MUSIC_WORLD=(Random()%6)+1;
 
 
@@ -2531,7 +2538,11 @@ extern void SND_BeginAmbient();
 	//
 	if(CNET_network_game)
 	{
-				FC_look_at(0, THING_NUMBER(NET_PERSON(PLAYER_ID)));
+		if (NET_PERSON(PLAYER_ID))
+		{
+			FC_look_at(0, THING_NUMBER(NET_PERSON(PLAYER_ID)));
+			FC_setup_initial_camera(0);
+		}
 	}
 	else
 	{

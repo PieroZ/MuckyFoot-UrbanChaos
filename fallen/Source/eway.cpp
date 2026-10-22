@@ -5954,8 +5954,11 @@ extern	UBYTE	hit_player;
 
 					SET_SKILL(NET_PERSON(0),0);
 
-					FC_look_at(0, i_player);
-					FC_setup_initial_camera(0);
+					if (!CNET_network_game || PLAYER_ID == 0)	// LAN: only the PC of player 1 follows
+					{
+						FC_look_at(0, i_player);
+						FC_setup_initial_camera(0);
+					}
 
 					if (NET_PERSON(0)->State == STATE_MOVEING)
 					{

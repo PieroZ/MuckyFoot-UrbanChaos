@@ -20,6 +20,7 @@
 #include "..\DDEngine\Headers\console.h"
 #include "config_extras.h"
 #include "grapple.h"
+#include "cnet.h"
 #include <math.h>
 #include "interfac.h"
 
@@ -164,6 +165,11 @@ void GRAPPLE_reset(void)
 
 SLONG GRAPPLE_active(void)
 {
+	if (CNET_network_game)
+	{
+		return FALSE;
+	}
+
 	return GR.state != GR_NONE;
 }
 
@@ -755,6 +761,16 @@ static void GR_process_top(Thing *p_person)
 
 SLONG GRAPPLE_process(Thing *p_person, ULONG input)
 {
+	if (CNET_network_game)
+	{
+		//
+		// Not in a LAN game (yet): its aiming uses this PC's mouse and
+		// camera directly, which the other PC doesn't have.
+		//
+
+		return FALSE;
+	}
+
 	GR_init();
 
 	if (p_person == NULL || (GAME_FLAGS & GF_PAUSED))

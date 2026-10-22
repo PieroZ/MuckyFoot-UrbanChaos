@@ -16,6 +16,7 @@
 
 #include "memory.h"
 #include "killcam.h"
+#include "lanplay.h"
 //extern	ULONG	get_hardware_input(UWORD type);
 
 UWORD	*thing_class_head;
@@ -621,6 +622,19 @@ void	do_packets(void)
 			return;
 		}
 
+		//
+		// LAN game (lockstep over TCP): both players' input for this turn.
+		//
+
+		LANPLAY_do_packets();
+
+		for (c0 = 0; c0 < NO_PLAYERS && c0 < 2; c0++)
+		{
+			PACKET_DATA(c0) = LANPLAY_in[c0].input;
+		}
+
+		return;
+
 		input		=	get_hardware_input(INPUT_TYPE_ALL); //controls;
 
 
@@ -988,7 +1002,22 @@ void	process_things_tick(SLONG frame_rate_independant)
 #ifndef PSX
 	if(CNET_network_game)
 	{
-		tick_diff=1000/20;
+		//
+		// LAN game: the turn length comes from the host (how long its frame
+		// took, smoothed), so it's the same on both PCs. No slow motion.
+		//
+
+		TICK_TOCK           = LANPLAY_tick_ms();
+		TICK_RATIO          = (TICK_TOCK << TICK_SHIFT) / NORMAL_TICK_TOCK;
+		tick_tock_unclipped = TICK_TOCK;
+
+		SATURATE(TICK_TOCK,  NORMAL_TICK_TOCK >> 1, NORMAL_TICK_TOCK * 2);
+		SATURATE(TICK_RATIO, (1 << TICK_SHIFT) / 2, (1 << TICK_SHIFT) * 3 >> 1);	// The same limits as single player
+
+		REAL_TICK_RATIO     = TICK_RATIO;
+		TICK_INV_RATIO      = 0x10000 / TICK_RATIO;
+
+		return;
 	}
 
 	if(frame_rate_independant==0)
@@ -1104,6 +1133,13 @@ void	process_things(SLONG frame_rate_independant)
 
 	//	Do the packet processing.
 	do_packets();
+
+	//
+	// LAN game: 'in view' can't come from this PC's camera - the other PC
+	// has a different one. Work it out from where the players are instead.
+	//
+
+	LANPLAY_mark_in_view();
 
 	//
 	// Process things.

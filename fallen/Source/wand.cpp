@@ -8,6 +8,8 @@
 #include "wand.h"
 #include "memory.h"
 #include "ob.h"
+#include "cnet.h"
+#include "lanplay.h"
 
 #ifndef PSX
 void WAND_init(void)
@@ -382,6 +384,16 @@ extern SLONG FC_can_see_point(SLONG cam, SLONG x, SLONG y, SLONG z);
 
 SLONG WAND_hidden_from_camera(SLONG x, SLONG y, SLONG z)
 {
+	if (CNET_network_game)
+	{
+		//
+		// LAN game: the two PCs have different cameras, so the answer has to
+		// come from something both know - how far it is from both players.
+		//
+
+		return LANPLAY_is_hidden(x, z);
+	}
+
 	FC_Cam *fc = &FC_cam[0];
 
 	if (fc->focus == NULL)
@@ -445,7 +457,7 @@ SLONG WAND_hidden_from_camera(SLONG x, SLONG y, SLONG z)
 
 static SLONG WAND_appear_dist(void)
 {
-	SLONG far_away = AENG_get_draw_distance() + 4;
+	SLONG far_away = (CNET_network_game ? LANPLAY_sim_draw_distance() : AENG_get_draw_distance()) + 4;
 
 	if (far_away < DRAW_DIST + 2)
 	{
@@ -463,7 +475,7 @@ SLONG	WAND_find_good_start_point(SLONG *mapx,SLONG *mapz)
 	SLONG	dx,dz,x,z,minx,maxx,minz,maxz;
 	SLONG	angle;
 
-	p_person=NET_PERSON(0);
+	p_person=LANPLAY_wander_focus();	// NET_PERSON(0), or either player in a LAN game
 
 	SLONG attempt;
 
@@ -553,7 +565,7 @@ SLONG	WAND_find_good_start_point_near(SLONG *mapx,SLONG *mapz)
 }
 SLONG WAND_find_good_start_point_for_car(SLONG* posx, SLONG* posz, SLONG* yaw, SLONG anywhere)
 {
-	Thing*	p_person = NET_PERSON(0);
+	Thing*	p_person = LANPLAY_wander_focus();	// NET_PERSON(0), or either player in a LAN game
 	SLONG	x,z;
 
 	// get a random heading

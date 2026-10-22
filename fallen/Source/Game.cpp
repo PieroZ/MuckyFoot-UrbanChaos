@@ -65,6 +65,8 @@
 #include	"env.h"
 #endif
 #include	"wmove.h"
+#include "lanplay.h"
+#include "lansock.h"
 #include	"balloon.h"
 #include	"memory.h"
 #ifndef	PSX
@@ -395,6 +397,9 @@ void game_shutdown(void)
 
 	CloseDisplay();
 
+	LANPLAY_finish();
+	LANSOCK_shutdown();
+
 	NET_kill();
 	AENG_fini();
 	ANIM_fini();
@@ -565,6 +570,18 @@ BOOL	game_init(void)
 
 	GAME_TURN  = 0;
 	GAME_FLAGS = 0;
+
+	//
+	// LAN game? (config.ini [Network] lan_mode, or -host / -join on the
+	// command line.) This connects to the other PC and agrees on the mission
+	// before anything gets loaded.
+	//
+
+	if (!(GAME_STATE & GS_PLAYBACK))
+	{
+		LANPLAY_setup();
+	}
+
 	if(!CNET_network_game)
 	{
 		NO_PLAYERS = 1;
@@ -586,6 +603,13 @@ BOOL	game_init(void)
 
 	SetSeed(0);
 	srand(time(NULL));
+
+	//
+	// LAN game: loading the level uses random numbers too (sewers, tripwires...)
+	// so both PCs have to start from the same ones.
+	//
+
+	LANPLAY_seed_for_loading();
 
 
 
@@ -754,7 +778,21 @@ void	init_stats(void);
 
 	EWAY_tutorial_string = NULL;
 
+	if (CNET_network_game)
+	{
+		if (ret)
+		{
+			//
+			// Wait for the other PC to finish loading and sync up.
+			//
 
+			LANPLAY_level_loaded();
+		}
+		else
+		{
+			LANPLAY_finish();
+		}
+	}
 
 #ifdef TARGET_DC
 	// Try to get the camera in a sane position at the start of the game.
@@ -934,6 +972,12 @@ extern	SLONG quick_load;
 
 void game_fini(void)
 {
+	//
+	// Leaving a LAN game: tell the other PC and hang up.
+	//
+
+	LANPLAY_finish();
+
 
 	// Stop any background music, or the disk drive thrashes horribly trying to load stuff.
 	// And all the looping stuff from the game as well.
@@ -1801,7 +1845,7 @@ SLONG	special_keys(void)
 		return 1;
 	}
 #ifndef PSX
-	if(allow_debug_keys)
+	if(allow_debug_keys && !CNET_network_game)
 	if(Keys[KB_QUOTE])
 	{
 		Keys[KB_QUOTE]=0;
@@ -1902,6 +1946,17 @@ extern SLONG BARREL_fx_rate;
 
 SLONG	should_i_process_game(void)
 {
+	if (CNET_network_game)
+	{
+		//
+		// LAN game: the game never stops on just one PC - the other one is
+		// waiting for this one's turns. (Menus and messages still show,
+		// the world just carries on.)
+		//
+
+		return TRUE;
+	}
+
 	if (EWAY_tutorial_string)
 	{
 		//
@@ -2368,6 +2423,19 @@ extern int g_iCheatNumber;
 			{
 				EWAY_tutorial_counter += 64 * TICK_RATIO >> TICK_SHIFT;
 
+				if (CNET_network_game)
+				{
+					//
+					// Nobody waits for a key press in a LAN game - the message
+					// goes away by itself, at the same turn on both PCs.
+					//
+
+					if (EWAY_tutorial_counter > 64 * 20 * 4)
+					{
+						EWAY_tutorial_string = NULL;
+					}
+				}
+				else
 				if (EWAY_tutorial_counter > 64 * 20 * 2)
 				{
 					if(hardware_input_continue())
@@ -2380,7 +2448,7 @@ extern int g_iCheatNumber;
 				}
 				else
 				{
-					if (hardware_input_continue())
+					if (!CNET_network_game && hardware_input_continue())
 					{
 						EWAY_tutorial_counter = 64 * 20 * 2;
 					}
@@ -2512,6 +2580,12 @@ extern	void	do_packets(void);
 
 //			TRACE("Draw screen\n");
 
+			//
+			// LAN game: draw (and play sound) from this PC's player's point of view.
+			//
+
+			LANPLAY_view_begin();
+
 			draw_screen();
 
 			//
@@ -2580,7 +2654,7 @@ extern	void	do_packets(void);
 #ifndef	PSX
 #ifndef TARGET_DC
 #ifndef BREAKTIMER
-			lock_frame_rate(env_frame_rate);
+			lock_frame_rate(env_frame_rate);	// Same as single player (LAN game: the host's frame times set the game speed)
 #endif
 #endif
 #endif
@@ -2589,6 +2663,8 @@ extern	void	do_packets(void);
 			// process moveing sfx, ambient stuff etc
 			//
 			handle_sfx();
+
+			LANPLAY_view_end();
 
 			GAME_TURN++;
 

@@ -7,6 +7,14 @@
 #include "pap.h"
 #include "fmatrix.h"
 
+//
+// LAN game: the hook's random numbers must be the same on both PCs.
+// In single player this is still plain rand().
+//
+
+#include "lanplay.h"
+#define rand() LANPLAY_sim_rand()
+
 
 //
 // Each point of the string.

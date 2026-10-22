@@ -27,6 +27,18 @@
 #include "mav.h"
 #include "grenade.h"
 
+//
+// Effects only: their random numbers come from a separate generator in a
+// LAN game, so what each PC happens to draw can't change the game itself.
+// (Single player: exactly the old Random().)
+//
+
+#include "lanplay.h"
+#include "cnet.h"
+#undef  Random
+#define Random() LANPLAY_cosmetic_rand()
+
+
 #ifndef PSX
 #include    "..\DDLibrary\headers\D3DTexture.h"
 #include    "..\DDLibrary\headers\GDisplay.h"
@@ -1915,9 +1927,11 @@ void DIRT_process(void)
 							MFX_play_xyz(i,S_KICK_CAN,MFX_REPLACE,dd->x<<8,dd->y<<8,dd->z<<8);
 
 							//
-							// Alert guards.
+							// Alert guards. (Not in a LAN game: the cans aren't
+							// the same on both PCs, so only one PC would hear it.)
 							//
 
+							if (!CNET_network_game)
 							PCOM_oscillate_tympanum(
 								PCOM_SOUND_UNUSUAL,
 								TO_THING(dd->droll),	// droll => who threw the coke can.
@@ -2207,9 +2221,11 @@ void DIRT_gust(
 //							MFX_play_xyz(i,S_DARCI_ARREST,MFX_REPLACE,dd->x<<8,dd->y<<8,dd->z<<8);
 
 							//
-							// Alert guards.
+							// Alert guards. (Not in a LAN game: the cans aren't
+							// the same on both PCs, so only one PC would hear it.)
 							//
 
+							if (!CNET_network_game)
 							PCOM_oscillate_tympanum(
 								PCOM_SOUND_UNUSUAL,
 								p_thing,
@@ -2271,6 +2287,16 @@ void DIRT_gust(
 SLONG DIRT_get_nearest_can_or_head_dist(SLONG x, SLONG y, SLONG z)
 {
 	SLONG i;
+
+	if (CNET_network_game)
+	{
+		//
+		// LAN game: dirt (leaves, cans...) is just decoration and isn't the
+		// same on both PCs, so nobody picks cans up.
+		//
+
+		return INFINITY;
+	}
 
 	SLONG dx;
 	SLONG dy;
@@ -2745,6 +2771,11 @@ SLONG DIRT_shoot(Thing *p_person)
 		//
 
 		return FALSE;
+	}
+
+	if (CNET_network_game)
+	{
+		return FALSE;	// LAN game: cans aren't the same on both PCs (see above).
 	}
 
 	//

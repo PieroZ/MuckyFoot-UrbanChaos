@@ -104,6 +104,15 @@ extern ControllerPacket PAD_Input1,PAD_Input2;
 #include "killcam.h"
 #include "save_selector.h"
 #include "free_roam_camera.h"
+#include "lanplay.h"
+
+//
+// The random numbers in here are for wind sounds and debug keys - keep them
+// out of the game's own sequence (matters in a LAN game).
+//
+
+#undef  Random
+#define Random() LANPLAY_cosmetic_rand()
 
 
 extern	SLONG	am_i_a_thug(Thing *p_person);
@@ -2360,6 +2369,120 @@ void	set_danger_level()
 }
 
 #ifndef PSX
+//
+// The keyboard inventory (Enter cycles through the weapons) for one player.
+// A LAN game calls it for both players, with that player's keys.
+//
+
+extern Form *form_leave_map;
+extern SLONG can_darci_change_weapon(Thing *p_person);
+
+static void CONTROLS_do_inventory(Thing *darci, Thing *p_player)
+{
+	if ((!(GAME_FLAGS & GF_PAUSED) && !form_leave_map) && can_darci_change_weapon(darci))
+	{
+		Thing *the_player = p_player;
+
+
+//		if (can_darci_change_weapon(darci))
+		{
+/*
+			if (the_player->Genus.Player->Pressed & INPUT_MASK_SELECT) {
+				CONTROLS_inventory_mode^=1;
+			}
+*/
+
+			if (the_player->Genus.Player->Pressed & INPUT_MASK_SELECT) 
+			{
+				CONTROLS_new_inventory(darci, the_player);
+
+				if(CONTROLS_inventory_mode==0 && darci->Genus.Person->SpecialUse==0 &&  !(darci->Genus.Person->Flags & FLAG_PERSON_GUN_OUT) && the_player->Genus.Player->ItemFocus==0)
+				{
+					//
+					// currently unarmed so pick best weapon
+					//
+
+					the_player->Genus.Player->ItemFocus = CONTROLS_get_best_item(darci, the_player);
+					if(the_player->Genus.Player->ItemFocus)
+					{
+						CONTROLS_set_inventory(darci,the_player,the_player->Genus.Player->ItemFocus); 
+					}
+					else
+						CONTROLS_rot_inventory(darci,the_player, 1,1);
+				}
+				else
+					CONTROLS_rot_inventory(darci,the_player, 1,1);
+				CONTROLS_inventory_mode=3000;
+			}
+
+			if (CONTROLS_inventory_mode)
+			{
+//				Keys[KB_ENTER] = 0;
+
+				//
+				// tick down the panel display
+				//
+				CONTROLS_inventory_mode-=TICK_TOCK;
+				if(CONTROLS_inventory_mode<0)
+					CONTROLS_inventory_mode=0;
+
+
+				Thing *p_special = NULL;
+
+				if (!ShiftFlag)
+				{
+
+					//
+					// does the fade in
+					//
+					CONTROLS_new_inventory(darci, the_player);
+/*
+					if ((the_player->Genus.Player->Pressed & INPUT_MASK_LEFT)||(the_player->Genus.Player->Pressed & INPUT_MASK_FORWARDS)) 
+					{
+//						the_player->Genus.Player->Pressed &= ~(INPUT_MASK_LEFT|INPUT_MASK_FORWARDS);
+						CONTROLS_rot_inventory(darci,the_player,-1,0);
+						CONTROLS_inventory_mode=500;
+					}
+					if ((the_player->Genus.Player->Pressed & INPUT_MASK_RIGHT)||(the_player->Genus.Player->Pressed & INPUT_MASK_BACKWARDS)) 
+					{
+//						the_player->Genus.Player->Pressed &= ~(INPUT_MASK_RIGHT|INPUT_MASK_BACKWARDS);
+						CONTROLS_rot_inventory(darci,the_player, 1,0);
+						CONTROLS_inventory_mode=500;
+					}
+*/
+
+				}
+				else
+				{
+					//
+					// Shift + Return == Drop current weapon.
+					//
+					set_person_gun_away(darci);
+					drop_current_gun(darci,1);
+				}
+			}
+		}
+/*		else
+		{
+			CONTROLS_inventory_mode=0;
+		}*/
+
+//		if (the_player->Genus.Player->PopupFade&&!(NET_PLAYER(0)->Genus.Player->ThisInput & INPUT_MASK_SELECT)) {
+
+		if (the_player->Genus.Player->PopupFade&&!CONTROLS_inventory_mode) 
+		{
+			the_player->Genus.Player->PopupFade-=INVENTORY_FADE_SPEED;
+			if (the_player->Genus.Player->ItemFocus>-1) 
+			{
+//				CONTROLS_set_inventory(darci,the_player);
+				the_player->Genus.Player->ItemFocus = -1;
+			}
+		}
+
+
+	}
+}
+
 void	process_controls(void)
 {
 	SLONG i;
@@ -2368,6 +2491,24 @@ void	process_controls(void)
 	SLONG z;
 
 	Thing *darci = NET_PERSON(0);
+
+	if (CNET_network_game)
+	{
+		//
+		// LAN game: both players' inventories, each with the keys from
+		// that player's PC (and before anything below can return early).
+		//
+
+		for (i = 0; i < NO_PLAYERS && i < 2; i++)
+		{
+			if (NET_PERSON(i) && NET_PLAYER(i))
+			{
+				LANPLAY_begin_player(i);
+				CONTROLS_do_inventory(NET_PERSON(i), NET_PLAYER(i));
+				LANPLAY_end_player();
+			}
+		}
+	}
 
 	if (SaveSelector::getInstance().mTypingSaveName)
 	{
@@ -2727,6 +2868,28 @@ void	process_controls(void)
 			GAME_STATE = GS_LEVEL_LOST;
 		}
 	}
+
+	if (CNET_network_game)
+	{
+		//
+		// LAN game: it's only over when both players are down.
+		//
+
+		SLONG alive = 0;
+
+		for (i = 0; i < NO_PLAYERS; i++)
+		{
+			if (NET_PERSON(i) && NET_PERSON(i)->State != STATE_DEAD)
+			{
+				alive += 1;
+			}
+		}
+
+		if (alive == 0)
+		{
+			GAME_STATE = GS_LEVEL_LOST;
+		}
+	}
 #ifndef TARGET_DC
 	if (allow_debug_keys)
 	{
@@ -3008,7 +3171,7 @@ SLONG is_person_crouching(Thing *p_person);
 		return;
 	} else {
 #ifndef VERSION_DEMO
-	  if (Keys[KB_F9]) is_inputing=1;
+	  if (Keys[KB_F9] && !CNET_network_game) is_inputing=1;	// No cheat console in a LAN game
 #endif
 	}
 
@@ -3022,111 +3185,13 @@ SLONG is_person_crouching(Thing *p_person);
 	extern Form *form_leave_map;
 	extern SLONG can_darci_change_weapon(Thing *p_person);
 
-	if ((!(GAME_FLAGS & GF_PAUSED) && !form_leave_map) && can_darci_change_weapon(darci))
+	if (!CNET_network_game)
 	{
-		Thing *the_player = NET_PLAYER(0);
-
-
-//		if (can_darci_change_weapon(darci))
-		{
-/*
-			if (NET_PLAYER(0)->Genus.Player->Pressed & INPUT_MASK_SELECT) {
-				CONTROLS_inventory_mode^=1;
-			}
-*/
-
-			if (NET_PLAYER(0)->Genus.Player->Pressed & INPUT_MASK_SELECT) 
-			{
-				CONTROLS_new_inventory(darci, the_player);
-
-				if(CONTROLS_inventory_mode==0 && darci->Genus.Person->SpecialUse==0 &&  !(darci->Genus.Person->Flags & FLAG_PERSON_GUN_OUT) && the_player->Genus.Player->ItemFocus==0)
-				{
-					//
-					// currently unarmed so pick best weapon
-					//
-
-					the_player->Genus.Player->ItemFocus = CONTROLS_get_best_item(darci, the_player);
-					if(the_player->Genus.Player->ItemFocus)
-					{
-						CONTROLS_set_inventory(darci,the_player,the_player->Genus.Player->ItemFocus); 
-					}
-					else
-						CONTROLS_rot_inventory(darci,the_player, 1,1);
-				}
-				else
-					CONTROLS_rot_inventory(darci,the_player, 1,1);
-				CONTROLS_inventory_mode=3000;
-			}
-
-			if (CONTROLS_inventory_mode)
-			{
-//				Keys[KB_ENTER] = 0;
-
-				//
-				// tick down the panel display
-				//
-				CONTROLS_inventory_mode-=TICK_TOCK;
-				if(CONTROLS_inventory_mode<0)
-					CONTROLS_inventory_mode=0;
-
-
-				Thing *p_special = NULL;
-
-				if (!ShiftFlag)
-				{
-
-					//
-					// does the fade in
-					//
-					CONTROLS_new_inventory(darci, the_player);
-/*
-					if ((NET_PLAYER(0)->Genus.Player->Pressed & INPUT_MASK_LEFT)||(NET_PLAYER(0)->Genus.Player->Pressed & INPUT_MASK_FORWARDS)) 
-					{
-//						NET_PLAYER(0)->Genus.Player->Pressed &= ~(INPUT_MASK_LEFT|INPUT_MASK_FORWARDS);
-						CONTROLS_rot_inventory(darci,the_player,-1,0);
-						CONTROLS_inventory_mode=500;
-					}
-					if ((NET_PLAYER(0)->Genus.Player->Pressed & INPUT_MASK_RIGHT)||(NET_PLAYER(0)->Genus.Player->Pressed & INPUT_MASK_BACKWARDS)) 
-					{
-//						NET_PLAYER(0)->Genus.Player->Pressed &= ~(INPUT_MASK_RIGHT|INPUT_MASK_BACKWARDS);
-						CONTROLS_rot_inventory(darci,the_player, 1,0);
-						CONTROLS_inventory_mode=500;
-					}
-*/
-
-				}
-				else
-				{
-					//
-					// Shift + Return == Drop current weapon.
-					//
-					set_person_gun_away(darci);
-					drop_current_gun(darci,1);
-				}
-			}
-		}
-/*		else
-		{
-			CONTROLS_inventory_mode=0;
-		}*/
-
-//		if (the_player->Genus.Player->PopupFade&&!(NET_PLAYER(0)->Genus.Player->ThisInput & INPUT_MASK_SELECT)) {
-
-		if (the_player->Genus.Player->PopupFade&&!CONTROLS_inventory_mode) 
-		{
-			the_player->Genus.Player->PopupFade-=INVENTORY_FADE_SPEED;
-			if (the_player->Genus.Player->ItemFocus>-1) 
-			{
-//				CONTROLS_set_inventory(darci,the_player);
-				the_player->Genus.Player->ItemFocus = -1;
-			}
-		}
-
-
+		CONTROLS_do_inventory(darci, NET_PLAYER(0));
 	}
 
 #ifndef TARGET_DC
-	if(Keys[KB_F12]&&ShiftFlag)
+	if(Keys[KB_F12]&&ShiftFlag&&!CNET_network_game)
 	{
 		Keys[KB_F12]=0;
 
@@ -3157,6 +3222,8 @@ extern	UBYTE	cheat;
 		//
 		RecenterMouse();
 	}
+
+	if (CNET_network_game) return;	// Debug keys would only change the game on one PC.
 
 	if(Keys[KB_F3])
 	{

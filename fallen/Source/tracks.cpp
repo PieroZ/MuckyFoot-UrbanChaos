@@ -7,6 +7,17 @@
 #include "game.h"
 #include "tracks.h"
 #include "structs.h"
+
+//
+// Effects only: their random numbers come from a separate generator in a
+// LAN game, so what each PC happens to draw can't change the game itself.
+// (Single player: exactly the old Random().)
+//
+
+#include "lanplay.h"
+#undef  Random
+#define Random() LANPLAY_cosmetic_rand()
+
 #ifndef PSX
 #include "..\DDEngine\Headers\poly.h"
 #else
