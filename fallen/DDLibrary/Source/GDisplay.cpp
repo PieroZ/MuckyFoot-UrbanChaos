@@ -3149,6 +3149,8 @@ std::int32_t CurrentVideo3DModeSupports() {
     return ans;
 }
 
+static void InitGameModeControls(HWND hWnd);
+
 static void InitDialog(HWND hWnd) {
     // centre window
     RECT winsize;
@@ -3313,6 +3315,73 @@ static void InitDialog(HWND hWnd) {
     {
         CheckDlgButton(hWnd, IDC_MOUSE_INPUT, BST_UNCHECKED);
     }
+
+    InitGameModeControls(hWnd);
+}
+
+//
+// Game mode (single player / LAN) and single player options.
+//
+
+static void UpdateLanControls(HWND hWnd)
+{
+    SLONG join = (IsDlgButtonChecked(hWnd, IDC_MODE_JOIN) == BST_CHECKED);
+    SLONG host = (IsDlgButtonChecked(hWnd, IDC_MODE_HOST) == BST_CHECKED);
+
+    EnableWindow(GetDlgItem(hWnd, IDC_STATIC_LANADDR), join);
+    EnableWindow(GetDlgItem(hWnd, IDC_LAN_ADDRESS),    join);
+    EnableWindow(GetDlgItem(hWnd, IDC_STATIC_LANPORT), join || host);
+    EnableWindow(GetDlgItem(hWnd, IDC_LAN_PORT),       join || host);
+}
+
+static void InitGameModeControls(HWND hWnd)
+{
+    SLONG mode = ENV_get_value_number("lan_mode", 0, "Network");
+
+    CheckDlgButton(hWnd, IDC_MODE_SINGLE, (mode != 1 && mode != 2) ? BST_CHECKED : BST_UNCHECKED);
+    CheckDlgButton(hWnd, IDC_MODE_HOST,   (mode == 1)              ? BST_CHECKED : BST_UNCHECKED);
+    CheckDlgButton(hWnd, IDC_MODE_JOIN,   (mode == 2)              ? BST_CHECKED : BST_UNCHECKED);
+
+    CBYTE *address = ENV_get_value_string("lan_address", "Network");
+
+    SetDlgItemTextA(hWnd, IDC_LAN_ADDRESS, (address && address[0]) ? address : "192.168.1.10");
+    SetDlgItemInt  (hWnd, IDC_LAN_PORT, ENV_get_value_number("lan_port", 27015, "Network"), FALSE);
+
+    CheckDlgButton(hWnd, IDC_SP_KILLCAM,     ENV_get_value_number("killcam",          1, "Extra") ? BST_CHECKED : BST_UNCHECKED);
+    CheckDlgButton(hWnd, IDC_SP_BIKE_SLOWMO, ENV_get_value_number("bike_bail_slowmo", 1, "Extra") ? BST_CHECKED : BST_UNCHECKED);
+
+    UpdateLanControls(hWnd);
+}
+
+static void FinishGameModeControls(HWND hWnd)
+{
+    SLONG mode = 0;
+
+    if (IsDlgButtonChecked(hWnd, IDC_MODE_HOST) == BST_CHECKED) {mode = 1;}
+    if (IsDlgButtonChecked(hWnd, IDC_MODE_JOIN) == BST_CHECKED) {mode = 2;}
+
+    ENV_set_value_number("lan_mode", mode, "Network");
+
+    CBYTE address[64];
+
+    address[0] = 0;
+    GetDlgItemTextA(hWnd, IDC_LAN_ADDRESS, address, sizeof(address));
+
+    if (address[0])
+    {
+        ENV_set_value_string("lan_address", address, "Network");
+    }
+
+    BOOL  ok   = FALSE;
+    UINT  port = GetDlgItemInt(hWnd, IDC_LAN_PORT, &ok, FALSE);
+
+    if (ok && port > 0 && port < 65536)
+    {
+        ENV_set_value_number("lan_port", port, "Network");
+    }
+
+    ENV_set_value_number("killcam",          IsDlgButtonChecked(hWnd, IDC_SP_KILLCAM)     == BST_CHECKED, "Extra");
+    ENV_set_value_number("bike_bail_slowmo", IsDlgButtonChecked(hWnd, IDC_SP_BIKE_SLOWMO) == BST_CHECKED, "Extra");
 }
 
 static void FinishDialog(HWND hWnd) {
@@ -3381,6 +3450,7 @@ static void FinishDialog(HWND hWnd) {
         ENV_set_value_number("mouse_input", 0, "Extra");
     }
 
+    FinishGameModeControls(hWnd);
 
     ConfigExtras::getInstance().Update();
     
@@ -3400,6 +3470,12 @@ static BOOL CALLBACK dlgproc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
             FinishDialog(hWnd);
             EndDialog(hWnd, 0);
             return TRUE;
+
+        case IDC_MODE_SINGLE:
+        case IDC_MODE_HOST:
+        case IDC_MODE_JOIN:
+            UpdateLanControls(hWnd);
+            break;
 
         case IDCANCEL:
             //
