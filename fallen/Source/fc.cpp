@@ -15,6 +15,7 @@
 #include "font2d.h"
 
 #include "killcam.h"
+#include "security.h"
 #include "driveby.h"
 #include "grapple.h"
 
@@ -1332,6 +1333,43 @@ static void FC_killcam_apply(FC_Cam *fc)
 
 
 //
+// CCTV (security.cpp): watching a security camera on a computer. Takes the
+// camera completely while it lasts.
+//
+
+static void FC_cctv_apply(FC_Cam *fc)
+{
+	SLONG cx, cy, cz, lx, ly, lz;
+
+	if (!SEC_camera(&cx, &cy, &cz, &lx, &ly, &lz))
+	{
+		return;
+	}
+
+	FC_kc_saved[0] = fc->x;
+	FC_kc_saved[1] = fc->y;
+	FC_kc_saved[2] = fc->z;
+	FC_kc_saved[3] = fc->yaw;
+	FC_kc_saved[4] = fc->pitch;
+	FC_kc_saved[5] = fc->roll;
+
+	FC_kc_overridden = TRUE;
+
+	fc->x = cx << 8;
+	fc->y = cy << 8;
+	fc->z = cz << 8;
+
+	SLONG dx  = lx - cx;
+	SLONG dy  = ly - cy;
+	SLONG dz  = lz - cz;
+	SLONG dxz = QDIST2(abs(dx), abs(dz));
+
+	fc->yaw   = (-Arctan(dx, dz) & 2047) << 8;
+	fc->pitch = ( Arctan(dy, dxz) & 2047) << 8;
+	fc->roll  = 1024 << 8;
+}
+
+//
 // Aiming out of the car window (driveby.cpp, right mouse button): the camera
 // moves to the window and looks where you aim. Uses the same save / restore as
 // the killcam above.
@@ -2201,7 +2239,12 @@ extern	SLONG	EWAY_cam_jumped;
 
 		if (cam == 0)
 		{
-			FC_killcam_apply(fc);
+			FC_cctv_apply(fc);	// Before the others: they leave the camera alone once it is overridden
+
+			if (!FC_kc_overridden)
+			{
+				FC_killcam_apply(fc);
+			}
 			FC_driveby_apply(fc);
 			FC_driveby_apply(fc, TRUE);	// Grappling hook
 		}

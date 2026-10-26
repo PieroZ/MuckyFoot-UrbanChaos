@@ -88,6 +88,8 @@ SAVE INGAME
 //#include	"prim_draw.h"
 #include	"memory.h"
 #include "DebugVars.h"
+#include "config_extras.h"
+#include	"env.h"
 
 #include "../Headers/AllToAnmConverter.h"
 
@@ -195,6 +197,22 @@ UWORD	next_prim_multi_object=1;
 
 
 UBYTE	roper_pickup=0;
+
+//
+// How many meshes ("looks") roper.all itself has. Meshes appended later (trainer.all...)
+// don't count, so [Extra] roper_look can't pick them by mistake.
+//
+
+SLONG	ROPER_looks = 1;
+
+//
+// [Extra] roper_anims = file.all: its animations are added to Roper's at ROPER_EXTRA_ANIM_START
+// (anim n of the file = ROPER_EXTRA_ANIM_START + n), e.g. a Mixamo pack made with
+// uc_mixamo_pack.py. The console command "animka n" plays one. ROPER_extra_anims = how many.
+//
+
+#define ROPER_EXTRA_ANIM_START 400
+SLONG	ROPER_extra_anims = 0;
 
 void	set_next_prim_point(SLONG v)
 {
@@ -963,6 +981,13 @@ void	setup_people_anims(void)
 		load_anim_system(&game_chunk[ANIM_TYPE_ROPER], "roper.all");
 	}
 
+	ROPER_looks = 0;
+
+	while (ROPER_looks < 9 && game_chunk[ANIM_TYPE_ROPER].MultiObject[ROPER_looks])
+	{
+		ROPER_looks++;
+	}
+
 	if (save_psx)
 	{
 		//load_anim_system(&game_chunk[ANIM_TYPE_CIV], "C:\\stuff\\rthug.all", 2); //rpsxthug.all
@@ -1019,6 +1044,29 @@ extern	SLONG	playing_level(const CBYTE *name);
 		append_anim_system(&game_chunk[ANIM_TYPE_ROPER], "banesuit.all", 240, 1);
 	}
 
+	ROPER_extra_anims = 0;
+	{
+		CBYTE *extra = ENV_get_value_string("roper_anims", "Extra");
+
+		if (extra && extra[0])
+		{
+			CBYTE name[64];
+
+			strncpy(name, extra, sizeof(name) - 1);
+			name[sizeof(name) - 1] = 0;
+
+			if (append_anim_system(&game_chunk[ANIM_TYPE_ROPER], name, ROPER_EXTRA_ANIM_START, 0))
+			{
+				ROPER_extra_anims = game_chunk[ANIM_TYPE_ROPER].MaxAnimFrames - ROPER_EXTRA_ANIM_START;
+
+				if (ROPER_extra_anims < 0)
+				{
+					ROPER_extra_anims = 0;
+				}
+			}
+		}
+	}
+
 	if(playing_level("estate2.ucm") || playing_level("Album1.ucm"))
 	{
 		// bodge bodge bodge
@@ -1051,6 +1099,27 @@ void	setup_additional_anims(void)
 			global_anim_array[1][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
 			global_anim_array[2][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
 			global_anim_array[3][animId] = game_chunk[ANIM_TYPE_PZI].AnimList[animId];
+		}
+	}
+
+	//
+	// Using a computer (security.cpp): an animation from PROTOTYPE_DARCI1.all.
+	//
+
+	{
+		GameKeyFrameChunk *gc   = &game_chunk[ANIM_TYPE_PZI];
+		GameKeyFrame      *anim = NULL;
+		SLONG              pzi  = ConfigExtras::getInstance().mTerminalAnim;
+		SLONG              i;
+
+		if (gc->ElementCount != 0 && gc->AnimList && pzi > 0 && pzi < gc->MaxAnimFrames)
+		{
+			anim = gc->AnimList[pzi];
+		}
+
+		for (i = 0; i < 4; i++)
+		{
+			global_anim_array[i][ANIM_USE_COMPUTER] = (anim) ? anim : global_anim_array[i][ANIM_STAND_READY];
 		}
 	}
 

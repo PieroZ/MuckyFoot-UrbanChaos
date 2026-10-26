@@ -2594,6 +2594,15 @@ SLONG	save_anim_system(struct GameKeyFrameChunk *p_chunk,CBYTE	*name)
 #endif
 #ifndef TARGET_DC
 #ifndef PSX
+//
+// Room left after a person's .all for append_anim_system() (see load_append_game_chunk).
+//
+
+#define APPEND_EXTRA_KEYFRAMES	3000
+#define APPEND_EXTRA_ANIMS		600
+
+void CHUNK_set_capacity(GameKeyFrameChunk *p_chunk, SLONG keyframes, SLONG elements, SLONG anims);
+
 SLONG	load_insert_game_chunk(MFFileHandle	handle,struct GameKeyFrameChunk *p_chunk)
 {
 	SLONG	save_type=0,c0;
@@ -2622,14 +2631,35 @@ SLONG	load_insert_game_chunk(MFFileHandle	handle,struct GameKeyFrameChunk *p_chu
 	if(p_chunk->MaxPeopleTypes)
 		p_chunk->PeopleTypes=(struct BodyDef*)MemAlloc(MAX_PEOPLE_TYPES*sizeof(struct BodyDef));
 
+	//
+	// Room for animations appended later with append_anim_system() (police1.all,
+	// newciv.all, Mixamo imports...). It used to be 500 keyframes / 200 anims, which a
+	// couple of imported animations fill up - and append didn't check.
+	//
+
+	// People (game_chunk[]) get the big headroom, the other animated prims keep the old one.
+	SLONG extra_keyframes = 500;
+	SLONG extra_anims     = 200;
+
+	if (p_chunk >= &game_chunk[0] && p_chunk < &game_chunk[MAX_GAME_CHUNKS])
+	{
+		extra_keyframes = APPEND_EXTRA_KEYFRAMES;
+		extra_anims     = APPEND_EXTRA_ANIMS;
+	}
+
 	if(p_chunk->MaxKeyFrames)
-		p_chunk->AnimKeyFrames=(struct GameKeyFrame*)MemAlloc((p_chunk->MaxKeyFrames+500)*sizeof(struct GameKeyFrame));
+		p_chunk->AnimKeyFrames=(struct GameKeyFrame*)MemAlloc((p_chunk->MaxKeyFrames+extra_keyframes)*sizeof(struct GameKeyFrame));
 
 	if(p_chunk->MaxAnimFrames)
-		p_chunk->AnimList=(struct GameKeyFrame**)MemAlloc((p_chunk->MaxAnimFrames+200)*sizeof(struct GameKeyFrame *));
+		p_chunk->AnimList=(struct GameKeyFrame**)MemAlloc((p_chunk->MaxAnimFrames+extra_anims)*sizeof(struct GameKeyFrame *));
 
 	if(p_chunk->MaxElements)
-		p_chunk->TheElements=(struct GameKeyFrameElement*)MemAlloc((p_chunk->MaxElements+500*15)*sizeof(struct GameKeyFrameElement));
+		p_chunk->TheElements=(struct GameKeyFrameElement*)MemAlloc((p_chunk->MaxElements+extra_keyframes*15)*sizeof(struct GameKeyFrameElement));
+
+	CHUNK_set_capacity(p_chunk,
+		p_chunk->MaxKeyFrames + extra_keyframes,
+		p_chunk->MaxElements  + extra_keyframes * 15,
+		p_chunk->MaxAnimFrames + extra_anims);
 
 	temp_mem=(struct GameKeyFrameElementBig*)MemAlloc(p_chunk->MaxElements*sizeof(struct GameKeyFrameElementBig));
 
@@ -3007,6 +3037,59 @@ extern	void	free_game_chunk(GameKeyFrameChunk *the_chunk);
 	return(0);
 	
 }
+//
+// How much load_insert_game_chunk() allocated for each chunk, so that appends can
+// refuse instead of writing past the end.
+//
+
+#define CHUNK_MAX_CAPS 64
+
+static struct
+{
+	GameKeyFrameChunk *chunk;
+	SLONG keyframes;
+	SLONG elements;
+	SLONG anims;
+
+} CHUNK_caps[CHUNK_MAX_CAPS];
+
+void CHUNK_set_capacity(GameKeyFrameChunk *p_chunk, SLONG keyframes, SLONG elements, SLONG anims)
+{
+	SLONG i, free_slot = -1;
+
+	for (i = 0; i < CHUNK_MAX_CAPS; i++)
+	{
+		if (CHUNK_caps[i].chunk == p_chunk) {free_slot = i; break;}
+		if (CHUNK_caps[i].chunk == NULL && free_slot < 0) {free_slot = i;}
+	}
+
+	if (free_slot >= 0)
+	{
+		CHUNK_caps[free_slot].chunk     = p_chunk;
+		CHUNK_caps[free_slot].keyframes = keyframes;
+		CHUNK_caps[free_slot].elements  = elements;
+		CHUNK_caps[free_slot].anims     = anims;
+	}
+}
+
+static SLONG CHUNK_append_fits(GameKeyFrameChunk *p_chunk, SLONG keyframes, SLONG elements, SLONG last_anim)
+{
+	SLONG i;
+
+	for (i = 0; i < CHUNK_MAX_CAPS; i++)
+	{
+		if (CHUNK_caps[i].chunk == p_chunk)
+		{
+			return
+				p_chunk->MaxKeyFrames + keyframes <= CHUNK_caps[i].keyframes &&
+				p_chunk->MaxElements  + elements  <= CHUNK_caps[i].elements  &&
+				last_anim                         <= CHUNK_caps[i].anims;
+		}
+	}
+
+	return TRUE;	// Not loaded through load_insert_game_chunk(): can't tell.
+}
+
 SLONG	load_append_game_chunk(MFFileHandle	handle,struct GameKeyFrameChunk *p_chunk,SLONG start_frame)
 {
 	SLONG	save_type=0,c0;
@@ -3045,6 +3128,20 @@ SLONG	load_append_game_chunk(MFFileHandle	handle,struct GameKeyFrameChunk *p_chu
 	//
 	// memory should have been allocated over when the .all was loaded
 	//
+
+	if (!CHUNK_append_fits(p_chunk, MaxKeyFrames, MaxElements, start_frame + MaxAnimFrames))
+	{
+		CBYTE msg[200];
+
+		sprintf(msg, "append_anim_system: %d keyframes / %d animations at %d don't fit - increase APPEND_EXTRA_KEYFRAMES / APPEND_EXTRA_ANIMS in io.cpp",
+			MaxKeyFrames, MaxAnimFrames, start_frame);
+
+		DebugText("%s\n", msg);
+
+		MessageBox(NULL, msg, "Urban Chaos", MB_OK | MB_ICONWARNING);
+
+		return(0);
+	}
 
 	//
 	// Load the people types

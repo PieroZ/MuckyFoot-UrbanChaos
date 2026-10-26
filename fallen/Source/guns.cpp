@@ -4,6 +4,7 @@
 #include	"memory.h"
 #include	"wmove.h"
 #include	"animate.h"
+#include	"security.h"
 
 extern	SLONG	is_person_dead(Thing *p_person);
 
@@ -220,6 +221,11 @@ SLONG calc_target_score_new(Thing *darci, Thing *p_target)
 	SLONG score;
 
 	ASSERT(darci->Genus.Person->PlayerID);
+
+	if (p_target->Class == CLASS_BAT && !SEC_bat_targetable(p_target))
+	{
+		return 0;	// A computer, or a turret that is down in the floor / destroyed.
+	}
 
 	//
 	// Ignore dead and floating people.

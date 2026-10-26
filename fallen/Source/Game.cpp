@@ -2276,6 +2276,22 @@ extern int g_iCheatNumber;
 #endif
 
 #ifndef PSX
+			{
+				//
+				// Esc while using a computer goes back a screen instead of pausing.
+				//
+
+				extern SLONG SEC_ui_open(void);
+				extern void  SEC_escape(void);
+
+				if (Keys[KB_ESC] && SEC_ui_open())
+				{
+					Keys[KB_ESC] = 0;
+
+					SEC_escape();
+				}
+			}
+
 			if (!exit_game_loop)
 			{
 				exit_game_loop = GAMEMENU_process();
@@ -2593,6 +2609,31 @@ extern	void	do_packets(void);
 			//
 
 			OVERLAY_handle();
+
+			//
+			// A computer screen / CCTV feed / "use computer" prompt (security.cpp).
+			//
+
+			{
+				extern void SEC_draw(void);
+
+				SEC_draw();
+			}
+
+			//
+			// Green 'digital rain' while somebody turns into an agent (cheat "matrix").
+			//
+
+			{
+				extern SLONG AGENT_rain_amount(void);
+
+				SLONG rain = AGENT_rain_amount();
+
+				if (rain > 0)
+				{
+					PANEL_digital_rain_draw(rain);
+				}
+			}
 
 
 			// pausing and floating text stuff

@@ -47,7 +47,15 @@
 #define SPECIAL_CARKEY_WHITE 28
 #define SPECIAL_WIRE_CUTTER	 29
 #define SPECIAL_SILENCED_GUN 30
-#define SPECIAL_NUM_TYPES    31
+#define SPECIAL_SHIELD       31		// Riot shield: carried in the off-hand, stops bullets from the front
+#define SPECIAL_EMP_GRENADE  32		// Thrown like a grenade: knocks out turrets and computers (security.cpp)
+#define SPECIAL_NUM_TYPES    33
+
+//
+// Grenade-like specials (primed in the hand, then thrown).
+//
+
+#define SPECIAL_IS_GRENADE(type) ((type) == SPECIAL_GRENADE || (type) == SPECIAL_EMP_GRENADE)
 
 //
 // Info about every special
@@ -182,6 +190,25 @@ void SPECIAL_throw_mine(Thing *p_special);
 //
 
 void SPECIAL_set_explosives(Thing *p_person);
+
+
+//
+// Riot shield (SPECIAL_SHIELD).
+//
+// The shield works while it is carried and the person isn't holding a
+// two-handed weapon (shotgun, AK47, bat) - it is held in the off-hand.
+// Bullets coming from the front arc can be deflected; durability is
+// kept in the special's 'ammo' field (see [Extra] shield_* in config).
+//
+// SPECIAL_get_active_shield() returns the shield if it protects the person
+// right now, or NULL.
+//
+// SPECIAL_shield_hit() is called when a bullet is stopped by the shield:
+// it wears the shield down and breaks it when it is used up.
+//
+
+Thing *SPECIAL_get_active_shield(Thing *p_person);
+void   SPECIAL_shield_hit(Thing *p_person, Thing *p_shield, SLONG wear);
 
 //---------------------------------------------------------------
 

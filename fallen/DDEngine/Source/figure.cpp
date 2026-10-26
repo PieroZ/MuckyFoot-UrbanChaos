@@ -1419,7 +1419,8 @@ float m_fObjectBoundingSphereRadius[MAX_NUMBER_D3D_PRIMS];
 // 16 people types, 32 types of civ, and 6 different Roper ones (five weapons + no weapon).
 // Oh - number eight is his magic hip-flask!
 #define NUM_ROPERS_THINGIES 8
-#define MAX_NUMBER_D3D_PEOPLE (32 + 16 + NUM_ROPERS_THINGIES)
+#define NUM_ROPER_LOOKS 4		// meshes of roper.all ([Extra] roper_look) that get their own compiled mesh
+#define MAX_NUMBER_D3D_PEOPLE (32 + 16 + NUM_ROPERS_THINGIES * NUM_ROPER_LOOKS)
 TomsPrimObject D3DPeopleObj[MAX_NUMBER_D3D_PEOPLE];
 
 
@@ -5735,6 +5736,14 @@ extern int g_iCheatNumber;
 		ASSERT ( ( FIGURE_dhpr_data.bPersonID >> 5 ) < NUM_ROPERS_THINGIES );
 
 		iIndex = (int)( FIGURE_dhpr_data.bPersonID >> 5 ) + PERSON_NUM_TYPES + 32;
+
+		// Another look of Roper (a different mesh of roper.all) is a different compiled mesh too.
+		SLONG look = p_person->Draw.Tweened->MeshID;
+
+		if (look > 0 && look < NUM_ROPER_LOOKS)
+		{
+			iIndex += look * NUM_ROPERS_THINGIES;
+		}
 	}
 
 
@@ -5744,7 +5753,7 @@ extern int g_iCheatNumber;
 
 
 	ASSERT ( iIndex < MAX_NUMBER_D3D_PEOPLE );
-	ASSERT ( ( PERSON_NUM_TYPES + 32 + NUM_ROPERS_THINGIES ) <= MAX_NUMBER_D3D_PEOPLE );
+	ASSERT ( ( PERSON_NUM_TYPES + 32 + NUM_ROPERS_THINGIES * NUM_ROPER_LOOKS ) <= MAX_NUMBER_D3D_PEOPLE );
 	TomsPrimObject *pPrimObj = &(D3DPeopleObj[iIndex]);
 	if ( pPrimObj->wNumMaterials == 0 )
 	{
@@ -8192,7 +8201,24 @@ void ANIM_obj_draw(Thing *p_thing,DrawTween *dt)
 	SLONG object_offset;
 
 	ele_count    = dt->TheChunk->ElementCount;
-	start_object = prim_multi_objects[dt->TheChunk->MultiObject[0]].StartObject;
+
+	{
+		//
+		// Turrets and computers (security.cpp) share one anim prim: dt->MeshID says which mesh.
+		//
+
+		SLONG mesh = 0;
+
+		if (p_thing->Class == CLASS_BAT &&
+		   (p_thing->Genus.Bat->type == BAT_TYPE_TURRET || p_thing->Genus.Bat->type == BAT_TYPE_TERMINAL) &&
+			dt->MeshID < 10 &&
+			dt->TheChunk->MultiObject[dt->MeshID])
+		{
+			mesh = dt->MeshID;
+		}
+
+		start_object = prim_multi_objects[dt->TheChunk->MultiObject[mesh]].StartObject;
+	}
 
 	for (i = 0; i < ele_count; i++)
 	{
@@ -8309,7 +8335,24 @@ void ANIM_obj_draw_warped(Thing *p_thing,DrawTween *dt)
 	SLONG object_offset;
 
 	ele_count    = dt->TheChunk->ElementCount;
-	start_object = prim_multi_objects[dt->TheChunk->MultiObject[0]].StartObject;
+
+	{
+		//
+		// Turrets and computers (security.cpp) share one anim prim: dt->MeshID says which mesh.
+		//
+
+		SLONG mesh = 0;
+
+		if (p_thing->Class == CLASS_BAT &&
+		   (p_thing->Genus.Bat->type == BAT_TYPE_TURRET || p_thing->Genus.Bat->type == BAT_TYPE_TERMINAL) &&
+			dt->MeshID < 10 &&
+			dt->TheChunk->MultiObject[dt->MeshID])
+		{
+			mesh = dt->MeshID;
+		}
+
+		start_object = prim_multi_objects[dt->TheChunk->MultiObject[mesh]].StartObject;
+	}
 
 	for (i = 0; i < ele_count; i++)
 	{

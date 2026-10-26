@@ -553,6 +553,13 @@ CBYTE	*EWAY_get_mess(SLONG index)
 		return fugitive;	// Beacon on a fugitive from the cheat (CARFLEE in pcom.cpp)
 	}
 
+	if (index == MAP_BEACON_MESS_AGENT)
+	{
+		static CBYTE agent[] = "Agent";
+
+		return agent;		// Beacon on an agent from the "matrix" cheat (MATRIX in pcom.cpp)
+	}
+
 	ASSERT(index<EWAY_mess_upto);
 	ASSERT(EWAY_mess[index]>=&EWAY_mess_buffer[0] && EWAY_mess[index]<&EWAY_mess_buffer[EWAY_mess_buffer_upto]);
 	ASSERT(EWAY_mess[index]!=(CBYTE*)0x3c003c00);

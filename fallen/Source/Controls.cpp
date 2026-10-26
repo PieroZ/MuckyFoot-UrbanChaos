@@ -66,6 +66,7 @@
 #include	"music.h"
 #include	"night.h"
 #include	"grenade.h"
+#include	"security.h"
 #include	"demo.h"
 #include <cstdlib>
 
@@ -198,7 +199,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "baalrog", "balrog", "killcam", "drawdist", "fogstart", "crinklemode", "carflee", "uciekinier", "fugitive", "przebij", "napraw", "hak", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "baalrog", "balrog", "killcam", "drawdist", "fogstart", "crinklemode", "carflee", "uciekinier", "fugitive", "przebij", "napraw", "hak", "swat", "wyglad", "look", "animka", "tarcza", "shield", "matrix", "agent", "sentry", "terminal", "emp", "secsave", "where", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -796,11 +797,7 @@ extern int AENG_detail_crinkles;
 					//	8000,
 					//	i);
 
-					THING_INDEX p_index = BAT_create(
-						BAT_TYPE_TURRET,
-						world_x,
-						world_z,
-						8000);
+					SEC_cmd_sentry(ptr);	// The real thing now (security.cpp)
 
 
 				}
@@ -955,6 +952,183 @@ extern int AENG_detail_crinkles;
 					}
 
 					CONSOLE_text(msg, 4000);
+				}
+				break;
+			case 71: // swat            - play as Roper in his extra look (mesh 1 of roper.all); again = back
+			case 72: // wyglad <n>      - Roper's look n (0 = Roper himself), no number = list them
+			case 73: // look <n>
+				{
+					extern SLONG ROPER_looks;
+					extern void  set_persons_personid(Thing *p_person);
+
+					// What the player was before the first look change (to go back with "swat" / "wyglad 0").
+					static SLONG had_type = -1;
+					static UBYTE had_anim;
+					static UBYTE had_mesh;
+
+					CBYTE msg[96];
+					SLONG is_roper = darci->Genus.Person->PersonType == PERSON_ROPER;
+					SLONG now      = is_roper ? darci->Draw.Tweened->MeshID : 0;
+					SLONG look;
+
+					if (i == 71)
+					{
+						look = (is_roper && now == 1) ? 0 : 1;
+					}
+					else
+					{
+						if (!*ptr)
+						{
+							sprintf(msg, "Wyglady Ropera: 0..%d (teraz %d). wyglad <n>", ROPER_looks - 1, now);
+							CONSOLE_text(msg, 4000);
+							break;
+						}
+
+						look = atoi(ptr);
+					}
+
+					if (look < 0 || look >= ROPER_looks)
+					{
+						sprintf(msg, "roper.all nie ma wygladu %d (jest 0..%d)", look, ROPER_looks - 1);
+						CONSOLE_text(msg, 4000);
+						break;
+					}
+
+					if (darci->Genus.Person->Flags & (FLAG_PERSON_DRIVING | FLAG_PERSON_BIKING | FLAG_PERSON_PASSENGER))
+					{
+						CONSOLE_text("Najpierw wysiadz z pojazdu", 3000);
+						break;
+					}
+
+					if (look > 0 && !is_roper)
+					{
+						// Darci (or anyone) becomes Roper - his animations go with his meshes.
+
+						had_type = darci->Genus.Person->PersonType;
+						had_anim = darci->Genus.Person->AnimType;
+						had_mesh = darci->Draw.Tweened->MeshID;
+
+						darci->Genus.Person->PersonType = PERSON_ROPER;
+						darci->Genus.Person->AnimType   = ANIM_TYPE_ROPER;
+						darci->Draw.Tweened->TheChunk   = &game_chunk[ANIM_TYPE_ROPER];
+					}
+
+					if (look == 0 && had_type >= 0)
+					{
+						// Back to whoever the player was.
+
+						darci->Genus.Person->PersonType = had_type;
+						darci->Genus.Person->AnimType   = had_anim;
+						darci->Draw.Tweened->TheChunk   = &game_chunk[had_anim];
+						darci->Draw.Tweened->MeshID     = had_mesh;
+						had_type = -1;
+					}
+					else
+					{
+						darci->Draw.Tweened->MeshID = look;
+					}
+
+					darci->Draw.Tweened->PersonID = 0;
+					set_persons_personid(darci);	// the hand that holds the current weapon
+					set_person_idle(darci);
+
+					// Roper's levels start with this look too.
+					ENV_set_value_number("roper_look", look, "Extra");
+
+					if (darci->Genus.Person->PersonType != PERSON_ROPER)
+						sprintf(msg, "Z powrotem normalna postac");
+					else if (look == 0)
+						sprintf(msg, "Roper - zwykly wyglad");
+					else
+						sprintf(msg, "Roper - wyglad %d%s", look, i == 71 ? " (SWAT). Jeszcze raz \"swat\" = powrot" : "");
+					CONSOLE_text(msg, 4000);
+				}
+				break;
+			case 74: // animka <n>  - plays anim n of the [Extra] roper_anims file (e.g. a Mixamo pack)
+				{
+					extern SLONG ROPER_extra_anims;
+					CBYTE msg[96];
+					SLONG n = atoi(ptr);
+
+					if (ROPER_extra_anims <= 1)
+					{
+						CONSOLE_text("Brak dodatkowych animacji: [Extra] roper_anims=plik.all w config.ini", 4000);
+						break;
+					}
+					if (!*ptr || n < 1 || n >= ROPER_extra_anims)
+					{
+						sprintf(msg, "animka 1..%d (lista w pliku *_anims.txt)", ROPER_extra_anims - 1);
+						CONSOLE_text(msg, 4000);
+						break;
+					}
+					if (darci->Genus.Person->PersonType != PERSON_ROPER ||
+						darci->Draw.Tweened->TheChunk != &game_chunk[ANIM_TYPE_ROPER])
+					{
+						CONSOLE_text("To animacje Ropera - najpierw \"swat\" albo \"wyglad 0\"", 4000);
+						break;
+					}
+					if (darci->Genus.Person->Flags & (FLAG_PERSON_DRIVING | FLAG_PERSON_BIKING | FLAG_PERSON_PASSENGER))
+					{
+						CONSOLE_text("Najpierw wysiadz z pojazdu", 3000);
+						break;
+					}
+
+					set_person_do_a_simple_anim(darci, 400 + n);	// ROPER_EXTRA_ANIM_START (Anim.cpp)
+					sprintf(msg, "animka %d", n);
+					CONSOLE_text(msg, 2000);
+				}
+				break;
+			case 79: // sentry [hidden] [friendly] [off] - a security turret in front of you
+				SEC_cmd_sentry(ptr);
+				break;
+			case 80: // terminal - a computer in front of you (files, CCTV, turret control)
+				SEC_cmd_terminal(ptr);
+				break;
+			case 81: // emp [n] - EMP grenades
+				SEC_cmd_emp(ptr);
+				break;
+			case 82: // secsave - write the level's turrets / computers to levels\<level>.sec
+				SEC_cmd_save();
+				break;
+			case 83: // where - position in mapsquares and facing, for .sec files
+				SEC_cmd_where();
+				break;
+			case 77: // matrix
+			case 78: // agent
+				// A passer-by far away is struck by lightning and turns into an agent who hunts you.
+				AGENT_spawn_agent();
+				break;
+			case 75: // tarcza
+			case 76: // shield
+				// Give / take away a riot shield.
+				{
+					extern void free_special(Thing *s_thing);
+
+					Thing *p_shield = person_has_special(darci, SPECIAL_SHIELD);
+
+					if (p_shield)
+					{
+						special_drop(p_shield, darci);
+						free_special(p_shield);
+						CONSOLE_text("Shield taken away", 3000);
+					}
+					else
+					{
+						p_shield = alloc_special(
+										SPECIAL_SHIELD,
+										SPECIAL_SUBSTATE_NONE,
+										darci->WorldPos.X >> 8,
+										darci->WorldPos.Y >> 8,
+										darci->WorldPos.Z >> 8,
+										0);
+
+						if (p_shield)
+						{
+							p_shield->SubState = SPECIAL_SUBSTATE_NONE;	// Don't let it fall - it goes straight into the hand.
+							person_get_item(darci, p_shield);
+							CONSOLE_text("Riot shield: it stops bullets from the front, keep two-handed weapons away", 4000);
+						}
+					}
 				}
 				break;
 			case 70: // hak

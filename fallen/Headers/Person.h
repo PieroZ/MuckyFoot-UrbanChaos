@@ -530,6 +530,13 @@ SLONG can_i_see_place (Thing *p_person, SLONG x, SLONG y, SLONG z);
 
 SLONG get_dangle(Thing *p_person, Thing *p_target);
 
+//
+// Changes this person's body into a Man In Black (the "matrix" cheat).
+// Only the looks, health and type - the AI is up to the caller.
+//
+
+void PERSON_turn_into_mib(Thing *p_person);
+
 
 //
 // Works out how quickly a person's aim should improve depending

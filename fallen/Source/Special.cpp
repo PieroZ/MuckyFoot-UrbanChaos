@@ -36,6 +36,8 @@
 #include	"xlat_str.h"
 #include	"sound.h"
 #include	"grenade.h"
+#include	"config_extras.h"
+#include	"security.h"
 #ifndef		PSX
 #include	"..\ddengine\headers\panel.h"
 #else
@@ -80,6 +82,8 @@ SPECIAL_Info SPECIAL_info[SPECIAL_NUM_TYPES] =
 	{"White Car Keys",	PRIM_OBJ_ITEM_KEY,			SPECIAL_GROUP_USEFUL			},
 	{"Wire Cutters",	PRIM_OBJ_ITEM_WRENCH,		SPECIAL_GROUP_USEFUL			},
 	{"Gun silencer",	PRIM_OBJ_ITEM_GUN,			SPECIAL_GROUP_ONEHANDED_WEAPON	},
+	{"Riot shield",		PRIM_OBJ_ITEM_FILE,			SPECIAL_GROUP_USEFUL			},	// Placeholder mesh until there is a shield prim
+	{"EMP grenade",		PRIM_OBJ_ITEM_GRENADE,		SPECIAL_GROUP_ONEHANDED_WEAPON	},
 };
 
 
@@ -340,6 +344,21 @@ SLONG should_person_get_item(Thing *p_person, Thing *p_special)
 
 		case	SPECIAL_MINE:
 			return(FALSE);  //added my MD
+
+		case SPECIAL_EMP_GRENADE:
+			{
+				Thing *p_emp = person_has_special(p_person, SPECIAL_EMP_GRENADE);
+
+				return (p_emp == NULL || p_emp->Genus.Special->ammo < 8);
+			}
+
+		case SPECIAL_SHIELD:
+
+			//
+			// One shield is enough.
+			//
+
+			return !person_has_special(p_person, SPECIAL_SHIELD);
 
 		default:
 			return TRUE;
@@ -615,6 +634,31 @@ void person_get_item(Thing *p_person, Thing *p_special)
 			}
 
 
+		case SPECIAL_EMP_GRENADE:
+
+			{
+				Thing *p_has = person_has_special(p_person, SPECIAL_EMP_GRENADE);
+
+				if (p_has)
+				{
+					if(p_has->Genus.Special->ammo<100)
+						p_has->Genus.Special->ammo += (p_special->Genus.Special->ammo) ? p_special->Genus.Special->ammo : SPECIAL_AMMO_IN_A_GRENADE;
+				}
+				else
+				{
+					special_pickup(p_special, p_person);
+					remove_thing_from_map(p_special);
+					keep = TRUE;
+				}
+
+				if (p_person->Genus.Person->PlayerID)
+				{
+					PANEL_new_info_message("EMP grenade");
+				}
+
+				break;
+			}
+
 		case SPECIAL_EXPLOSIVES:
 
 			{
@@ -718,6 +762,11 @@ extern	SLONG	stat_count_bonus;
 			if (p_special->Genus.Special->SpecialType == SPECIAL_BASEBALLBAT) {x_message = X_BASEBALL_BAT;}
 			if (p_special->Genus.Special->SpecialType == SPECIAL_KEY)         {x_message = X_KEYCARD;}
 			if (p_special->Genus.Special->SpecialType == SPECIAL_VIDEO)       {x_message = X_VIDEO;}
+
+			if (p_special->Genus.Special->SpecialType == SPECIAL_SHIELD && p_person->Genus.Person->PlayerID)
+			{
+				PANEL_new_info_message("Riot shield");
+			}
 
 			//
 			// Use it by default? Nope.  Add it to the person's linked list of
@@ -913,7 +962,7 @@ void special_normal(Thing *s_thing)
 
 		s_thing->WorldPos = p_owner->WorldPos;
 
-		if (s_thing->Genus.Special->SpecialType == SPECIAL_GRENADE &&
+		if (SPECIAL_IS_GRENADE(s_thing->Genus.Special->SpecialType) &&
 			s_thing->SubState                   == SPECIAL_SUBSTATE_ACTIVATED)
 		{
 			SLONG ticks = 16 * TICK_RATIO >> TICK_SHIFT;
@@ -924,7 +973,14 @@ void special_normal(Thing *s_thing)
 				// The grenade has gone off!
 				// 
 #ifndef PSX
-				CreateGrenadeExplosion(s_thing->WorldPos.X, s_thing->WorldPos.Y + 2256, s_thing->WorldPos.Z, p_owner);
+				if (s_thing->Genus.Special->SpecialType == SPECIAL_EMP_GRENADE)
+				{
+					SEC_emp_blast(s_thing->WorldPos.X, s_thing->WorldPos.Y + 2256, s_thing->WorldPos.Z, p_owner);
+				}
+				else
+				{
+					CreateGrenadeExplosion(s_thing->WorldPos.X, s_thing->WorldPos.Y + 2256, s_thing->WorldPos.Z, p_owner);
+				}
 #else
 				POW_create(
 					POW_CREATE_LARGE_SEMI,
@@ -1644,7 +1700,9 @@ Thing *alloc_special(
 		case SPECIAL_SHOTGUN:    new_special->ammo = SPECIAL_AMMO_IN_A_SHOTGUN; break;
 		case SPECIAL_AK47:       new_special->ammo = SPECIAL_AMMO_IN_A_AK47;    break;
 		case SPECIAL_GRENADE:    new_special->ammo = SPECIAL_AMMO_IN_A_GRENADE; break;
+		case SPECIAL_EMP_GRENADE: new_special->ammo = SPECIAL_AMMO_IN_A_GRENADE; break;
 		case SPECIAL_EXPLOSIVES: new_special->ammo = 1;                         break;
+		case SPECIAL_SHIELD:     new_special->ammo = ConfigExtras::getInstance().mShieldDurability; break;
 
 		default:
 			new_special->ammo = 0;
@@ -1710,6 +1768,98 @@ void	free_special(Thing *special_thing)
 //---------------------------------------------------------------
 
 
+//
+// Riot shield.
+//
+
+Thing *SPECIAL_get_active_shield(Thing *p_person)
+{
+	if (p_person == NULL || p_person->Class != CLASS_PERSON)
+	{
+		return NULL;
+	}
+
+	Thing *p_shield = person_has_special(p_person, SPECIAL_SHIELD);
+
+	if (p_shield == NULL)
+	{
+		return NULL;
+	}
+
+	//
+	// No protection when you can't hold the shield up.
+	//
+
+	switch(p_person->State)
+	{
+		case STATE_DYING:
+		case STATE_DEAD:
+		case STATE_DOWN:
+		case STATE_DANGLING:
+		case STATE_CLIMB_LADDER:
+		case STATE_CLIMBING:
+		case STATE_GRAPPLING:
+		case STATE_CARRY:
+		case STATE_DRIVING:
+			return NULL;
+	}
+
+	if (p_person->Genus.Person->Flags & (FLAG_PERSON_DRIVING | FLAG_PERSON_PASSENGER | FLAG_PERSON_KO))
+	{
+		return NULL;
+	}
+
+	//
+	// A two-handed weapon needs both hands - the shield is down.
+	//
+
+	if (p_person->Genus.Person->SpecialUse)
+	{
+		Thing *p_use = TO_THING(p_person->Genus.Person->SpecialUse);
+
+		if (SPECIAL_info[p_use->Genus.Special->SpecialType].group == SPECIAL_GROUP_TWOHANDED_WEAPON)
+		{
+			return NULL;
+		}
+	}
+
+	return p_shield;
+}
+
+void SPECIAL_shield_hit(Thing *p_person, Thing *p_shield, SLONG wear)
+{
+	if (ConfigExtras::getInstance().mShieldDurability == 0)
+	{
+		//
+		// Unbreakable.
+		//
+
+		return;
+	}
+
+	if (p_shield->Genus.Special->ammo > wear)
+	{
+		p_shield->Genus.Special->ammo -= wear;
+
+		return;
+	}
+
+	//
+	// The shield is shot to pieces.
+	//
+
+	MFX_play_xyz(THING_NUMBER(p_person), SOUND_Range(S_RICOCHET_START, S_RICOCHET_END), 0, p_person->WorldPos.X, p_person->WorldPos.Y, p_person->WorldPos.Z);
+
+	if (p_person->Genus.Person->PlayerID)
+	{
+		PANEL_new_info_message("Shield destroyed!");
+	}
+
+	special_drop(p_shield, p_person);
+	free_special(p_shield);
+}
+
+
 Thing *person_has_special(Thing *p_person, SLONG special_type)
 {
 	SLONG  special;
@@ -1741,6 +1891,11 @@ void SPECIAL_throw_grenade(Thing *p_special)
 	{
 		// no room in grenade array
 		return;
+	}
+
+	if (p_special->Genus.Special->SpecialType == SPECIAL_EMP_GRENADE)
+	{
+		GRENADE_set_last_emp();
 	}
 
 	if (p_special->Genus.Special->ammo == 1)

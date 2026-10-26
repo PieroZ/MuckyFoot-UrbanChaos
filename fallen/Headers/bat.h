@@ -17,6 +17,7 @@ static const int BAT_TYPE_GARGOYLE = 2;
 static const int BAT_TYPE_BALROG = 3;
 static const int BAT_TYPE_BANE = 4;
 static const int BAT_TYPE_TURRET = 6;
+static const int BAT_TYPE_TERMINAL = 7;	// A computer (security.cpp). Uses anim_chunk[6] mesh 1, never anim_chunk[7].
 
 
 typedef struct

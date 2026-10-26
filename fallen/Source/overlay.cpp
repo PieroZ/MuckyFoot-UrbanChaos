@@ -770,7 +770,7 @@ extern SLONG person_holding_special(Thing* p_person, UBYTE special);	// I am so 
 
 	Thing*	p_player = NET_PERSON(0);
 
-	if (person_holding_special(p_player, SPECIAL_GRENADE))
+	if (person_holding_special(p_player, SPECIAL_GRENADE) || person_holding_special(p_player, SPECIAL_EMP_GRENADE))
 	{
 /*
 		SLONG	angle = p_player->Draw.Tweened->Angle;

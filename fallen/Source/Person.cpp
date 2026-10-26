@@ -500,6 +500,23 @@ inline BOOL	MagicFrameCheck(Thing *p_person, UBYTE frameindex) {
 
 }
 
+void PERSON_turn_into_mib(Thing *p_person)
+{
+	Person *pp = p_person->Genus.Person;
+
+	pp->PersonType = PERSON_MIB1;
+	pp->AnimType   = anim_type[PERSON_MIB1];
+	pp->Health     = health   [PERSON_MIB1];
+
+	pp->Flags2 &= ~FLAG2_PERSON_FAKE_WANDER;
+
+	p_person->Draw.Tweened->TheChunk = &game_chunk[anim_type[PERSON_MIB1]];
+	p_person->Draw.Tweened->MeshID   = mesh_type[PERSON_MIB1];
+	p_person->Draw.Tweened->PersonID = 0;
+
+	set_person_idle(p_person);
+}
+
 BOOL PersonIsMIB(Thing* p_person)
 {
 	return (p_person->Genus.Person->PersonType == PERSON_MIB1 ||
@@ -612,6 +629,23 @@ Thing	*alloc_person(UBYTE type, UBYTE random_number)
 
 				//person_thing->Draw.Tweened->MeshID	=	mesh_type[2];
 				person_thing->Draw.Tweened->MeshID	=	mesh_type[type];
+
+				if (type == PERSON_ROPER)
+				{
+					//
+					// [Extra] roper_look = N: draw Roper with mesh N of roper.all
+					// (0 = Roper himself, 1.. = extra looks added with uc_mixamo_character.py).
+					//
+
+					extern SLONG ROPER_looks;
+
+					SLONG look = ENV_get_value_number("roper_look", 0, "Extra");
+
+					if (look > 0 && look < ROPER_looks)
+					{
+						person_thing->Draw.Tweened->MeshID = look;
+					}
+				}
 #ifdef	PSX
 //				ASSERT(person_thing->Draw.Tweened->MeshID||type==4);
 #endif
@@ -5780,6 +5814,7 @@ UBYTE VehicleBelongsToMIB(Thing *p_target)
 SLONG get_shoot_damage(Thing *p_person, Thing *p_target,SLONG *gun_type)
 {
 	SLONG damage;
+	Thing *p_shield = NULL;	// The target's riot shield if the shot comes from in front of it.
 
 	SLONG dx   = abs(p_target->WorldPos.X - p_person->WorldPos.X >> 8);
 	SLONG dz   = abs(p_target->WorldPos.Z - p_person->WorldPos.Z >> 8);
@@ -5963,6 +5998,56 @@ SLONG get_shoot_damage(Thing *p_person, Thing *p_target,SLONG *gun_type)
 		}
 	}
 
+	//
+	// Riot shield: a bullet coming from the front arc is likely to be stopped.
+	//
+
+	if (p_target->Class == CLASS_PERSON)
+	{
+		p_shield = SPECIAL_get_active_shield(p_target);
+
+		if (p_shield)
+		{
+			ConfigExtras &extras = ConfigExtras::getInstance();
+
+			SLONG arc    = extras.mShieldArc * 2048 / 360;
+			SLONG dangle = get_dangle(p_target, p_person);	// 0 => the shooter is straight ahead of the target
+
+			if (dangle > 1024)
+			{
+				dangle = 2048 - dangle;
+			}
+
+			if (dangle > arc)
+			{
+				//
+				// Shot from the side or behind - the shield doesn't help.
+				//
+
+				p_shield = NULL;
+			}
+			else
+			if ((Random() % 100) < extras.mShieldBlockChance)
+			{
+				//
+				// Blocked! Shotgun blasts wear the shield down faster.
+				//
+
+				SLONG wear = 1;
+
+				if (p_person->Genus.Person->SpecialUse &&
+					TO_THING(p_person->Genus.Person->SpecialUse)->Genus.Special->SpecialType == SPECIAL_SHOTGUN)
+				{
+					wear = 3;
+				}
+
+				SPECIAL_shield_hit(p_target, p_shield, wear);
+
+				return 0;	// Counts as a miss: ricochet and a spark next to the target.
+			}
+		}
+	}
+
 	if(p_target->Genus.Player->PlayerID)
 	{
 		dist-=(300>>3);
@@ -6049,6 +6134,20 @@ SLONG get_shoot_damage(Thing *p_person, Thing *p_target,SLONG *gun_type)
 	if (p_target->Genus.Person->PlayerID)
 	{
 		damage >>= 1;
+	}
+
+	if (p_shield)
+	{
+		//
+		// The bullet got round the shield, but the shield still took the worst of it.
+		//
+
+		damage = damage * ConfigExtras::getInstance().mShieldDamagePercent / 100;
+
+		if (damage < 1)
+		{
+			damage = 1;
+		}
 	}
 
 	//damage += 1;
@@ -21103,7 +21202,7 @@ void set_person_can_release(Thing *p_person, SLONG power)
 	{
 		p_special = TO_THING(p_person->Genus.Person->SpecialUse);
 		
-		if (p_special->Genus.Special->SpecialType == SPECIAL_GRENADE)
+		if (SPECIAL_IS_GRENADE(p_special->Genus.Special->SpecialType))
 		{
 			//
 			// We have a grenade to throw
@@ -21267,7 +21366,7 @@ void fn_person_can(Thing *p_person)
 						//
 
 						if (p_person->Genus.Person->SpecialUse &&
-							TO_THING(p_person->Genus.Person->SpecialUse)->Genus.Special->SpecialType == SPECIAL_GRENADE)
+							SPECIAL_IS_GRENADE(TO_THING(p_person->Genus.Person->SpecialUse)->Genus.Special->SpecialType))
 						{
 							p_special = TO_THING(p_person->Genus.Person->SpecialUse);
 

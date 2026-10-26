@@ -15,6 +15,7 @@
 #include "grenade.h"
 #include "statedef.h"
 #include "drawxtra.h"
+#include "security.h"
 
 // Grenade
 //
@@ -39,7 +40,7 @@ struct Grenade
 	SWORD	dpitch;
 
 	UWORD	timer;			// time to explosion
-	UWORD	rsvd;			// reserved
+	UWORD	rsvd;			// 1 => an EMP grenade
 };
 
 #define	MAX_GRENADES	6
@@ -94,8 +95,17 @@ bool CreateGrenade(Thing* owner, SLONG x, SLONG y, SLONG z, SLONG dx, SLONG dy, 
 	gp->dpitch = 50;
 
 	gp->timer = timer;
+	gp->rsvd = 0;
 
 	return true;
+}
+
+void GRENADE_set_last_emp(void)
+{
+	if (global_g)
+	{
+		global_g->rsvd = 1;
+	}
 }
 
 // CreateGrenadeFromPerson
@@ -183,7 +193,7 @@ void DrawGrenades()
 				(gp->z >> 8),
 				dx,
 				0,dz,
-				0x007f5d,
+				(gp->rsvd == 1) ? 0x2060ff : 0x007f5d,
 				0);
 
 			/*
@@ -216,7 +226,16 @@ void ProcessGrenade(Grenade* gp,SLONG explode,SLONG ii)
 		{
 			// grenade explodes
 			if(explode)
-				CreateGrenadeExplosion(gp->x, gp->y, gp->z, gp->owner);
+			{
+				if (gp->rsvd == 1)
+				{
+					SEC_emp_blast(gp->x, gp->y, gp->z, gp->owner);
+				}
+				else
+				{
+					CreateGrenadeExplosion(gp->x, gp->y, gp->z, gp->owner);
+				}
+			}
 			gp->owner = NULL;
 			return;
 		}

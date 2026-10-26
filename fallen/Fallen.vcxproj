@@ -317,6 +317,7 @@
     <ClCompile Include="Source\killcam.cpp" />
     <ClCompile Include="Source\driveby.cpp" />
     <ClCompile Include="Source\grapple.cpp" />
+    <ClCompile Include="Source\security.cpp" />
     <ClCompile Include="Source\lanplay.cpp" />
     <ClCompile Include="Source\lansock.cpp" />
     <ClCompile Include="Editor\Library\Draw2d.cpp" />
@@ -1050,6 +1051,7 @@
     <ClInclude Include="Headers\killcam.h" />
     <ClInclude Include="Headers\driveby.h" />
     <ClInclude Include="Headers\grapple.h" />
+    <ClInclude Include="Headers\security.h" />
     <ClInclude Include="Headers\lanplay.h" />
     <ClInclude Include="Headers\lansock.h" />
     <ClInclude Include="Source\DebugVars.h" />

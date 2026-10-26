@@ -38,4 +38,12 @@ void KILLCAM_reset(void);		// New level
 
 void KILLCAM_bullet_time(SLONG ms);	// Slow motion for a moment (no camera swing)
 
+//
+// Slow motion with the camera swinging round somebody who is NOT being
+// defeated (the agent appearing in the "matrix" cheat). Returns FALSE if
+// the killcam is busy or this is a network game.
+//
+
+SLONG KILLCAM_focus(THING_INDEX who, SLONG duration_ms);
+
 #endif

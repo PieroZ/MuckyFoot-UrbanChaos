@@ -28,6 +28,7 @@ static struct
 	SLONG       time;		// Real milliseconds since it started
 	SLONG       cooldown;	// Real milliseconds until it may start again
 	SLONG       pitched;	// The sound pitch has been changed
+	SLONG       duration;	// Real milliseconds the effect lasts
 
 } KILLCAM;
 
@@ -90,9 +91,24 @@ UWORD KILLCAM_victim(void)
 	return KILLCAM.victim;
 }
 
+SLONG KILLCAM_focus(THING_INDEX who, SLONG duration_ms)
+{
+	if (CNET_network_game || KILLCAM.active || !who)
+	{
+		return FALSE;
+	}
+
+	KILLCAM.active   = TRUE;
+	KILLCAM.victim   = who;
+	KILLCAM.time     = 0;
+	KILLCAM.duration = duration_ms;
+
+	return TRUE;
+}
+
 SLONG KILLCAM_progress(void)
 {
-	SLONG t = (KILLCAM.time << 8) / KILLCAM_DURATION;
+	SLONG t = (KILLCAM.time << 8) / (KILLCAM.duration > 0 ? KILLCAM.duration : KILLCAM_DURATION);
 
 	SATURATE(t, 0, 256);
 
@@ -107,7 +123,7 @@ SLONG KILLCAM_blend(void)
 	}
 
 	SLONG in = (KILLCAM.time << 8) / KILLCAM_BLEND_IN;
-	SLONG out = ((KILLCAM_DURATION - KILLCAM.time) << 8) / KILLCAM_BLEND_OUT;
+	SLONG out = (((KILLCAM.duration > 0 ? KILLCAM.duration : KILLCAM_DURATION) - KILLCAM.time) << 8) / KILLCAM_BLEND_OUT;
 	SLONG blend = 256;
 
 	if (blend > in) { blend = in; }
@@ -283,6 +299,7 @@ void KILLCAM_person_defeated(Thing* p_victim, Thing* p_aggressor, SLONG death_ty
 	KILLCAM.active = TRUE;
 	KILLCAM.victim = THING_NUMBER(p_victim);
 	KILLCAM.time = 0;
+	KILLCAM.duration = KILLCAM_DURATION;
 }
 
 SLONG KILLCAM_process(SLONG real_millisecs)
@@ -345,7 +362,7 @@ SLONG KILLCAM_process(SLONG real_millisecs)
 
 	KILLCAM.time += real_millisecs;
 
-	if (KILLCAM.time >= KILLCAM_DURATION)
+	if (KILLCAM.time >= KILLCAM.duration)
 	{
 		KILLCAM.active = FALSE;
 		KILLCAM.cooldown = KILLCAM_COOLDOWN;

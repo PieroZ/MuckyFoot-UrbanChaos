@@ -1185,7 +1185,7 @@ UBYTE MAP_beacon_create(SLONG x, SLONG z, SLONG index, UWORD track_thing)
 	MAP_Beacon *mb;
 
 	extern	SLONG	EWAY_mess_upto;
-	ASSERT(index == 0xffff || (index>=0 && index<EWAY_mess_upto));	// 0xffff = MAP_BEACON_MESS_FUGITIVE
+	ASSERT(index == 0xffff || index == 0xfffe || (index>=0 && index<EWAY_mess_upto));	// 0xffff = MAP_BEACON_MESS_FUGITIVE, 0xfffe = MAP_BEACON_MESS_AGENT
 
 	for (i = 1; i < MAP_MAX_BEACONS; i++)
 	{

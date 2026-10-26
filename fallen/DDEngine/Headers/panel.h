@@ -56,6 +56,14 @@ void PANEL_new_info_message(CBYTE *fmt, ...);
 
 
 //
+// Green 'Matrix' digital rain over the whole screen. 'amount' is 0..256.
+// Draws in its own POLY frame - call after the panel has been drawn.
+//
+
+void PANEL_digital_rain_draw(SLONG amount);
+
+
+//
 // Flashes up a sign on the screen for the next few second.
 //
 

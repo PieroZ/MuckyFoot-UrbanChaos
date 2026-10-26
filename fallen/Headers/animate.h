@@ -655,6 +655,7 @@
 #define	ANIM_WALK_CARRY_V				(ANIM_END+34)
 #define	ANIM_WALK_STOP_CARRY_V			(ANIM_END+35)
 #define ANIM_HANDS_UP_LIE				(ANIM_END+36)
+#define ANIM_USE_COMPUTER				(ANIM_END+40)	// From PROTOTYPE_DARCI1.all ([Extra] terminal_anim, default 265) - security.cpp
 
 #define ANIM_PZI_TEST					299
 

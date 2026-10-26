@@ -20,3 +20,6 @@ void ProcessGrenades();
 // create a grenade explosion
 void CreateGrenadeExplosion(SLONG x, SLONG y, SLONG z, Thing* owner);
 
+// the grenade made last is an EMP grenade (it knocks out electrics instead of exploding)
+void GRENADE_set_last_emp(void);
+

@@ -3958,6 +3958,170 @@ void PANEL_new_info_message(CBYTE *fmt, ...)
 
 
 
+//
+// Green 'Matrix' digital rain (the "matrix" cheat - AGENT in pcom.cpp).
+//
+
+#define PANEL_RAIN_COLUMNS	46
+#define PANEL_RAIN_CELL		15.0F	// Height of one character in pixels (640x480 screen)
+#define PANEL_RAIN_MAX_LEN	24		// Longest trail of characters
+
+static float PANEL_rain_head [PANEL_RAIN_COLUMNS];	// y of the bright character at the bottom of the trail
+static float PANEL_rain_speed[PANEL_RAIN_COLUMNS];	// Pixels per second
+static UBYTE PANEL_rain_len  [PANEL_RAIN_COLUMNS];	// Characters in the trail
+static UBYTE PANEL_rain_seed [PANEL_RAIN_COLUMNS];
+static SLONG PANEL_rain_ready;
+static ULONG PANEL_rain_last;
+
+static void PANEL_rain_new_column(SLONG i, SLONG anywhere)
+{
+	PANEL_rain_len  [i] = 8 + (rand() % (PANEL_RAIN_MAX_LEN - 8));
+	PANEL_rain_speed[i] = 140.0F + float(rand() % 260);
+	PANEL_rain_seed [i] = rand() & 0xff;
+
+	if (anywhere)
+	{
+		PANEL_rain_head[i] = float(rand() % 560) - 40.0F;
+	}
+	else
+	{
+		PANEL_rain_head[i] = -float(rand() % 300);
+	}
+}
+
+void PANEL_digital_rain_draw(SLONG amount)
+{
+	SLONG i;
+	SLONG j;
+
+	static const CBYTE glyphs[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ01010101";
+
+	const SLONG num_glyphs = sizeof(glyphs) - 1;
+
+	if (amount <= 0)
+	{
+		PANEL_rain_ready = FALSE;	// Start afresh next time
+
+		return;
+	}
+
+	SATURATE(amount, 0, 256);
+
+	//
+	// Real time, so the rain falls at the same speed in slow motion.
+	//
+
+	ULONG now = GetTickCount();
+
+	if (!PANEL_rain_ready)
+	{
+		for (i = 0; i < PANEL_RAIN_COLUMNS; i++)
+		{
+			PANEL_rain_new_column(i, TRUE);
+		}
+
+		PANEL_rain_ready = TRUE;
+		PANEL_rain_last  = now;
+	}
+
+	float secs = float(now - PANEL_rain_last) * 0.001F;
+
+	if (secs < 0.0F || secs > 0.25F)
+	{
+		secs = 0.0F;
+	}
+
+	PANEL_rain_last = now;
+
+	ULONG flicker = now / 90;	// The characters keep changing
+
+#ifndef TARGET_DC
+	POLY_frame_init(FALSE, FALSE);
+#endif
+
+	//
+	// The green filter over the whole picture.
+	//
+
+	{
+		ULONG alpha = 0x70 * amount >> 8;
+
+		PANEL_draw_quad(0.0F, 0.0F, 640.0F, 480.0F, POLY_PAGE_ALPHA_OVERLAY, (alpha << 24) | 0x002810);
+	}
+
+	//
+	// The falling columns of characters.
+	//
+
+	float col_width = 640.0F / float(PANEL_RAIN_COLUMNS);
+
+	for (i = 0; i < PANEL_RAIN_COLUMNS; i++)
+	{
+		PANEL_rain_head[i] += PANEL_rain_speed[i] * secs;
+
+		SLONG len = PANEL_rain_len[i];
+
+		if (PANEL_rain_head[i] - float(len) * PANEL_RAIN_CELL > 480.0F)
+		{
+			PANEL_rain_new_column(i, FALSE);
+
+			len = PANEL_rain_len[i];
+		}
+
+		SLONG x    = SLONG(float(i) * col_width + 2.0F);
+		SLONG head = SLONG(PANEL_rain_head[i]);
+		SLONG row0 = SLONG(PANEL_rain_head[i] / PANEL_RAIN_CELL);	// Characters stay in their rows as the trail moves down
+
+		for (j = 0; j < len; j++)
+		{
+			SLONG y = head - SLONG(float(j) * PANEL_RAIN_CELL);
+
+			if (y < -16 || y > 480)
+			{
+				continue;
+			}
+
+			//
+			// Which character: changes now and again, differently in every cell.
+			//
+
+			ULONG hash = (row0 - j) * 7919 + i * 104729 + PANEL_rain_seed[i] * 31 + ((flicker + i * 3 + j) / (3 + (j & 3)));
+
+			hash ^= hash >> 7;
+			hash *= 2654435761u;
+			hash ^= hash >> 13;
+
+			CBYTE chr = glyphs[hash % num_glyphs];
+
+			//
+			// The leading character is nearly white, the trail fades out to dark green.
+			//
+
+			ULONG rgb;
+			SLONG bright = 255 - j * 255 / len;	// 255 at the head, towards 0 at the tail
+
+			if (j == 0)
+			{
+				rgb = 0xd8ffd8;
+			}
+			else
+			{
+				SLONG g = 120 + (135 * bright >> 8);
+
+				rgb = (g << 8) | ((g >> 3) << 16) | (g >> 2);
+			}
+
+			SLONG fade = 255 - ((bright * 220 >> 8) * amount >> 8);
+
+			FONT2D_DrawLetter(chr, x, y, rgb, 220, POLY_PAGE_FONT2D, fade);
+		}
+	}
+
+#ifndef TARGET_DC
+	POLY_frame_draw(FALSE, FALSE);
+#endif
+}
+
 void PANEL_darken_screen(SLONG x)
 {
 	PANEL_draw_quad(640.0F - float(x), 0.0F, 640.0F, 480.0F, POLY_PAGE_ALPHA_OVERLAY, 0x88000000);
@@ -4067,6 +4231,7 @@ void PANEL_inv_weapon(SLONG x, SLONG y, SLONG item, UBYTE who, SLONG rgb, UBYTE 
 			sprite = PANEL_LSPRITE_EXPLOSIVES;
 			break;
 		case SPECIAL_GRENADE:
+		case SPECIAL_EMP_GRENADE:
 			sprite = PANEL_LSPRITE_GRENADE;
 			break;
 		case SPECIAL_KNIFE:
@@ -4619,6 +4784,11 @@ void PANEL_last(SLONG which)
 #endif
 
 					itoa(p_special->Genus.Special->ammo,text,10);
+					break;
+
+				case SPECIAL_EMP_GRENADE:
+					sprite = PANEL_LSPRITE_GRENADE;
+					sprintf(text, "%d EMP", p_special->Genus.Special->ammo);
 					break;
 
 				case SPECIAL_KNIFE:

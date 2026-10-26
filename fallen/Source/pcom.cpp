@@ -366,6 +366,13 @@ void CARFLEE_reset(void);
 void PCOM_init(void)
 {
 	CARFLEE_reset();	// Drivers running away from the player
+	AGENT_reset();		// Agents from the "matrix" cheat
+
+	{
+		extern void SEC_reset(void);
+
+		SEC_reset();	// Turrets / computers (security.cpp): read the level's .sec file
+	}
 
 	{
 		extern void GRAPPLE_reset(void);
@@ -7411,6 +7418,566 @@ void CARFLEE_process_fugitives(void)
 }
 
 //
+// ===========================================================================
+// MATRIX - the cheat "matrix" / "agent".
+//
+// A random passer-by far away from the player stops, lightning strikes him in
+// slow motion and he turns into an agent (MIB). The first time on a level the
+// camera swings round him while it happens. Then he walks after the player
+// (MIB never run) with his gun and keeps hunting him until one of them is dead.
+// ===========================================================================
+//
+
+#include "killcam.h"
+
+extern void DIRT_new_sparks(SLONG px, SLONG py, SLONG pz, UBYTE dir);
+
+#define AGENT_MAX_AGENTS		3
+
+#define AGENT_FIRST_MIN		0x1400	// The first agent on a level appears this far away... (0x100 = one mapsquare)
+#define AGENT_FIRST_MAX		0x3000	// ...but not further than this.
+#define AGENT_LATER_MIN		0x0900	// Later agents can be nearer.
+#define AGENT_LATER_MAX		0x2400
+
+#define AGENT_REVEAL_TIME		4200	// Real ms: the camera swing for the first agent
+#define AGENT_REVEAL_STRIKE	1500	// Real ms after the start: the lightning
+#define AGENT_QUICK_TIME		1600	// Real ms for later agents (slow motion only)
+#define AGENT_QUICK_STRIKE		500
+
+#define AGENT_PHASE_NONE		0
+#define AGENT_PHASE_MORPH		1		// Standing still, sparks, lightning, turning
+#define AGENT_PHASE_HUNT		2		// Going after the player
+
+typedef struct
+{
+	THING_INDEX person;
+	UBYTE       beacon;
+	UBYTE       phase;
+	UBYTE       struck;		// The lightning has struck and he is an agent
+	UBYTE       reveal;		// With the camera swing
+	SLONG       time;		// Real ms in this phase
+	SLONG       spark;		// Real ms until the next crackle of sparks
+
+} AGENT_Agent;
+
+static AGENT_Agent AGENT_agent[AGENT_MAX_AGENTS];
+static SLONG        AGENT_revealed;	// The first agent of this level has had his camera swing
+static ULONG        AGENT_last_tick;
+
+void AGENT_reset(void)
+{
+	memset(AGENT_agent, 0, sizeof(AGENT_agent));
+
+	AGENT_revealed  = FALSE;
+	AGENT_last_tick = 0;
+}
+
+//
+// Can this person be turned into an agent?
+//
+
+static SLONG AGENT_good_victim(Thing *p_person)
+{
+	Person *pp = p_person->Genus.Person;
+
+	if (pp->PlayerID)
+	{
+		return FALSE;
+	}
+
+	switch(pp->PersonType)
+	{
+		case PERSON_CIV:
+		case PERSON_SLAG_TART:
+		case PERSON_SLAG_FATUGLY:
+		case PERSON_TRAMP:
+			break;
+
+		default:
+			return FALSE;
+	}
+
+	if (pp->pcom_ai != PCOM_AI_CIV)
+	{
+		return FALSE;
+	}
+
+	if (p_person->State != STATE_IDLE &&
+		p_person->State != STATE_MOVEING)
+	{
+		return FALSE;
+	}
+
+	if (pp->Flags & (FLAG_PERSON_DRIVING | FLAG_PERSON_PASSENGER | FLAG_PERSON_KO | FLAG_PERSON_ARRESTED | FLAG_PERSON_HELPLESS))
+	{
+		return FALSE;
+	}
+
+	if (pp->Ware || pp->Health <= 0)
+	{
+		return FALSE;
+	}
+
+	if (!(p_person->Flags & FLAGS_ON_MAPWHO))
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+//
+// A random passer-by between 'min' and 'max' from the player.
+//
+
+static Thing *AGENT_find_victim(Thing *p_player, SLONG min, SLONG max)
+{
+	Thing *ans   = NULL;
+	SLONG  found = 0;
+
+	SLONG list = thing_class_head[CLASS_PERSON];
+
+	while(list)
+	{
+		Thing *p_person = TO_THING(list);
+
+		list = p_person->NextLink;
+
+		if (p_person == p_player || !AGENT_good_victim(p_person))
+		{
+			continue;
+		}
+
+		SLONG dx   = abs(p_person->WorldPos.X - p_player->WorldPos.X) >> 8;
+		SLONG dz   = abs(p_person->WorldPos.Z - p_player->WorldPos.Z) >> 8;
+		SLONG dist = QDIST2(dx, dz);
+
+		if (dist < min || dist > max)
+		{
+			continue;
+		}
+
+		//
+		// Pick one of them at random.
+		//
+
+		found += 1;
+
+		if ((Random() % found) == 0)
+		{
+			ans = p_person;
+		}
+	}
+
+	return ans;
+}
+
+//
+// Crackles of electricity round the person before the lightning.
+//
+
+static void AGENT_crackle(Thing *p_person, SLONG big)
+{
+	SLONG px = p_person->WorldPos.X >> 8;
+	SLONG py = p_person->WorldPos.Y >> 8;
+	SLONG pz = p_person->WorldPos.Z >> 8;
+
+	SPARK_in_sphere(px, py + 0x50, pz, big ? 0x60 : 0x40, big ? 40 : 25, big ? 4 : 2);
+}
+
+//
+// The bolts of lightning that turn him into an agent.
+//
+
+static void AGENT_lightning(Thing *p_person)
+{
+	SLONG i;
+
+	SLONG px = p_person->WorldPos.X >> 8;
+	SLONG py = p_person->WorldPos.Y >> 8;
+	SLONG pz = p_person->WorldPos.Z >> 8;
+
+	SLONG ground = PAP_calc_map_height_at(px, pz);
+
+	SPARK_Pinfo p1;
+	SPARK_Pinfo p2;
+
+	static const UWORD limb[3] = {SUB_OBJECT_HEAD, SUB_OBJECT_LEFT_HAND, SUB_OBJECT_RIGHT_HAND};
+
+	for (i = 0; i < 9; i++)
+	{
+		//
+		// From high up in the sky...
+		//
+
+		p1.type   = SPARK_TYPE_POINT;
+		p1.flag   = 0;
+		p1.person = 0;
+		p1.limb   = 0;
+		p1.x      = px + (Random() & 0x7f) - 0x3f;
+		p1.y      = py + 1200;
+		p1.z      = pz + (Random() & 0x7f) - 0x3f;
+
+		if (i < 3)
+		{
+			//
+			// ...into his body...
+			//
+
+			p2.type   = SPARK_TYPE_LIMB;
+			p2.flag   = 0;
+			p2.person = THING_NUMBER(p_person);
+			p2.limb   = limb[i];
+		}
+		else
+		{
+			//
+			// ...and into the ground round him.
+			//
+
+			p2.type   = SPARK_TYPE_POINT;
+			p2.flag   = 0;
+			p2.person = 0;
+			p2.limb   = 0;
+			p2.x      = px + (Random() & 0x7f) - 0x3f;
+			p2.y      = ground;
+			p2.z      = pz + (Random() & 0x7f) - 0x3f;
+
+			DIRT_new_sparks(p2.x, p2.y, p2.z, 2);
+		}
+
+		SPARK_create(&p1, &p2, 30 + (Random() & 0xf));
+	}
+
+	//
+	// A flash of light round him.
+	//
+
+	GameCoord pos = p_person->WorldPos;
+
+	pos.Y += 0x50 << 8;
+
+	PYRO_create(pos, PYRO_TWANGER);
+
+	MFX_play_xyz(THING_NUMBER(p_person), SOUND_Range(S_THUNDER_START, S_THUNDER_END), 0, p_person->WorldPos.X, p_person->WorldPos.Y, p_person->WorldPos.Z);
+	MFX_play_ambient(0, SOUND_Range(S_THUNDER_START, S_THUNDER_END), 0);
+}
+
+void AGENT_spawn_agent(void)
+{
+	SLONG i;
+	SLONG slot = -1;
+
+	Thing *p_player = NET_PERSON(0);
+
+	if (p_player == NULL || p_player->State == STATE_DEAD || p_player->State == STATE_DYING)
+	{
+		return;
+	}
+
+	for (i = 0; i < AGENT_MAX_AGENTS; i++)
+	{
+		if (AGENT_agent[i].phase == AGENT_PHASE_NONE)
+		{
+			slot = i;
+
+			break;
+		}
+	}
+
+	if (slot < 0)
+	{
+		CONSOLE_text("There are enough agents after you already...", 4000);
+
+		return;
+	}
+
+	//
+	// The first agent appears a long way away- you see him on the map before he gets to you.
+	//
+
+	SLONG  reveal   = !AGENT_revealed;
+	Thing *p_victim = reveal ? AGENT_find_victim(p_player, AGENT_FIRST_MIN, AGENT_FIRST_MAX)
+							 : AGENT_find_victim(p_player, AGENT_LATER_MIN, AGENT_LATER_MAX);
+
+	if (p_victim == NULL)
+	{
+		//
+		// Nobody at the right distance. Anybody who isn't right next to us then.
+		//
+
+		p_victim = AGENT_find_victim(p_player, 0x500, 0x6000);
+	}
+
+	if (p_victim == NULL)
+	{
+		CONSOLE_text("Nobody around to turn into an agent", 4000);
+
+		return;
+	}
+
+	//
+	// Stop him where he is and make him look at the player.
+	//
+
+	PCOM_change_person_attributes(
+		p_victim,
+		0,
+		0,
+		PCOM_AI_NONE,
+		0,
+		PCOM_MOVE_STILL,
+		0,
+		0,
+		p_victim->Draw.Tweened->Angle);
+
+	set_person_idle(p_victim);
+	set_face_thing(p_victim, p_player);
+
+	AGENT_Agent *ma = &AGENT_agent[slot];
+
+	ma->person = THING_NUMBER(p_victim);
+	ma->phase  = AGENT_PHASE_MORPH;
+	ma->struck = FALSE;
+	ma->time   = 0;
+	ma->spark  = 0;
+	ma->reveal = FALSE;
+
+	if (reveal && KILLCAM_focus(THING_NUMBER(p_victim), AGENT_REVEAL_TIME))
+	{
+		ma->reveal      = TRUE;
+		AGENT_revealed = TRUE;
+	}
+	else
+	{
+		KILLCAM_bullet_time(AGENT_QUICK_TIME);
+	}
+
+	MFX_play_ambient(0, S_THUNDER_START, 0);	// A far-off rumble before it strikes
+
+	AGENT_last_tick = GetTickCount();
+}
+
+//
+// The green 'digital rain' filter: on while somebody is turning into an agent.
+//
+
+#define AGENT_RAIN_IN	300		// Real ms to fade in...
+#define AGENT_RAIN_OUT	700		// ...and out.
+
+SLONG AGENT_rain_amount(void)
+{
+	SLONG i;
+	SLONG best = 0;
+
+	for (i = 0; i < AGENT_MAX_AGENTS; i++)
+	{
+		AGENT_Agent *ma = &AGENT_agent[i];
+
+		if (ma->phase != AGENT_PHASE_MORPH)
+		{
+			continue;
+		}
+
+		SLONG total  = ma->reveal ? AGENT_REVEAL_TIME : AGENT_QUICK_TIME;
+		SLONG in     = (ma->time << 8) / AGENT_RAIN_IN;
+		SLONG out    = ((total - ma->time) << 8) / AGENT_RAIN_OUT;
+		SLONG amount = 256;
+
+		if (amount > in)  {amount = in;}
+		if (amount > out) {amount = out;}
+
+		SATURATE(amount, 0, 256);
+
+		if (best < amount)
+		{
+			best = amount;
+		}
+	}
+
+	return best;
+}
+
+//
+// Sends the agent after the player.
+//
+
+static void AGENT_hunt(Thing *p_agent, Thing *p_player)
+{
+	PCOM_change_person_attributes(
+		p_agent,
+		0,
+		0,
+		PCOM_AI_MIB,
+		0,
+		PCOM_MOVE_WANDER,
+		0,
+		0,
+		p_agent->Draw.Tweened->Angle);
+
+	p_agent->Genus.Person->pcom_zone = 0;	// Follows you anywhere
+	p_agent->Genus.Person->HomeX     = p_agent->WorldPos.X >> 8;
+	p_agent->Genus.Person->HomeZ     = p_agent->WorldPos.Z >> 8;
+
+	if (!(p_player->Genus.Person->Flags & (FLAG_PERSON_DRIVING | FLAG_PERSON_PASSENGER)))
+	{
+		PCOM_set_person_ai_navtokill(p_agent, p_player);
+	}
+}
+
+void AGENT_process(void)
+{
+	SLONG i;
+
+	//
+	// Real time: the effect is the same length however slow the game is going.
+	//
+
+	ULONG now = GetTickCount();
+	SLONG ms  = now - AGENT_last_tick;
+
+	AGENT_last_tick = now;
+
+	if (ms < 0 || ms > 250)
+	{
+		ms = 0;	// The game was paused or this is the first frame.
+	}
+
+	Thing *p_player = NET_PERSON(0);
+
+	for (i = 0; i < AGENT_MAX_AGENTS; i++)
+	{
+		AGENT_Agent *ma = &AGENT_agent[i];
+
+		if (ma->phase == AGENT_PHASE_NONE)
+		{
+			continue;
+		}
+
+		Thing *p_agent = TO_THING(ma->person);
+
+		//
+		// Gone?
+		//
+
+		if (p_agent->Class != CLASS_PERSON ||
+			p_agent->State == STATE_DEAD   ||
+			(p_agent->Genus.Person->Flags & FLAG_PERSON_ARRESTED) ||
+			(!ma->struck && p_agent->State == STATE_DYING))
+		{
+			if (ma->beacon)
+			{
+				MAP_beacon_remove(ma->beacon);
+			}
+
+			if (ma->struck)
+			{
+				CONSOLE_text("Agent down!", 4000);
+			}
+
+			memset(ma, 0, sizeof(AGENT_Agent));
+
+			continue;
+		}
+
+		ma->time += ms;
+
+		if (ma->phase == AGENT_PHASE_MORPH)
+		{
+			SLONG strike_time = ma->reveal ? AGENT_REVEAL_STRIKE : AGENT_QUICK_STRIKE;
+			SLONG total_time  = ma->reveal ? AGENT_REVEAL_TIME   : AGENT_QUICK_TIME;
+
+			//
+			// Electricity crackling round him- more of it just before and after the strike.
+			//
+
+			ma->spark -= ms;
+
+			if (ma->spark <= 0)
+			{
+				SLONG big = (ma->time > strike_time - 400 && ma->time < strike_time + 900);
+
+				AGENT_crackle(p_agent, big);
+
+				ma->spark = big ? 60 : 160;
+			}
+
+			if (!ma->struck && ma->time >= strike_time)
+			{
+				//
+				// Lightning! And he is one of them.
+				//
+
+				AGENT_lightning(p_agent);
+
+				PERSON_turn_into_mib(p_agent);
+
+				p_agent->Genus.Person->pcom_ai = PCOM_AI_NONE;	// Not yet...
+
+				set_face_thing(p_agent, p_player);
+
+				ma->struck = TRUE;
+				ma->beacon = MAP_beacon_create(
+								p_agent->WorldPos.X >> 8,
+								p_agent->WorldPos.Z >> 8,
+								MAP_BEACON_MESS_AGENT,
+								ma->person);
+
+				CONSOLE_text("An agent is coming for you. Run!", 5000);
+			}
+
+			if (ma->time >= total_time)
+			{
+				if (p_agent->State != STATE_DYING)
+				{
+					MFX_play_thing(ma->person, S_MIB_WARNING, 0, p_agent);
+
+					AGENT_hunt(p_agent, p_player);
+				}
+
+				ma->phase = AGENT_PHASE_HUNT;
+				ma->time  = 0;
+			}
+
+			continue;
+		}
+
+		//
+		// Hunting: if he has lost the player, set him on her trail again.
+		//
+
+		if (ma->time >= 2000)
+		{
+			ma->time = 0;
+
+			if (p_player &&
+				p_player->State != STATE_DEAD &&
+				p_agent->State  != STATE_DYING &&
+				!EWAY_stop_player_moving() &&
+				!(p_agent ->Genus.Person->Flags & (FLAG_PERSON_KO | FLAG_PERSON_HELPLESS)) &&
+				!(p_player->Genus.Person->Flags & (FLAG_PERSON_DRIVING | FLAG_PERSON_PASSENGER)))
+			{
+				switch(p_agent->Genus.Person->pcom_ai_state)
+				{
+					case PCOM_AI_STATE_KILLING:
+					case PCOM_AI_STATE_NAVTOKILL:
+					case PCOM_AI_STATE_KNOCKEDOUT:
+					case PCOM_AI_STATE_GRAPPLED:
+					case PCOM_AI_STATE_LEAVECAR:
+						break;
+
+					default:
+						p_agent->Genus.Person->pcom_ai = PCOM_AI_MIB;
+						PCOM_set_person_ai_navtokill(p_agent, p_player);
+						break;
+				}
+			}
+		}
+	}
+}
+
+
+//
 // Processes a person driving or biking aimlessly around the city.
 //
 
@@ -13775,6 +14342,7 @@ void PCOM_process_person(Thing *p_person)
 	if (p_person->Genus.Person->PlayerID)
 	{
 		CARFLEE_process_fugitives();	// Beacons on the fugitives from the "uciekinier" cheat
+		AGENT_process();				// Agents from the "matrix" cheat
 
 		//
 		// Keep track of how long the player has been idle.

@@ -27,6 +27,7 @@
 #include "memory.h"
 #include "night.h"
 #include "interfac.h"
+#include "security.h"
 
 
 //
@@ -2440,6 +2441,18 @@ void BAT_player_draw_overlay(void)
 
 void BAT_normal(Thing* p_thing)
 {
+	if (p_thing->Genus.Bat->type == BAT_TYPE_TURRET ||
+		p_thing->Genus.Bat->type == BAT_TYPE_TERMINAL)
+	{
+		//
+		// Sentry turrets and computers (security.cpp).
+		//
+
+		SEC_bat_process(p_thing);
+
+		return;
+	}
+
 	SLONG dx;
 	SLONG dy;
 	SLONG dz;
@@ -3591,6 +3604,7 @@ found_unused_bat:;
 	dt->CurrentAnim = 1;
 	dt->FrameIndex = 0;
 	dt->Flags = 0;
+	dt->MeshID = 0;
 
 	//
 	// Initialise the bat.
@@ -3651,11 +3665,13 @@ found_unused_bat:;
 			break;
 
 		case BAT_TYPE_TURRET:
-			p_bat->state = BAT_STATE_BANE_IDLE;
+			//
+			// security.cpp sets it up (and makes computers out of some of them).
+			//
+			p_bat->state = BAT_STATE_TURRET_IDLE;
 			p_bat->substate = BAT_SUBSTATE_NONE;
-			p_bat->glow = 0x7f00;
-			p_thing->WorldPos.Y += 0x60 << 8;
-			BAT_set_anim(p_thing, BAT_ANIM_BANE_IDLE);
+			p_bat->glow = 0;
+			BAT_set_anim(p_thing, 1);
 			break;
 
 		default:
@@ -3682,6 +3698,14 @@ void BAT_apply_hit(
 
 	if (p_me->Genus.Bat->type == BAT_TYPE_BANE)
 	{
+		return;
+	}
+
+	if (p_me->Genus.Bat->type == BAT_TYPE_TURRET ||
+		p_me->Genus.Bat->type == BAT_TYPE_TERMINAL)
+	{
+		SEC_bat_hit(p_me, p_aggressor, damage);
+
 		return;
 	}
 

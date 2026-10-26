@@ -368,6 +368,18 @@ void CARFLEE_reset(void);				// New level
 void CARFLEE_spawn_fugitive(void);		// Puts a fugitive in a car on a road near the player
 void CARFLEE_process_fugitives(void);	// Once a frame
 
+//
+// "Matrix" (console cheat "matrix" / "agent"): a passer-by far from the player
+// is struck by lightning in slow motion and turns into an agent (MIB) who walks
+// after the player and tries to kill him. The first one on a level gets the
+// camera swinging round him. The agents are marked on the map.
+//
+
+void AGENT_reset(void);				// New level
+void AGENT_spawn_agent(void);			// The cheat
+void AGENT_process(void);				// Once a frame
+SLONG AGENT_rain_amount(void);			// 0..256 how strong the green 'digital rain' on screen is
+
 
 //
 // Make the person face someone and do their talk to anim.

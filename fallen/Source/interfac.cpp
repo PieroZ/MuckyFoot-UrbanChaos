@@ -36,6 +36,7 @@
 #endif
 #include "PersonPZI.h"
 #include "config_extras.h"
+#include "security.h"
 #include "driveby.h"
 #include "grapple.h"
 #include "lanplay.h"
@@ -703,7 +704,7 @@ SLONG	player_activate_in_hand(Thing *p_person)
 		}
 		else
 		{
-			if (p_special->Genus.Special->SpecialType == SPECIAL_GRENADE)
+			if (SPECIAL_IS_GRENADE(p_special->Genus.Special->SpecialType))
 			{
 				if (p_special->SubState == SPECIAL_SUBSTATE_ACTIVATED)
 				{
@@ -1553,7 +1554,7 @@ extern	SLONG	person_on_floor(Thing *p_person);
 		{
 			Thing *p_special = TO_THING(p_thing->Genus.Person->SpecialUse);
 
-			if (p_special->Genus.Special->SpecialType == SPECIAL_GRENADE)
+			if (SPECIAL_IS_GRENADE(p_special->Genus.Special->SpecialType))
 			{
 				if (p_special->SubState == SPECIAL_SUBSTATE_ACTIVATED)
 				{
@@ -9005,6 +9006,15 @@ static void process_hardware_level_input_for_player_core(Thing *p_player)
 
 		if (BAT_player_control(p_person, input, mouse_dx))
 		{
+			no_control = TRUE;
+		}
+		else
+		if (SEC_player_control(p_person, input))
+		{
+			//
+			// Using a computer (security.cpp).
+			//
+
 			no_control = TRUE;
 		}
 	}

@@ -36,6 +36,7 @@ void  MAP_beacon_remove(UBYTE beacon);
 //
 
 #define MAP_BEACON_MESS_FUGITIVE 0xffff
+#define MAP_BEACON_MESS_AGENT    0xfffe	// An agent from the "matrix" cheat (MATRIX in pcom.cpp)
 
 
 //
