@@ -15,6 +15,9 @@
 //   secsave                           - writes the turrets / terminals now in the level to levels\<level>.sec
 //   where                             - prints where you are (mapsquares) and which way you face
 //
+// A terminal's turret menu has "Manual control": aim (arrows), fire (punch /
+// action), lock on to the next person (jump), back (kick / Esc).
+//
 
 #ifndef _SECURITY_
 #define _SECURITY_
@@ -33,6 +36,15 @@ SLONG SEC_bat_targetable(struct Thing *p_thing);	// FALSE => the player's aiming
 //
 
 SLONG SEC_player_control(struct Thing *p_person, ULONG input);
+
+//
+// Once a frame for each computer person, from PCOM_process_person(). Somebody a
+// turret on the player's side (or one the player aims from a terminal) is
+// shooting at shoots back at it if he has a gun, or runs away. TRUE = this
+// person was dealt with (skip his usual AI this frame).
+//
+
+SLONG SEC_person_ai(struct Thing *p_person);
 
 //
 // TRUE while a terminal screen is up. SEC_escape() is the Esc key while it is

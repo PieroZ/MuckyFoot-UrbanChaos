@@ -220,7 +220,7 @@ void BARREL_convert_stationary_to_moving(Thing *p_barrel)
 			extern UBYTE EWAY_count_up_visible;
 			extern SLONG EWAY_count_up;
 
-			if (!EWAY_count_up_visible)
+			if (EWAY_count_up_visible)
 			{
 				EWAY_count_up += 500;
 

@@ -42,7 +42,7 @@ struct KeyFrame			*anim_array[300],
 						*thug_array[300];
 */
 //struct GameKeyFrame		*global_anim_array[4][450];
-struct GameKeyFrame		*global_anim_array[4][450];
+struct GameKeyFrame		*global_anim_array[4][GLOBAL_ANIM_MAX];	// interact.h
 
 struct KeyFrameChunk 	*test_chunk;
 #if !defined(PSX) && !defined(TARGET_DC)

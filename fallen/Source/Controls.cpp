@@ -199,7 +199,7 @@ UBYTE InkeyToAsciiShift[]=
 
 #ifndef PSX
 
-CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "baalrog", "balrog", "killcam", "drawdist", "fogstart", "crinklemode", "carflee", "uciekinier", "fugitive", "przebij", "napraw", "hak", "swat", "wyglad", "look", "animka", "tarcza", "shield", "matrix", "agent", "sentry", "terminal", "emp", "secsave", "where", "", NULL};
+CBYTE *cmd_list[] = {"cam", "echo", "tels", "telr", "telw", "break", "wpt", "vtx", "alpha", "gamma", "ba", "cctv", "win", "lose","s","l","restart","ambient","analogue","world","fade","roper", "darci", "crinkles","viol", "boo", "mib", "anim", "ptype", "ta", "inflate", "grapple", "poweroverwhelming", "kuchiyosenojutsu", "bodyguard", "michaelbay", "xfiles", "johnwick", "nanana", "headless", "madworld", "turndownforwhat", "quasimodo", "drip", "morphingtime", "camtest", "camdist", "turret", "bang", "dfloor", "dthings", "prim", "pitch", "dpitch", "freeroam", "cams", "camt", "hitmarker", "pammo", "baalrog", "balrog", "killcam", "drawdist", "fogstart", "crinklemode", "carflee", "uciekinier", "fugitive", "przebij", "napraw", "hak", "swat", "wyglad", "look", "animka", "tarcza", "shield", "matrix", "agent", "sentry", "terminal", "emp", "secsave", "where", "postac", "animki", "", NULL};
 
 EWAY_Way* eway_find(SLONG id)
 {
@@ -263,6 +263,196 @@ BOOL allow_debug_keys=0;
 #endif
 
 BOOL dkeys_have_been_used;
+
+//
+// "animki": browse the extra animations one by one (N = next, P = previous, Q = stop).
+// The same animations as "animka n": the player's look's own (data\\looks\\<name>.all),
+// or else the [Extra] roper_anims file.
+//
+
+SLONG ANIMKI_on    = FALSE;
+SLONG ANIMKI_n     = 1;
+SLONG ANIMKI_first = 0;
+SLONG ANIMKI_count = 0;
+SLONG ANIMKI_look  = 0;
+
+//
+// Which extra animations the player can play: *first = game anim of number 0, *count.
+// Returns the look (0 = the roper_anims file).
+//
+
+SLONG ANIMKI_range(Thing *darci, SLONG *first, SLONG *count)
+{
+	extern SLONG ROPER_extra_anims;
+	extern SLONG ROPER_extra_anim_start;
+	extern SLONG LOOK_anim_start[10];
+	extern SLONG LOOK_anim_count[10];
+
+	SLONG look = (darci->Genus.Person->PersonType == PERSON_ROPER) ? darci->Draw.Tweened->MeshID : 0;
+
+	if (look > 0 && look < 10 && LOOK_anim_count[look] > 1)
+	{
+		*first = LOOK_anim_start[look];
+		*count = LOOK_anim_count[look];
+		return look;
+	}
+
+	*first = ROPER_extra_anim_start;
+	*count = ROPER_extra_anims;
+	return 0;
+}
+
+//
+// The name of animation n from data\\looks\\<look>_anims.txt (lines "  12  Rifle Walk  (...)").
+//
+
+void ANIMKI_name(SLONG look, SLONG n, CBYTE *out, SLONG max)
+{
+	extern CBYTE LOOK_name[10][32];
+	extern CBYTE DATA_DIR[];
+	CBYTE  fname[MAX_PATH];
+	CBYTE  line[256];
+	FILE  *fh;
+
+	out[0] = 0;
+
+	if (look <= 0 || look >= 10 || !LOOK_name[look][0])
+	{
+		return;
+	}
+
+	sprintf(fname, "%sdata\\looks\\%s_anims.txt", DATA_DIR, LOOK_name[look]);
+
+	fh = fopen(fname, "rt");
+
+	if (!fh)
+	{
+		return;
+	}
+
+	while (fgets(line, sizeof(line), fh))
+	{
+		CBYTE *c = line;
+
+		while (*c == ' ' || *c == '\t') c++;
+
+		if (*c < '0' || *c > '9' || atoi(c) != n)
+		{
+			continue;
+		}
+
+		while (*c >= '0' && *c <= '9') c++;
+		while (*c == ' ' || *c == '\t') c++;
+
+		CBYTE *end = strstr(c, "  (");
+
+		if (!end)
+		{
+			end = c + strlen(c);
+		}
+
+		while (end > c && (end[-1] == '\n' || end[-1] == '\r' || end[-1] == ' '))
+		{
+			end--;
+		}
+
+		SLONG len = MIN(end - c, max - 1);
+
+		memcpy(out, c, len);
+		out[len] = 0;
+
+		break;
+	}
+
+	fclose(fh);
+}
+
+//
+// Plays animation ANIMKI_n and says which one it is.
+//
+
+void ANIMKI_play(Thing *darci)
+{
+	CBYTE name[80];
+	CBYTE msg[200];
+
+	set_person_do_a_simple_anim(darci, ANIMKI_first + ANIMKI_n);
+
+	ANIMKI_name(ANIMKI_look, ANIMKI_n, name, sizeof(name));
+
+	sprintf(msg, "animka %d/%d %s   [N] nastepna  [P] poprzednia  [Q] koniec",
+		ANIMKI_n, ANIMKI_count - 1, name);
+
+	CONSOLE_text(msg, 600000);
+}
+
+//
+// Called every frame (process_controls): N / P / Q, and the animation played again when it
+// has finished (the game puts the person back to standing).
+//
+
+void ANIMKI_process(Thing *darci)
+{
+	if (!ANIMKI_on)
+	{
+		return;
+	}
+
+	if (darci == NULL ||
+		darci->Class != CLASS_PERSON ||
+		darci->Genus.Person->PersonType != PERSON_ROPER ||
+		darci->Draw.Tweened->TheChunk != &game_chunk[ANIM_TYPE_ROPER] ||
+		(darci->Genus.Person->Flags & (FLAG_PERSON_DRIVING | FLAG_PERSON_BIKING | FLAG_PERSON_PASSENGER)))
+	{
+		ANIMKI_on = FALSE;
+		CONSOLE_text("animki: koniec", 2000);
+		return;
+	}
+
+	SLONG first;
+	SLONG count;
+	SLONG look = ANIMKI_range(darci, &first, &count);
+
+	if (look != ANIMKI_look || first != ANIMKI_first || count != ANIMKI_count || count <= 1)
+	{
+		ANIMKI_on = FALSE;		// the look changed
+		CONSOLE_text("animki: koniec (zmiana postaci)", 2000);
+		return;
+	}
+
+	if (Keys[KB_Q])
+	{
+		Keys[KB_Q] = 0;
+		ANIMKI_on  = FALSE;
+		set_person_idle(darci);
+		CONSOLE_text("animki: koniec", 2000);
+		return;
+	}
+
+	SLONG step = 0;
+
+	if (Keys[KB_N]) {Keys[KB_N] = 0; step = +1;}
+	if (Keys[KB_P]) {Keys[KB_P] = 0; step = -1;}
+
+	if (step)
+	{
+		ANIMKI_n += step;
+
+		if (ANIMKI_n >= count) ANIMKI_n = 1;
+		if (ANIMKI_n <  1)     ANIMKI_n = count - 1;
+
+		ANIMKI_play(darci);
+	}
+	else
+	if (darci->State == STATE_IDLE)
+	{
+		//
+		// The animation has ended (or the player walked off and stopped): again.
+		//
+
+		set_person_do_a_simple_anim(darci, ANIMKI_first + ANIMKI_n);
+	}
+}
 
 void parse_console(CBYTE *str) {
   CBYTE cmd[20];
@@ -1030,10 +1220,19 @@ extern int AENG_detail_crinkles;
 
 					darci->Draw.Tweened->PersonID = 0;
 					set_persons_personid(darci);	// the hand that holds the current weapon
+
+					{
+						// the look's own walk / run / idle... (data\looks\<name>.txt)
+						extern void LOOK_apply_anims(SLONG look);
+
+						LOOK_apply_anims(darci->Genus.Person->PersonType == PERSON_ROPER ? darci->Draw.Tweened->MeshID : 0);
+					}
+
 					set_person_idle(darci);
 
 					// Roper's levels start with this look too.
 					ENV_set_value_number("roper_look", look, "Extra");
+					ENV_set_value_string("roper_look_name", "", "Extra");	// "postac" sets it again
 
 					if (darci->Genus.Person->PersonType != PERSON_ROPER)
 						sprintf(msg, "Z powrotem normalna postac");
@@ -1044,20 +1243,33 @@ extern int AENG_detail_crinkles;
 					CONSOLE_text(msg, 4000);
 				}
 				break;
-			case 74: // animka <n>  - plays anim n of the [Extra] roper_anims file (e.g. a Mixamo pack)
+			case 74: // animka <n>  - plays anim n of the look's own file (data\looks\<name>.all),
+					 //                or else of the [Extra] roper_anims file (e.g. a Mixamo pack)
 				{
 					extern SLONG ROPER_extra_anims;
+					extern SLONG ROPER_extra_anim_start;
+					extern SLONG LOOK_anim_start[10];
+					extern SLONG LOOK_anim_count[10];
 					CBYTE msg[96];
 					SLONG n = atoi(ptr);
+					SLONG look  = (darci->Genus.Person->PersonType == PERSON_ROPER) ? darci->Draw.Tweened->MeshID : 0;
+					SLONG first = ROPER_extra_anim_start;
+					SLONG count = ROPER_extra_anims;
 
-					if (ROPER_extra_anims <= 1)
+					if (look > 0 && look < 10 && LOOK_anim_count[look] > 1)
 					{
-						CONSOLE_text("Brak dodatkowych animacji: [Extra] roper_anims=plik.all w config.ini", 4000);
+						first = LOOK_anim_start[look];
+						count = LOOK_anim_count[look];
+					}
+
+					if (count <= 1)
+					{
+						CONSOLE_text("Brak dodatkowych animacji: postac z data\\looks albo [Extra] roper_anims=plik.all", 4000);
 						break;
 					}
-					if (!*ptr || n < 1 || n >= ROPER_extra_anims)
+					if (!*ptr || n < 1 || n >= count)
 					{
-						sprintf(msg, "animka 1..%d (lista w pliku *_anims.txt)", ROPER_extra_anims - 1);
+						sprintf(msg, "animka 1..%d (lista w pliku *_anims.txt)", count - 1);
 						CONSOLE_text(msg, 4000);
 						break;
 					}
@@ -1073,7 +1285,7 @@ extern int AENG_detail_crinkles;
 						break;
 					}
 
-					set_person_do_a_simple_anim(darci, 400 + n);	// ROPER_EXTRA_ANIM_START (Anim.cpp)
+					set_person_do_a_simple_anim(darci, first + n);
 					sprintf(msg, "animka %d", n);
 					CONSOLE_text(msg, 2000);
 				}
@@ -1089,6 +1301,93 @@ extern int AENG_detail_crinkles;
 				break;
 			case 82: // secsave - write the level's turrets / computers to levels\<level>.sec
 				SEC_cmd_save();
+				break;
+			case 84: // postac [name] - play as a character from data\looks\<name>.all ("roper" = Roper)
+				{
+					extern SLONG ROPER_looks;
+					extern CBYTE LOOK_name[10][32];
+					extern SLONG LOOK_find(CBYTE *name, SLONG looks);
+					CBYTE msg[200];
+					SLONG k;
+
+					if (!*ptr)
+					{
+						strcpy(msg, "Postacie: roper");
+						for (k = 1; k < ROPER_looks && k < 10; k++)
+						{
+							if (LOOK_name[k][0] && strlen(msg) + strlen(LOOK_name[k]) + 3 < sizeof(msg))
+							{
+								strcat(msg, ", ");
+								strcat(msg, LOOK_name[k]);
+							}
+						}
+						CONSOLE_text(msg, 5000);
+						break;
+					}
+
+					CBYTE name[32];
+					strncpy(name, ptr, 31);
+					name[31] = 0;
+					while (name[0] && name[strlen(name) - 1] == ' ')
+					{
+						name[strlen(name) - 1] = 0;
+					}
+
+					k = LOOK_find(name, ROPER_looks);
+
+					if (k < 0)
+					{
+						sprintf(msg, "Nie ma postaci \"%s\" (data\\looks\\%s.all, wczytywane przy starcie misji)", name, name);
+						CONSOLE_text(msg, 5000);
+						break;
+					}
+
+					CBYTE cmd[32];
+					sprintf(cmd, "wyglad %d", k);
+					parse_console(cmd);			// the look switch (becomes Roper if needed)
+
+					if (k > 0)
+					{
+						ENV_set_value_string("roper_look_name", name, "Extra");	// stays right if files are added
+					}
+				}
+				break;
+			case 85: // animki [n] - browse the extra animations: N next, P previous, Q stop
+				{
+					SLONG first;
+					SLONG count;
+					SLONG look = ANIMKI_range(darci, &first, &count);
+
+					if (count <= 1)
+					{
+						CONSOLE_text("Brak dodatkowych animacji: postac z data\\looks albo [Extra] roper_anims=plik.all", 4000);
+						break;
+					}
+					if (darci->Genus.Person->PersonType != PERSON_ROPER ||
+						darci->Draw.Tweened->TheChunk != &game_chunk[ANIM_TYPE_ROPER])
+					{
+						CONSOLE_text("To animacje Ropera - najpierw \"swat\" albo \"wyglad 0\"", 4000);
+						break;
+					}
+					if (darci->Genus.Person->Flags & (FLAG_PERSON_DRIVING | FLAG_PERSON_BIKING | FLAG_PERSON_PASSENGER))
+					{
+						CONSOLE_text("Najpierw wysiadz z pojazdu", 3000);
+						break;
+					}
+
+					ANIMKI_on    = TRUE;
+					ANIMKI_look  = look;
+					ANIMKI_first = first;
+					ANIMKI_count = count;
+					ANIMKI_n     = atoi(ptr);
+
+					if (ANIMKI_n < 1 || ANIMKI_n >= count)
+					{
+						ANIMKI_n = 1;
+					}
+
+					ANIMKI_play(darci);
+				}
 				break;
 			case 83: // where - position in mapsquares and facing, for .sec files
 				SEC_cmd_where();
@@ -3351,6 +3650,8 @@ SLONG is_person_crouching(Thing *p_person);
 
 
 	// normal key processing
+
+	ANIMKI_process(darci);	// "animki": N / P / Q
 
 	//
 	// Do keyboard inventory.

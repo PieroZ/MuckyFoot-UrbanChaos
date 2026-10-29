@@ -211,8 +211,13 @@ SLONG	ROPER_looks = 1;
 // uc_mixamo_pack.py. The console command "animka n" plays one. ROPER_extra_anims = how many.
 //
 
-#define ROPER_EXTRA_ANIM_START 400
+// (600: 400.. are ANIM_END + n, the special animations of animate.h)
+#define ROPER_EXTRA_ANIM_START 600
+SLONG	ROPER_extra_anim_start = ROPER_EXTRA_ANIM_START;
 SLONG	ROPER_extra_anims = 0;
+
+// The animations of data\looks\*.all follow (io.cpp, LOOK_append_anims).
+#define LOOK_ANIM_START 720
 
 void	set_next_prim_point(SLONG v)
 {
@@ -988,6 +993,18 @@ void	setup_people_anims(void)
 		ROPER_looks++;
 	}
 
+	//
+	// Characters in their own files: data\looks\*.all (mesh 0 of each) - more looks of Roper.
+	// At most 8 looks, so that trainer.all / banesuit.all still get a mesh slot after them.
+	//
+
+	if (!save_psx)
+	{
+		extern SLONG append_look_files(struct GameKeyFrameChunk *p_chunk, SLONG max_meshes);
+
+		ROPER_looks += append_look_files(&game_chunk[ANIM_TYPE_ROPER], 8);
+	}
+
 	if (save_psx)
 	{
 		//load_anim_system(&game_chunk[ANIM_TYPE_CIV], "C:\\stuff\\rthug.all", 2); //rpsxthug.all
@@ -1063,8 +1080,24 @@ extern	SLONG	playing_level(const CBYTE *name);
 				{
 					ROPER_extra_anims = 0;
 				}
+
+				if (ROPER_extra_anims > GLOBAL_ANIM_MAX - ROPER_EXTRA_ANIM_START)
+				{
+					ROPER_extra_anims = GLOBAL_ANIM_MAX - ROPER_EXTRA_ANIM_START;	// global_anim_array has no room for more
+				}
 			}
 		}
+	}
+
+	//
+	// The looks' own animations (data\looks\<name>.all) and what they replace (<name>.txt).
+	//
+
+	if (!save_psx)
+	{
+		extern SLONG LOOK_append_anims(struct GameKeyFrameChunk *p_chunk, SLONG looks, SLONG first_anim);
+
+		LOOK_append_anims(&game_chunk[ANIM_TYPE_ROPER], ROPER_looks, LOOK_ANIM_START);
 	}
 
 	if(playing_level("estate2.ucm") || playing_level("Album1.ucm"))
@@ -1147,6 +1180,62 @@ void	setup_global_anim_array(void)
 	}
 
 	setup_additional_anims();
+
+	//
+	// [Extra] roper_anims: its animations are in Roper's chunk at ROPER_EXTRA_ANIM_START..;
+	// set_anim() takes them from global_anim_array, so they go in there too ("animka n").
+	// Without this the slots were empty (nothing happened) or, from 450 on, past the row.
+	// Only Roper's row: the other rows' 400.. are ANIM_END + n (animate.h).
+	//
+
+	{
+		SLONG i;
+		SLONG a;
+
+		for (i = 0; i < ROPER_extra_anims; i++)
+		{
+			a = ROPER_EXTRA_ANIM_START + i;
+
+			if (a >= GLOBAL_ANIM_MAX || a >= game_chunk[ANIM_TYPE_ROPER].MaxAnimFrames)
+			{
+				break;
+			}
+
+			global_anim_array[ANIM_TYPE_ROPER][a] = game_chunk[ANIM_TYPE_ROPER].AnimList[a];
+		}
+	}
+
+	//
+	// The looks' animations, and Roper starts the level with the animations of his look
+	// ([Extra] roper_look / roper_look_name, the same as Person.cpp picks the mesh by).
+	//
+
+	{
+		extern void  LOOK_setup_anim_row(void);
+		extern void  LOOK_apply_anims(SLONG look);
+		extern SLONG LOOK_find(CBYTE *name, SLONG looks);
+
+		SLONG  look      = ENV_get_value_number("roper_look", 0, "Extra");
+		CBYTE *look_name = ENV_get_value_string("roper_look_name", "Extra");
+
+		if (look_name && look_name[0])
+		{
+			SLONG by_name = LOOK_find(look_name, ROPER_looks);
+
+			if (by_name >= 0)
+			{
+				look = by_name;
+			}
+		}
+
+		if (look < 0 || look >= ROPER_looks)
+		{
+			look = 0;
+		}
+
+		LOOK_setup_anim_row();
+		LOOK_apply_anims(look);
+	}
 
 	//
 	// If people have their own anims, then set them up to use

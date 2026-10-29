@@ -33,7 +33,12 @@ extern	struct KeyFrame	*anim_array[300],
 						*thug_array[300];
 */
 
-extern	struct GameKeyFrame	*global_anim_array[4][450];
+// Animation number -> first keyframe, per anim type. 0..399 are Darci's (ANIM_END), 400..
+// the [Extra] roper_anims file (Anim.cpp, ROPER_EXTRA_ANIM_START). Was [450]: "animka 50"
+// and above read past the row.
+#define GLOBAL_ANIM_MAX 1024
+
+extern	struct GameKeyFrame	*global_anim_array[4][GLOBAL_ANIM_MAX];
 
 extern	struct KeyFrameChunk 	*test_chunk;
 #if !defined(PSX) && !defined(TARGET_DC)

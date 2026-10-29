@@ -25,6 +25,20 @@
 // level now (and the links / cameras / files read from the file) back to it.
 // ---------------------------------------------------------------------------
 //
+// Manual control: a terminal's turret menu has "Manual control" - the player
+// looks through the turret's sensor, turns it (left / right), raises / lowers
+// the barrels (forwards / backwards), fires (punch or action, held = bursts)
+// and locks on to the next person in view (jump; the turret then follows him).
+// Kick / Esc goes back to the menu. While a turret is in manual control it does
+// nothing on its own.
+//
+// People and turrets (SEC_person_ai, called by PCOM for the computer people):
+// somebody a turret on the player's side (reprogrammed to "hostiles only", or
+// in manual control) is shooting at, or that sees one aimed at him, shoots
+// back at it if he has a gun - or runs away from it if he hasn't. Bystanders
+// next to where turret bullets land run away from it too.
+// ---------------------------------------------------------------------------
+//
 
 #include "game.h"
 #include "statedef.h"
@@ -60,6 +74,14 @@ extern SLONG is_there_room_behind_person(Thing *p_person, SLONG hit_from_behind)
 extern BOOL  PersonIsMIB(Thing *p_person);
 extern void  DIRT_new_sparks(SLONG px, SLONG py, SLONG pz, UBYTE dir);
 extern void  set_generic_person_state_function(Thing *t_thing, UBYTE state);
+extern Thing *person_has_special(Thing *p_person, SLONG special_type);
+extern SLONG set_face_thing(Thing *p_person_a, Thing *p_person_b);
+extern SLONG PCOM_person_has_gun_in_hand(Thing *p_person);
+extern void  PCOM_set_person_move_shoot(Thing *p_person);
+extern void  PCOM_set_person_move_still(Thing *p_person);
+extern void  PCOM_set_person_ai_flee_place(Thing *p_person, SLONG scary_x, SLONG scary_z);
+extern void  PCOM_set_person_move_draw_firearm(Thing *p_person);	// pcom.cpp
+extern SLONG PCOM_person_move_busy(Thing *p_person);				// pcom.cpp
 
 // ---------------------------------------------------------------------------
 // Turret state (kept in the Bat structure)
@@ -148,6 +170,25 @@ typedef struct
 
 } SEC_File;
 
+//
+// A computer person who has to do something about a turret (SEC_person_ai).
+//
+
+#define SEC_MAX_THREATS		32
+#define SEC_THREAT_MS		4000	// Forgotten this long after the turret last bothered him
+
+typedef struct
+{
+	THING_INDEX person;
+	THING_INDEX turret;
+	SLONG       ms;			// Left before he forgets about it
+	SLONG       cool;		// ms before he shoots at it again
+	THING_INDEX old_target;	// His target before he turned on the turret
+	UBYTE       attack;		// He may shoot at it (else he only runs if unarmed)
+	UBYTE       shooting;	// He has the turret as his target
+
+} SEC_Threat;
+
 typedef struct
 {
 	UBYTE type;		// BAT_TYPE_TURRET / BAT_TYPE_TERMINAL
@@ -175,6 +216,7 @@ typedef struct
 #define SEC_UI_CCTV			6
 #define SEC_UI_TURRETS		7
 #define SEC_UI_TURRET		8
+#define SEC_UI_MANUAL		9		// Aiming and firing a turret by hand
 
 #define SEC_MAX_LIST		24
 #define SEC_MAX_LINES		512
@@ -226,6 +268,19 @@ static struct
 	SLONG       status_ms;
 
 	THING_INDEX near_term;		// For the "use computer" prompt
+
+	//
+	// Manual control of SEC.turret_thing (SEC_UI_MANUAL).
+	//
+
+	SLONG       man_pitch;		// 2048ths, + = barrels up
+	THING_INDEX man_lock;		// Locked-on target (the turret follows him), or NULL
+	SLONG       man_fire_ms;	// Real ms before it can fire again
+	SLONG       man_shots;
+	SLONG       man_hits;
+	ULONG       raw_prev;		// The raw input last frame (manual control wants held keys)
+
+	SEC_Threat  threat[SEC_MAX_THREATS];
 
 } SEC;
 
@@ -1007,6 +1062,349 @@ static Thing *SEC_turret_find_target(Thing *p_turret)
 	return best;
 }
 
+// ---------------------------------------------------------------------------
+// People and turrets: shoot back or run away
+// ---------------------------------------------------------------------------
+
+static SEC_Threat *SEC_threat_of(Thing *p_person)
+{
+	SLONG i;
+	THING_INDEX me = THING_NUMBER(p_person);
+
+	for (i = 0; i < SEC_MAX_THREATS; i++)
+	{
+		if (SEC.threat[i].person == me)
+		{
+			return &SEC.threat[i];
+		}
+	}
+
+	return NULL;
+}
+
+//
+// 'p_person' has to do something about 'p_turret'. attack: he may shoot at it
+// (an enemy of the player in the sights of a turret on the player's side); else
+// he only runs away, and only if he has no gun.
+//
+
+static void SEC_threat_add(Thing *p_person, Thing *p_turret, SLONG attack)
+{
+	SLONG i;
+
+	if (p_person == NULL || p_person->Class != CLASS_PERSON || p_person->Genus.Person->PlayerID)
+	{
+		return;
+	}
+
+	if (is_person_dead(p_person) || is_person_ko(p_person) || p_person->Genus.Person->Health <= 0)
+	{
+		return;
+	}
+
+	SEC_Threat *t = SEC_threat_of(p_person);
+
+	if (t)
+	{
+		if (t->turret != THING_NUMBER(p_turret) && t->shooting)
+		{
+			//
+			// Another turret: he turns on that one (his old target stays the one from before).
+			//
+
+			if (p_person->Genus.Person->Target == t->turret)
+			{
+				p_person->Genus.Person->Target = THING_NUMBER(p_turret);
+			}
+		}
+
+		t->turret  = THING_NUMBER(p_turret);
+		t->ms      = SEC_THREAT_MS;
+		t->attack |= (attack) ? 1 : 0;
+
+		return;
+	}
+
+	for (i = 0; i < SEC_MAX_THREATS; i++)
+	{
+		if (SEC.threat[i].person == NULL)
+		{
+			t = &SEC.threat[i];
+
+			t->person     = THING_NUMBER(p_person);
+			t->turret     = THING_NUMBER(p_turret);
+			t->ms         = SEC_THREAT_MS;
+			t->cool       = 250 + (Random() % 600);	// Reaction time
+			t->old_target = NULL;
+			t->attack     = (attack) ? 1 : 0;
+			t->shooting   = FALSE;
+
+			return;
+		}
+	}
+}
+
+//
+// Everybody near (x,z) - where turret bullets are landing.
+//
+
+static void SEC_threat_near(SLONG x, SLONG z, SLONG radius, Thing *p_turret, SLONG attack_if_hostile)
+{
+	THING_INDEX found[32];
+	SLONG       i;
+
+	SLONG num = THING_find_sphere(x, PAP_calc_map_height_at(x, z), z, radius, found, 32, 1 << CLASS_PERSON);
+
+	for (i = 0; i < num; i++)
+	{
+		Thing *p_found = TO_THING(found[i]);
+
+		SEC_threat_add(p_found, p_turret, attack_if_hostile && SEC_person_is_hostile(p_found));
+	}
+}
+
+//
+// A turret on the player's side looks around: enemies it could shoot know it.
+//
+
+static void SEC_threat_scan(Thing *p_turret)
+{
+	THING_INDEX found[32];
+	SLONG       i;
+	SLONG       range = SEC_turret_range(p_turret->Genus.Bat);
+
+	SLONG num = THING_find_sphere(
+					p_turret->WorldPos.X >> 8,
+					p_turret->WorldPos.Y >> 8,
+					p_turret->WorldPos.Z >> 8,
+					range,
+					found,
+					32,
+					1 << CLASS_PERSON);
+
+	for (i = 0; i < num; i++)
+	{
+		Thing *p_found = TO_THING(found[i]);
+
+		if (p_found->Genus.Person->PlayerID || !SEC_person_is_hostile(p_found))
+		{
+			continue;
+		}
+
+		if (SEC_can_shoot_at(p_turret, p_found, range))
+		{
+			SEC_threat_add(p_found, p_turret, TRUE);
+		}
+	}
+}
+
+static SLONG SEC_person_armed(Thing *p_person)
+{
+	Thing *p_special;
+
+	if (p_person->Genus.Person->PersonType == PERSON_MIB1 ||
+		p_person->Genus.Person->PersonType == PERSON_MIB2 ||
+		p_person->Genus.Person->PersonType == PERSON_MIB3)
+	{
+		return TRUE;
+	}
+
+	if ((p_person->Flags & FLAGS_HAS_GUN) && p_person->Genus.Person->Ammo)
+	{
+		return TRUE;
+	}
+
+	if ((p_special = person_has_special(p_person, SPECIAL_AK47))    && p_special->Genus.Special->ammo) {return TRUE;}
+	if ((p_special = person_has_special(p_person, SPECIAL_SHOTGUN)) && p_special->Genus.Special->ammo) {return TRUE;}
+
+	return FALSE;
+}
+
+static void SEC_threat_end(SEC_Threat *t, Thing *p_person)
+{
+	if (p_person && p_person->Class == CLASS_PERSON && t->shooting)
+	{
+		if (p_person->Genus.Person->Target == t->turret)
+		{
+			//
+			// Back to whoever he was after before.
+			//
+
+			Thing *p_old = (t->old_target) ? TO_THING(t->old_target) : NULL;
+
+			if (p_old && p_old->Class == CLASS_PERSON && !is_person_dead(p_old))
+			{
+				p_person->Genus.Person->Target = t->old_target;
+			}
+			else
+			{
+				p_person->Genus.Person->Target = NULL;
+			}
+		}
+	}
+
+	t->person   = NULL;
+	t->shooting = FALSE;
+}
+
+SLONG SEC_person_ai(Thing *p_person)
+{
+	SEC_Threat *t = SEC_threat_of(p_person);
+
+	if (t == NULL)
+	{
+		return FALSE;
+	}
+
+	SLONG   ms = SEC_tick_ms();
+	Person *pp = p_person->Genus.Person;
+
+	t->ms -= ms;
+
+	Thing *p_turret = TO_THING(t->turret);
+
+	SLONG still_there =
+		t->ms > 0 &&
+		SEC_is_security(p_turret) &&
+		p_turret->Genus.Bat->type == BAT_TYPE_TURRET &&
+		p_turret->Genus.Bat->state != SEC_TS_DEAD &&
+		p_turret->Genus.Bat->state != SEC_TS_HIDDEN;
+
+	SLONG able =
+		!(pp->Flags & (FLAG_PERSON_HELPLESS | FLAG_PERSON_DRIVING | FLAG_PERSON_PASSENGER | FLAG_PERSON_BIKING | FLAG_PERSON_ARRESTED)) &&
+		!is_person_dead(p_person) &&
+		!is_person_ko(p_person) &&
+		pp->Health > 0 &&
+		p_person->State != STATE_DYING &&
+		p_person->State != STATE_DEAD;
+
+	if (!still_there || !able)
+	{
+		SEC_threat_end(t, p_person);
+
+		return FALSE;
+	}
+
+	if (!SEC_person_armed(p_person))
+	{
+		//
+		// Nothing to fight it with: run away from it (PCOM's own fleeing - he
+		// comes back to what he was doing when he is far enough).
+		//
+
+		if (pp->pcom_ai_state != PCOM_AI_STATE_FLEE_PLACE &&
+			pp->pcom_ai_state != PCOM_AI_STATE_FLEE_PERSON)
+		{
+			SEC_threat_end(t, p_person);	// (gives his target back first)
+
+			PCOM_set_person_ai_flee_place(p_person, p_turret->WorldPos.X >> 8, p_turret->WorldPos.Z >> 8);
+		}
+		else
+		{
+			SEC_threat_end(t, p_person);
+		}
+
+		return FALSE;
+	}
+
+	if (!t->attack)
+	{
+		//
+		// Armed, but it's not his business (a turret on his own side, say).
+		//
+
+		SEC_threat_end(t, p_person);
+
+		return FALSE;
+	}
+
+	//
+	// Can he see it from here?
+	//
+
+	SLONG px = p_person->WorldPos.X >> 8;
+	SLONG py = p_person->WorldPos.Y >> 8;
+	SLONG pz = p_person->WorldPos.Z >> 8;
+
+	if (SEC_dist(p_person, p_turret) > 0x100 * 14 ||
+		!there_is_a_los(
+			px, py + 0x60, pz,
+			p_turret->WorldPos.X >> 8, SEC_turret_head_y(p_turret), p_turret->WorldPos.Z >> 8,
+			LOS_FLAG_IGNORE_SEETHROUGH_FENCE_FLAG | LOS_FLAG_IGNORE_PRIMS))
+	{
+		//
+		// No: let him do what he does (he may come round the corner).
+		//
+
+		if (t->shooting && pp->Target == t->turret)
+		{
+			pp->Target  = (t->old_target) ? t->old_target : NULL;
+			t->shooting = FALSE;
+		}
+
+		return FALSE;
+	}
+
+	//
+	// Shoot back. Wait while he is drawing / firing / staggering.
+	//
+
+	if (PCOM_person_move_busy(p_person))
+	{
+		return TRUE;
+	}
+
+	if (p_person->State != STATE_IDLE    &&
+		p_person->State != STATE_MOVEING &&
+		p_person->State != STATE_GUN)
+	{
+		return TRUE;
+	}
+
+	if (!PCOM_person_has_gun_in_hand(p_person))
+	{
+		PCOM_set_person_move_draw_firearm(p_person);
+
+		return TRUE;
+	}
+
+	if (p_person->State == STATE_MOVEING)
+	{
+		PCOM_set_person_move_still(p_person);
+	}
+
+	set_face_thing(p_person, p_turret);
+
+	t->cool -= ms;
+
+	if (t->cool <= 0)
+	{
+		if (!t->shooting)
+		{
+			t->old_target = (pp->Target != t->turret) ? pp->Target : NULL;
+			t->shooting   = TRUE;
+		}
+
+		//
+		// The shot is worked out straight away (set_person_shoot -> actually_fire_gun,
+		// which hits bats with BAT_apply_hit), so the turret is his target only for
+		// that moment: the rest of the game expects a person's target to be a person.
+		//
+
+		THING_INDEX keep = (pp->Target != t->turret) ? pp->Target : t->old_target;
+
+		pp->Target = t->turret;
+
+		PCOM_set_person_move_shoot(p_person);
+
+		pp->Target = keep;
+
+		t->cool = 450 + (Random() % 900);
+	}
+
+	return TRUE;
+}
+
 static void SEC_hurt_person(Thing *p_target, Thing *p_turret, SLONG damage)
 {
 	if (is_person_dead(p_target) || is_person_ko(p_target))
@@ -1168,6 +1566,21 @@ static void SEC_turret_fire(Thing *p_turret, Thing *p_target)
 	}
 
 	//
+	// The one it shoots at and the people round him know about it (a turret on
+	// the player's side gets shot at by the armed ones; the others run).
+	//
+
+	if (!p_target->Genus.Person->PlayerID)
+	{
+		SEC_threat_add(p_target, p_turret, (p_bat->flag & SEC_F_FRIENDLY) != 0);
+	}
+
+	if ((GAME_TURN & 3) == 0)
+	{
+		SEC_threat_near(tx, tz, 0x300, p_turret, (p_bat->flag & SEC_F_FRIENDLY) != 0);
+	}
+
+	//
 	// A tracer from the barrel to where it hit.
 	//
 
@@ -1205,6 +1618,349 @@ static void SEC_turret_fire(Thing *p_turret, Thing *p_target)
 	}
 
 	p_bat->timer = extras.mTurretFireMs;
+}
+
+// ---------------------------------------------------------------------------
+// Manual control: where the barrels point, firing, picking targets
+// ---------------------------------------------------------------------------
+
+#define SEC_MAN_PITCH_MIN	(-170)		// About 30 degrees down
+#define SEC_MAN_PITCH_MAX	( 114)		// 20 up
+#define SEC_MAN_PITCH_START	(-48)		// Like the sensor feed
+
+//
+// The direction the barrels point (unit vector, world space).
+//
+
+static void SEC_man_dir(Thing *p_turret, float *dx, float *dy, float *dz)
+{
+	//
+	// (SIN / COS are the game's 2048-step tables, 1.0 = 65536; no <math.h> here:
+	// it would redefine the game's INFINITY.)
+	//
+
+	SLONG a = (p_turret->Draw.Tweened->Angle - SEC_yaw_offset()) & 2047;
+	SLONG p = SEC.man_pitch & 2047;
+
+	const float one = 1.0f / 65536.0f;
+
+	float cp = float(COS(p)) * one;
+
+	*dx = -float(SIN(a)) * one * cp;
+	*dy =  float(SIN(p)) * one;
+	*dz = -float(COS(a)) * one * cp;
+}
+
+//
+// The person a shot along the barrels would hit (closest along the line, line of
+// sight from the barrels), or NULL; *along = how far.
+//
+
+static Thing *SEC_man_person_on_line(Thing *p_turret, SLONG mx, SLONG my, SLONG mz, float dx, float dy, float dz, SLONG range, SLONG *along)
+{
+	THING_INDEX found[64];
+	SLONG       i;
+	Thing      *best      = NULL;
+	float       best_dist = float(range);
+
+	SLONG num = THING_find_sphere(
+					p_turret->WorldPos.X >> 8,
+					p_turret->WorldPos.Y >> 8,
+					p_turret->WorldPos.Z >> 8,
+					range,
+					found,
+					64,
+					1 << CLASS_PERSON);
+
+	for (i = 0; i < num; i++)
+	{
+		Thing *p_found = TO_THING(found[i]);
+
+		if (p_found->Genus.Person->PlayerID)
+		{
+			continue;	// The player's own turret doesn't shoot him
+		}
+
+		if (is_person_dead(p_found) || p_found->Genus.Person->Health <= 0)
+		{
+			continue;
+		}
+
+		if (!(p_found->Flags & FLAGS_ON_MAPWHO) || (p_found->Genus.Person->Flags & (FLAG_PERSON_DRIVING | FLAG_PERSON_PASSENGER)))
+		{
+			continue;
+		}
+
+		//
+		// A person is a stick from his feet to his head (0xb0 up), about 0x28 thick.
+		//
+
+		float fx = float(p_found->WorldPos.X >> 8) - float(mx);
+		float fy = float(p_found->WorldPos.Y >> 8) - float(my);
+		float fz = float(p_found->WorldPos.Z >> 8) - float(mz);
+
+		float t     = fx * dx + fz * dz;		// Along the line, flat
+		float flat2 = dx * dx + dz * dz;
+
+		if (flat2 < 0.0025f)
+		{
+			continue;
+		}
+
+		t /= flat2;								// In units of the 3D direction
+
+		if (t <= 0.0f || t >= best_dist)
+		{
+			continue;
+		}
+
+		float lx = dx * t - fx;
+		float lz = dz * t - fz;
+		float ly = dy * t - fy;					// Height of the line over his feet
+
+		float side2 = lx * lx + lz * lz;
+		float slop  = 0x28 + t * (1.0f / 24.0f);	// A little spread further away
+
+		if (side2 > slop * slop || ly < -8.0f || ly > float(0xb0))
+		{
+			continue;
+		}
+
+		if (!there_is_a_los(
+				mx, my, mz,
+				p_found->WorldPos.X >> 8, (p_found->WorldPos.Y >> 8) + 0x50, p_found->WorldPos.Z >> 8,
+				LOS_FLAG_IGNORE_SEETHROUGH_FENCE_FLAG | LOS_FLAG_IGNORE_PRIMS))
+		{
+			continue;
+		}
+
+		best      = p_found;
+		best_dist = t;
+	}
+
+	*along = SLONG(best_dist);
+
+	return best;
+}
+
+static void SEC_man_fire(Thing *p_turret)
+{
+	Bat *p_bat = p_turret->Genus.Bat;
+	ConfigExtras &extras = ConfigExtras::getInstance();
+
+	SLONG a    = (p_turret->Draw.Tweened->Angle - SEC_yaw_offset()) & 2047;
+	SLONG side = (GAME_TURN & 1) ? 9 : -9;
+
+	SLONG mx = (p_turret->WorldPos.X >> 8) + (-SIN(a) * SEC_BARREL_LENGTH >> 16) + (COS(a) * side >> 16);
+	SLONG my = SEC_turret_head_y(p_turret);
+	SLONG mz = (p_turret->WorldPos.Z >> 8) + (-COS(a) * SEC_BARREL_LENGTH >> 16) - (SIN(a) * side >> 16);
+
+	float dx, dy, dz;
+
+	SEC_man_dir(p_turret, &dx, &dy, &dz);
+
+	MFX_play_xyz(THING_NUMBER(p_turret), S_AK47_SHOT, 0, mx << 8, my << 8, mz << 8);
+
+	PARTICLE_Add(
+		mx << 8, my << 8, mz << 8,
+		0, 0, 0,
+		POLY_PAGE_BLOOM1, 0, 0xffffd060,
+		PFLAG_FADE, 6, 40, 1, -6, 0);
+
+	SEC.man_shots += 1;
+
+	SLONG  range  = SEC_turret_range(p_bat) * 5 >> 2;	// A person aiming reaches a bit further
+	SLONG  along  = range;
+	Thing *p_hit  = SEC_man_person_on_line(p_turret, mx, my, mz, dx, dy, dz, range, &along);
+
+	SLONG tx, ty, tz;
+	SLONG hit = FALSE;
+
+	if (p_hit)
+	{
+		SLONG chance = 235 - (along * 80 >> 11) - p_hit->Velocity;
+
+		SATURATE(chance, 40, 240);
+
+		hit = ((Random() & 0xff) < chance);
+
+		tx = p_hit->WorldPos.X >> 8;
+		ty = (p_hit->WorldPos.Y >> 8) + 0x50;
+		tz = p_hit->WorldPos.Z >> 8;
+	}
+	else
+	{
+		//
+		// Where the bullet stops: a wall, the ground, or nothing within range.
+		//
+
+		SLONG ex = mx + SLONG(dx * range);
+		SLONG ey = my + SLONG(dy * range);
+		SLONG ez = mz + SLONG(dz * range);
+
+		if (!there_is_a_los(mx, my, mz, ex, ey, ez, LOS_FLAG_IGNORE_SEETHROUGH_FENCE_FLAG | LOS_FLAG_IGNORE_PRIMS))
+		{
+			tx = los_failure_x;
+			ty = los_failure_y;
+			tz = los_failure_z;
+
+			MFX_play_xyz(0, SOUND_Range(S_RICOCHET_START, S_RICOCHET_END), 0, tx << 8, ty << 8, tz << 8);
+
+			DIRT_new_sparks(tx, ty, tz, 2);
+		}
+		else
+		{
+			tx = ex;
+			ty = ey;
+			tz = ez;
+		}
+	}
+
+	if (p_hit && !hit)
+	{
+		//
+		// Just missed him.
+		//
+
+		tx += (Random() & 0x3f) - 0x1f;
+		tz += (Random() & 0x3f) - 0x1f;
+		ty  = PAP_calc_map_height_at(tx, tz) + (Random() & 0x3f);
+
+		MFX_play_xyz(0, SOUND_Range(S_RICOCHET_START, S_RICOCHET_END), 0, tx << 8, ty << 8, tz << 8);
+
+		DIRT_new_sparks(tx, ty, tz, 2);
+	}
+
+	{
+		SPARK_Pinfo p1;
+		SPARK_Pinfo p2;
+
+		p1.type   = SPARK_TYPE_POINT;
+		p1.flag   = 0;
+		p1.person = 0;
+		p1.limb   = 0;
+		p1.x      = mx;
+		p1.y      = my;
+		p1.z      = mz;
+
+		p2.type   = SPARK_TYPE_POINT;
+		p2.flag   = 0;
+		p2.person = 0;
+		p2.limb   = 0;
+		p2.x      = tx;
+		p2.y      = ty;
+		p2.z      = tz;
+
+		SPARK_create(&p1, &p2, 3);
+	}
+
+	if (p_hit)
+	{
+		//
+		// Whoever it was aimed at fights back (or runs) - whatever side he is on.
+		//
+
+		SEC_threat_add(p_hit, p_turret, TRUE);
+
+		if (hit)
+		{
+			SEC.man_hits += 1;
+
+			SEC_hurt_person(p_hit, p_turret, MAX(extras.mTurretDamageNpc, 1));
+		}
+
+		p_bat->target = THING_NUMBER(p_hit);
+	}
+	else
+	{
+		p_bat->target = NULL;
+	}
+
+	SEC_threat_near(tx, tz, 0x280, p_turret, TRUE);
+}
+
+//
+// The next person in view to the right of the one locked on (or of the crosshair).
+//
+
+static SLONG SEC_man_is_target(Thing *p_turret, Thing *p_person)
+{
+	if (p_person == NULL || p_person->Class != CLASS_PERSON || p_person->Genus.Person->PlayerID)
+	{
+		return FALSE;
+	}
+
+	return SEC_can_shoot_at(p_turret, p_person, SEC_turret_range(p_turret->Genus.Bat) * 5 >> 2);
+}
+
+static void SEC_man_next_target(Thing *p_turret)
+{
+	THING_INDEX found[64];
+	SLONG       i;
+	SLONG       range = SEC_turret_range(p_turret->Genus.Bat) * 5 >> 2;
+	SLONG       here  = (p_turret->Draw.Tweened->Angle - SEC_yaw_offset()) & 2047;
+
+	SLONG num = THING_find_sphere(
+					p_turret->WorldPos.X >> 8,
+					p_turret->WorldPos.Y >> 8,
+					p_turret->WorldPos.Z >> 8,
+					range,
+					found,
+					64,
+					1 << CLASS_PERSON);
+
+	//
+	// Angle of the current lock (or the crosshair) - then the smallest turn to the
+	// right (clockwise: the angle goes down) past it. Hostile people first.
+	//
+
+	SLONG from = here;
+
+	if (SEC.man_lock && SEC_man_is_target(p_turret, TO_THING(SEC.man_lock)))
+	{
+		Thing *p_lock = TO_THING(SEC.man_lock);
+
+		from = SEC_angle_to(p_turret->WorldPos.X >> 8, p_turret->WorldPos.Z >> 8, p_lock->WorldPos.X >> 8, p_lock->WorldPos.Z >> 8);
+	}
+
+	Thing *best       = NULL;
+	SLONG  best_score = 0x7fffffff;
+
+	for (i = 0; i < num; i++)
+	{
+		Thing *p_found = TO_THING(found[i]);
+
+		if (THING_NUMBER(p_found) == SEC.man_lock || !SEC_man_is_target(p_turret, p_found))
+		{
+			continue;
+		}
+
+		SLONG a = SEC_angle_to(p_turret->WorldPos.X >> 8, p_turret->WorldPos.Z >> 8, p_found->WorldPos.X >> 8, p_found->WorldPos.Z >> 8);
+
+		SLONG turn = (from - a) & 2047;		// To the right
+		SLONG score = turn + ((SEC_person_is_hostile(p_found)) ? 0 : 4096);
+
+		if (score < best_score)
+		{
+			best       = p_found;
+			best_score = score;
+		}
+	}
+
+	if (best)
+	{
+		SEC.man_lock = THING_NUMBER(best);
+
+		MFX_play_ambient(0, S_BEEP, 0);
+		SEC_set_status(SEC_person_is_hostile(best) ? "Target locked - hostile." : "Target locked - NOT a known hostile.");
+	}
+	else
+	{
+		SEC.man_lock = NULL;
+
+		MFX_play_ambient(0, S_PISTOL_DRY, 0);
+		SEC_set_status("No target in range.");
+	}
 }
 
 static void SEC_turret_destroy(Thing *p_turret)
@@ -1301,16 +2057,26 @@ static void SEC_turret_process(Thing *p_turret)
 		p_bat->timer = (p_bat->timer > ms) ? p_bat->timer - ms : 0;
 	}
 
+	//
+	// In manual control from a terminal it does nothing on its own (SEC_ui_process
+	// turns it and fires it).
+	//
+
+	SLONG manual = (SEC.ui == SEC_UI_MANUAL && SEC.turret_thing == THING_NUMBER(p_turret));
+
 	Thing *p_target = NULL;
 
-	if (powered)
+	if (powered && !manual)
 	{
 		p_target = SEC_turret_find_target(p_turret);
 	}
 
-	p_bat->target = (p_target) ? THING_NUMBER(p_target) : NULL;
+	if (!manual)
+	{
+		p_bat->target = (p_target) ? THING_NUMBER(p_target) : NULL;
+	}
 
-	if (p_target)
+	if (p_target || manual)
 	{
 		p_bat->dz = 0;
 	}
@@ -1326,7 +2092,7 @@ static void SEC_turret_process(Thing *p_turret)
 	{
 		case SEC_TS_HIDDEN:
 
-			if (p_target)
+			if (p_target || (manual && powered))
 			{
 				p_bat->state = SEC_TS_RISING;
 
@@ -1362,7 +2128,7 @@ static void SEC_turret_process(Thing *p_turret)
 
 		case SEC_TS_UP:
 
-			if (powered && !p_target && (p_bat->flag & SEC_F_CONCEALED) && p_bat->dz > SEC_RETRACT_MS)
+			if (powered && !p_target && !manual && (p_bat->flag & SEC_F_CONCEALED) && p_bat->dz > SEC_RETRACT_MS)
 			{
 				p_bat->state = SEC_TS_LOWERING;
 
@@ -1375,7 +2141,7 @@ static void SEC_turret_process(Thing *p_turret)
 
 			if (powered)
 			{
-				if (p_target)
+				if (p_target || manual)
 				{
 					p_bat->state = SEC_TS_RISING;
 				}
@@ -1399,10 +2165,21 @@ static void SEC_turret_process(Thing *p_turret)
 	}
 
 	//
+	// On the player's side: the enemies it could shoot know it is there.
+	//
+
+	if (powered && p_bat->state == SEC_TS_UP &&
+		((p_bat->flag & SEC_F_FRIENDLY) || manual) &&
+		((GAME_TURN + THING_NUMBER(p_turret)) & 7) == 0)
+	{
+		SEC_threat_scan(p_turret);
+	}
+
+	//
 	// Turning and shooting.
 	//
 
-	if (powered && p_bat->state == SEC_TS_UP)
+	if (powered && p_bat->state == SEC_TS_UP && !manual)
 	{
 		SLONG want;
 
@@ -1764,7 +2541,7 @@ static void SEC_go(SLONG ui)
 
 	SEC_build_list();
 
-	PolyPage::SetGreenScreen(ui == SEC_UI_CCTV);
+	PolyPage::SetGreenScreen(ui == SEC_UI_CCTV || ui == SEC_UI_MANUAL);
 }
 
 //
@@ -1999,8 +2776,11 @@ static void SEC_move_sel(ULONG pressed, SLONG count)
 #define SEC_TA_TARGET	1
 #define SEC_TA_HATCH	2
 #define SEC_TA_CAMERA	3
-#define SEC_TA_BACK		4
-#define SEC_TA_NUMBER	5
+#define SEC_TA_MANUAL	4
+#define SEC_TA_BACK		5
+#define SEC_TA_NUMBER	6
+
+static void SEC_manual_process(ULONG input, ULONG pressed, ULONG raw_pressed, SLONG ms);
 
 static void SEC_ui_process(Thing *p_person, ULONG input)
 {
@@ -2019,6 +2799,10 @@ static void SEC_ui_process(Thing *p_person, ULONG input)
 	}
 
 	ULONG pressed = SEC_read_input(input);
+
+	ULONG raw_pressed = input & ~SEC.raw_prev;	// (manual control wants the real buttons)
+
+	SEC.raw_prev = input;
 
 	Thing *p_term = SEC_ui_term();
 
@@ -2194,6 +2978,12 @@ static void SEC_ui_process(Thing *p_person, ULONG input)
 
 			break;
 
+		case SEC_UI_MANUAL:
+
+			SEC_manual_process(input, pressed, raw_pressed, ms);
+
+			break;
+
 		case SEC_UI_TURRETS:
 
 			SEC_move_sel(pressed, SEC.list_upto);
@@ -2292,6 +3082,28 @@ static void SEC_ui_process(Thing *p_person, ULONG input)
 
 							break;
 
+						case SEC_TA_MANUAL:
+
+							if (p_bat->glow || (p_bat->flag & SEC_F_POWEROFF))
+							{
+								SEC_set_status("The turret is offline - restore its power first.");
+								MFX_play_ambient(0, S_PISTOL_DRY, 0);
+
+								break;
+							}
+
+							SEC.man_pitch   = SEC_MAN_PITCH_START;
+							SEC.man_lock    = NULL;
+							SEC.man_fire_ms = 300;		// Not straight away (the button that chose this)
+							SEC.man_shots   = 0;
+							SEC.man_hits    = 0;
+							SEC.cam_index   = -1;
+							SEC.raw_prev    = input;
+
+							SEC_go(SEC_UI_MANUAL);
+
+							break;
+
 						case SEC_TA_BACK:
 
 							SEC_go(SEC_UI_TURRETS);
@@ -2302,6 +3114,153 @@ static void SEC_ui_process(Thing *p_person, ULONG input)
 			}
 
 			break;
+	}
+}
+
+//
+// Manual control of SEC.turret_thing: called from SEC_ui_process.
+//
+
+static void SEC_manual_process(ULONG input, ULONG pressed, ULONG raw_pressed, SLONG ms)
+{
+	Thing *p_turret = TO_THING(SEC.turret_thing);
+
+	if (!SEC_is_security(p_turret) || p_turret->Genus.Bat->type != BAT_TYPE_TURRET)
+	{
+		SEC_go(SEC_UI_TURRETS);
+
+		return;
+	}
+
+	Bat       *p_bat = p_turret->Genus.Bat;
+	DrawTween *dt    = p_turret->Draw.Tweened;
+
+	if (pressed & SEC_IN_BACK)
+	{
+		p_bat->target = NULL;
+		SEC.man_lock  = NULL;
+
+		SEC_go(SEC_UI_TURRET);
+		SEC.sel = SEC_TA_MANUAL;
+
+		return;
+	}
+
+	if (p_bat->state == SEC_TS_DEAD || p_bat->glow || (p_bat->flag & SEC_F_POWEROFF))
+	{
+		return;		// "NO SIGNAL" on the screen; kick / Esc to go back
+	}
+
+	if (SEC.man_fire_ms > 0)
+	{
+		SEC.man_fire_ms -= ms;
+	}
+
+	//
+	// Turning: left / right (like a person: left = the angle goes up). Touching
+	// them lets go of the lock.
+	//
+
+	SLONG turn  = (SEC_TURN_SPEED / 2) * ms / 1000 + 1;
+	SLONG angle = dt->Angle;
+
+	if (input & (INPUT_MASK_LEFT | INPUT_MASK_RIGHT))
+	{
+		SEC.man_lock = NULL;
+
+		if (input & INPUT_MASK_LEFT)  {angle += turn;}
+		if (input & INPUT_MASK_RIGHT) {angle -= turn;}
+	}
+
+	//
+	// The barrels: forwards = up.
+	//
+
+	SLONG tilt = 260 * ms / 1000 + 1;
+
+	if (input & INPUT_MASK_FORWARDS)  {SEC.man_pitch += tilt; SEC.man_lock = NULL;}
+	if (input & INPUT_MASK_BACKWARDS) {SEC.man_pitch -= tilt; SEC.man_lock = NULL;}
+
+	//
+	// Jump: lock on to the next person in view. Locked, it follows him.
+	//
+
+	if (raw_pressed & INPUT_MASK_JUMP)
+	{
+		SEC_man_next_target(p_turret);
+	}
+
+	if (SEC.man_lock)
+	{
+		Thing *p_lock = TO_THING(SEC.man_lock);
+
+		if (!SEC_man_is_target(p_turret, p_lock))
+		{
+			SEC.man_lock = NULL;
+
+			SEC_set_status("Target lost.");
+		}
+		else
+		{
+			SLONG want = (SEC_angle_to(
+							p_turret->WorldPos.X >> 8, p_turret->WorldPos.Z >> 8,
+							p_lock->WorldPos.X >> 8, p_lock->WorldPos.Z >> 8) + SEC_yaw_offset()) & 2047;
+
+			SLONG diff = SEC_angle_diff(angle, want);
+			SLONG step = SEC_TURN_SPEED * ms / 1000 + 1;
+
+			SATURATE(diff, -step, step);
+
+			angle += diff;
+
+			//
+			// Up / down to his chest.
+			//
+
+			SLONG dy   = ((p_lock->WorldPos.Y >> 8) + 0x50) - SEC_turret_head_y(p_turret);
+			SLONG dist = SEC_dist(p_turret, p_lock);
+			SLONG wp   = Arctan(dy, MAX(dist, 1)) & 2047;
+
+			if (wp > 1024) {wp -= 2048;}
+
+			SLONG pd = wp - SEC.man_pitch;
+
+			SATURATE(pd, -step, step);
+
+			SEC.man_pitch += pd;
+		}
+	}
+
+	SATURATE(SEC.man_pitch, SEC_MAN_PITCH_MIN, SEC_MAN_PITCH_MAX);
+
+	//
+	// It can only turn so far.
+	//
+
+	if (p_bat->substate)
+	{
+		SLONG lim = p_bat->substate << 3;
+		SLONG off = SEC_angle_diff(p_bat->dy, angle & 2047);
+
+		SATURATE(off, -lim, lim);
+
+		angle = p_bat->dy + off;
+	}
+
+	dt->Angle = angle & 2047;
+
+	//
+	// Punch / action (held: it keeps firing at its rate).
+	//
+
+	if ((input & (INPUT_MASK_PUNCH | INPUT_MASK_ACTION)) && SEC.man_fire_ms <= 0)
+	{
+		if (p_bat->state == SEC_TS_UP)
+		{
+			SEC_man_fire(p_turret);
+
+			SEC.man_fire_ms = ConfigExtras::getInstance().mTurretFireMs;
+		}
 	}
 }
 
@@ -2381,14 +3340,14 @@ SLONG SEC_player_control(Thing *p_person, ULONG input)
 
 SLONG SEC_camera(SLONG *x, SLONG *y, SLONG *z, SLONG *look_x, SLONG *look_y, SLONG *look_z)
 {
-	if (SEC.ui != SEC_UI_CCTV)
+	if (SEC.ui != SEC_UI_CCTV && SEC.ui != SEC_UI_MANUAL)
 	{
 		return FALSE;
 	}
 
 	SLONG cx, cy, cz, yaw, pitch;
 
-	if (SEC.cam_index >= 0)
+	if (SEC.ui == SEC_UI_CCTV && SEC.cam_index >= 0)
 	{
 		SLONG old = SEC.ui;
 
@@ -2431,7 +3390,7 @@ SLONG SEC_camera(SLONG *x, SLONG *y, SLONG *z, SLONG *look_x, SLONG *look_y, SLO
 		cz    = p_turret->WorldPos.Z >> 8;
 		cy    = SEC_turret_head_y(p_turret) + 30;
 		yaw   = (p_turret->Draw.Tweened->Angle - SEC_yaw_offset()) & 2047;
-		pitch = 2000;
+		pitch = (SEC.ui == SEC_UI_MANUAL) ? (SEC.man_pitch & 2047) : 2000;
 
 		//
 		// Start a little in front of the turret so we don't look at its own barrels.
@@ -2467,11 +3426,19 @@ SLONG SEC_camera(SLONG *x, SLONG *y, SLONG *z, SLONG *look_x, SLONG *look_y, SLO
 // Drawing the screen
 // ---------------------------------------------------------------------------
 
-#define SEC_COL_TEXT	0x50ff80
-#define SEC_COL_DIM		0x209040
-#define SEC_COL_HEAD	0xc0ffc0
-#define SEC_COL_WARN	0xff6040
-#define SEC_COL_OK		0x60ff60
+#define SEC_COL_TEXT	0x90ffb0
+#define SEC_COL_DIM		0x70d890
+#define SEC_COL_HEAD	0xffffff
+#define SEC_COL_WARN	0xff8060
+#define SEC_COL_OK		0xa0ff70
+
+//
+// The screen is drawn twice: first all the boxes (pass 0), then all the
+// text (pass 1) in a frame of its own, so no panel can end up on top of the
+// writing.
+//
+
+static SLONG SEC_pass;
 
 #define SEC_PX1	56
 #define SEC_PY1	48
@@ -2480,6 +3447,8 @@ SLONG SEC_camera(SLONG *x, SLONG *y, SLONG *z, SLONG *look_x, SLONG *look_y, SLO
 
 static void SEC_box(SLONG x1, SLONG y1, SLONG x2, SLONG y2, ULONG argb)
 {
+	if (SEC_pass != 0) return;
+
 	PANEL_draw_quad(float(x1), float(y1), float(x2), float(y2), POLY_PAGE_ALPHA_OVERLAY, argb);
 }
 
@@ -2493,6 +3462,8 @@ static void SEC_frame(SLONG x1, SLONG y1, SLONG x2, SLONG y2, ULONG argb)
 
 static void SEC_text(CBYTE *str, SLONG x, SLONG y, ULONG rgb)
 {
+	if (SEC_pass != 1) return;
+
 	FONT2D_DrawString(str, x, y, rgb, 256, POLY_PAGE_FONT2D, 0);
 }
 
@@ -2510,7 +3481,7 @@ static void SEC_menu_item(SLONG index, SLONG y, CBYTE *str, ULONG rgb)
 {
 	if (SEC.sel == index)
 	{
-		SEC_box(SEC_PX1 + 16, y - 4, SEC_PX2 - 16, y + 15, 0x7020c050);
+		SEC_box(SEC_PX1 + 16, y - 4, SEC_PX2 - 16, y + 15, 0xc0208a48);
 
 		SEC_text(">", SEC_PX1 + 22, y, SEC_COL_HEAD);
 		SEC_text(str, SEC_PX1 + 40, y, SEC_COL_HEAD);
@@ -2550,6 +3521,11 @@ static void SEC_turret_status(Thing *p_turret, CBYTE *out)
 		default:              mount = "DEPLOYED";  break;
 	}
 
+	if (SEC.ui == SEC_UI_MANUAL && SEC.turret_thing == THING_NUMBER(p_turret))
+	{
+		mode = "MANUAL";
+	}
+
 	sprintf(out, "T-%02d   %-14s %-10s %s%s", p_bat->want_z, power, mode, mount, (p_bat->target) ? "  *FIRING*" : "");
 }
 
@@ -2567,10 +3543,11 @@ static void SEC_draw_terminal(void)
 	// The screen.
 	//
 
-	SEC_box(0, 0, 640, 480, 0x60000000);
-	SEC_box(SEC_PX1, SEC_PY1, SEC_PX2, SEC_PY2, 0xe8020c06);
-	SEC_frame(SEC_PX1, SEC_PY1, SEC_PX2, SEC_PY2, 0xff30c060);
-	SEC_frame(SEC_PX1 + 6, SEC_PY1 + 6, SEC_PX2 - 6, SEC_PY2 - 6, 0x6030c060);
+	SEC_box(0, 0, 640, 480, 0x30000000);
+	SEC_box(SEC_PX1, SEC_PY1, SEC_PX2, SEC_PY2, 0xd8103c24);
+	SEC_scanlines(SEC_PX1, SEC_PY1, SEC_PX2, SEC_PY2, 0x14000000);
+	SEC_frame(SEC_PX1, SEC_PY1, SEC_PX2, SEC_PY2, 0xff60ff90);
+	SEC_frame(SEC_PX1 + 6, SEC_PY1 + 6, SEC_PX2 - 6, SEC_PY2 - 6, 0x9050e080);
 
 	sprintf(str, "SECURENET TERMINAL  //  %s", (st && st->name[0]) ? st->name : "WORKSTATION");
 	SEC_text(str, SEC_PX1 + 20, SEC_PY1 + 16, SEC_COL_HEAD);
@@ -2578,7 +3555,7 @@ static void SEC_draw_terminal(void)
 	sprintf(str, "NODE %03d", (id >= 0) ? id : 0);
 	SEC_text(str, SEC_PX2 - 110, SEC_PY1 + 16, SEC_COL_DIM);
 
-	SEC_box(SEC_PX1 + 16, SEC_PY1 + 38, SEC_PX2 - 16, SEC_PY1 + 40, 0xa030c060);
+	SEC_box(SEC_PX1 + 16, SEC_PY1 + 38, SEC_PX2 - 16, SEC_PY1 + 40, 0xe060ff90);
 
 	y = SEC_PY1 + 56;
 
@@ -2776,6 +3753,8 @@ static void SEC_draw_terminal(void)
 				SEC_menu_item(SEC_TA_HATCH, y, str, (p_bat->flag & SEC_F_HAS_HATCH) ? SEC_COL_TEXT : SEC_COL_DIM); y += 28;
 
 				SEC_menu_item(SEC_TA_CAMERA, y, "View sensor feed", SEC_COL_TEXT); y += 28;
+				SEC_menu_item(SEC_TA_MANUAL, y, "Manual control  (aim and fire it yourself)",
+					(p_bat->glow || (p_bat->flag & SEC_F_POWEROFF) || p_bat->state == SEC_TS_DEAD) ? SEC_COL_DIM : SEC_COL_TEXT); y += 28;
 				SEC_menu_item(SEC_TA_BACK,   y, "Back", SEC_COL_TEXT);
 			}
 
@@ -2801,7 +3780,6 @@ static void SEC_draw_terminal(void)
 		SEC_text("[UP/DOWN] select   [ACTION/ENTER] open   [KICK/ESC] back", SEC_PX1 + 24, SEC_PY2 - 30, SEC_COL_DIM);
 	}
 
-	SEC_scanlines(SEC_PX1, SEC_PY1, SEC_PX2, SEC_PY2, 0x18000000);
 }
 
 static void SEC_draw_cctv(void)
@@ -2836,6 +3814,87 @@ static void SEC_draw_cctv(void)
 		SEC_box(0, 0, 640, 480, (0xd0 - SEC.ui_ms * 0xd0 / 250) << 24 | 0x101010);
 	}
 
+	if (SEC.ui == SEC_UI_MANUAL)
+	{
+		Thing *p_turret = TO_THING(SEC.turret_thing);
+
+		if (!SEC_is_security(p_turret))
+		{
+			return;
+		}
+
+		Bat *p_bat = p_turret->Genus.Bat;
+
+		SEC_text("[ARROWS] aim  [PUNCH/ACTION] fire  [JUMP] next target  [KICK] back", 20, 458, 0xa0a0a0);
+
+		if (p_bat->state == SEC_TS_DEAD || p_bat->glow || (p_bat->flag & SEC_F_POWEROFF))
+		{
+			SEC_box(0, 30, 640, 450, 0xe0101010);
+			SEC_text((CBYTE *) ((p_bat->state == SEC_TS_DEAD) ? "NO SIGNAL - TURRET DESTROYED" : "NO SIGNAL - TURRET OFFLINE"), 200, 230, 0xff8060);
+
+			sprintf(str, "TURRET T-%02d  MANUAL CONTROL", p_bat->want_z);
+			SEC_text(str, 20, 8, 0xffffff);
+
+			return;
+		}
+
+		//
+		// Crosshair: where the barrels point (the view is the turret's).
+		//
+
+		ULONG ch = (SEC.man_lock) ? 0xe0ff3030 : 0xc0ff4040;
+
+		SEC_box(300, 239, 314, 241, ch);
+		SEC_box(326, 239, 340, 241, ch);
+		SEC_box(319, 220, 321, 234, ch);
+		SEC_box(319, 246, 321, 260, ch);
+		SEC_box(319, 239, 321, 241, ch);
+
+		if (SEC.man_lock)
+		{
+			//
+			// Locked on: brackets round the crosshair.
+			//
+
+			SEC_box(290, 225, 300, 227, ch); SEC_box(290, 225, 292, 235, ch);
+			SEC_box(340, 225, 350, 227, ch); SEC_box(348, 225, 350, 235, ch);
+			SEC_box(290, 253, 300, 255, ch); SEC_box(290, 245, 292, 255, ch);
+			SEC_box(340, 253, 350, 255, ch); SEC_box(348, 245, 350, 255, ch);
+
+			Thing *p_lock = TO_THING(SEC.man_lock);
+
+			sprintf(str, "LOCKED  %s  %d m", SEC_person_is_hostile(p_lock) ? "HOSTILE" : "UNKNOWN", SEC_dist(p_turret, p_lock) * 3 >> 8);
+			SEC_text(str, 380, 236, SEC_person_is_hostile(p_lock) ? 0xff6060 : 0xffd060);
+		}
+
+		//
+		// Elevation and how far round it has turned (of what it can).
+		//
+
+		sprintf(str, "ELEV %+d", SEC.man_pitch * 360 / 2048);
+		SEC_text(str, 20, 400, 0xffffff);
+
+		if (p_bat->substate)
+		{
+			SLONG lim = p_bat->substate << 3;
+			SLONG off = SEC_angle_diff(p_bat->dy, p_turret->Draw.Tweened->Angle);
+			SLONG x   = 320 - off * 120 / MAX(lim, 1);
+
+			SEC_box(200, 40, 440, 42, 0x80ffffff);
+			SEC_box(x - 2, 36, x + 2, 46, 0xffff4040);
+		}
+
+		sprintf(str, "ROUNDS %d  HITS %d  INTEGRITY %d%%", SEC.man_shots, SEC.man_hits, p_bat->health * 100 / SEC_TURRET_HP);
+		SEC_text(str, 20, 420, 0xffffff);
+
+		if (SEC.status_ms > 0 && SEC.status[0])
+		{
+			SEC_text(SEC.status, 20, 380, 0xa0ff70);
+		}
+
+		sprintf(str, "TURRET T-%02d  MANUAL CONTROL", p_bat->want_z);	// The caption (below)
+	}
+	else
 	if (SEC.cam_index >= 0)
 	{
 		SLONG count = SEC_count(SEC_UI_CAMS);
@@ -2903,9 +3962,11 @@ void SEC_draw(void)
 			if (SEC_is_security(p_term))
 			{
 #ifndef TARGET_DC
+				for (SEC_pass = 0; SEC_pass < 2; SEC_pass++) {
 				POLY_frame_init(FALSE, FALSE);
 #endif
-				SEC_box(210, 392, 430, 418, 0x90000000);
+				SEC_box(210, 392, 430, 418, 0xc0103c24);
+				SEC_frame(210, 392, 430, 418, 0xc060ff90);
 
 				if (p_term->Genus.Bat->glow)
 				{
@@ -2913,10 +3974,12 @@ void SEC_draw(void)
 				}
 				else
 				{
-					SEC_text("[ACTION] Use computer", 250, 398, 0x60ff80);
+					SEC_text("[ACTION] Use computer", 250, 398, 0xa0ffb0);
 				}
 #ifndef TARGET_DC
 				POLY_frame_draw(FALSE, FALSE);
+				}
+				SEC_pass = 0;
 #endif
 			}
 		}
@@ -2924,22 +3987,27 @@ void SEC_draw(void)
 		return;
 	}
 
+	for (SEC_pass = 0; SEC_pass < 2; SEC_pass++)
+	{
 #ifndef TARGET_DC
-	POLY_frame_init(FALSE, FALSE);
+		POLY_frame_init(FALSE, FALSE);
 #endif
 
-	if (SEC.ui == SEC_UI_CCTV)
-	{
-		SEC_draw_cctv();
-	}
-	else
-	{
-		SEC_draw_terminal();
-	}
+		if (SEC.ui == SEC_UI_CCTV || SEC.ui == SEC_UI_MANUAL)
+		{
+			SEC_draw_cctv();
+		}
+		else
+		{
+			SEC_draw_terminal();
+		}
 
 #ifndef TARGET_DC
-	POLY_frame_draw(FALSE, FALSE);
+		POLY_frame_draw(FALSE, FALSE);
 #endif
+	}
+
+	SEC_pass = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -2983,7 +4051,7 @@ void SEC_cmd_sentry(CBYTE *args)
 	Thing *p_turret = SEC_create(
 						BAT_TYPE_TURRET,
 						id,
-						x, PAP_calc_map_height_at(x, z), z,
+						x, darci->WorldPos.Y >> 8, z,		// At your height (roofs, floors of buildings)
 						(darci->Draw.Tweened->Angle + 1024) & 2047,	// Facing you
 						flag,
 						0, 0);

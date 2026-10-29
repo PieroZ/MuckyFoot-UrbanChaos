@@ -41,6 +41,7 @@ CBYTE TEXTURE_prims_dir  [_MAX_PATH];
 CBYTE TEXTURE_inside_dir [_MAX_PATH];
 CBYTE TEXTURE_people_dir [_MAX_PATH];
 CBYTE TEXTURE_people_dir2[_MAX_PATH];
+CBYTE TEXTURE_looks_dir  [_MAX_PATH];	// pages 64*21+30..63: textures of extra looks (data\\looks\\*.all)
 SLONG TEXTURE_set;
 
 
@@ -602,6 +603,7 @@ void TEXTURE_choose_set(SLONG number)
 	sprintf(TEXTURE_prims_dir,  "server\\%s\\shared\\prims\\",textures);
 	sprintf(TEXTURE_people_dir, "server\\%s\\shared\\people\\",textures);
 	sprintf(TEXTURE_people_dir2, "server\\%s\\shared\\people2\\",textures);
+	sprintf(TEXTURE_looks_dir,   "server\\%s\\shared\\looks\\",textures);
 	sprintf(TEXTURE_world_dir,   "server\\%s\\world%d\\",textures, number);
 	sprintf(TEXTURE_shared_dir,  "server\\%s\\shared\\",textures, number);
 #else
@@ -609,6 +611,7 @@ void TEXTURE_choose_set(SLONG number)
 	sprintf(TEXTURE_prims_dir,   "u:\\urbanchaos\\%s\\shared\\prims\\",textures);
 	sprintf(TEXTURE_people_dir,  "u:\\urbanchaos\\%s\\shared\\people\\",textures);
 	sprintf(TEXTURE_people_dir2, "u:\\urbanchaos\\%s\\shared\\people2\\",textures);
+	sprintf(TEXTURE_looks_dir,   "u:\\urbanchaos\\%s\\shared\\looks\\",textures);
 	sprintf(TEXTURE_world_dir,   "u:\\urbanchaos\\%s\\world%d\\",textures, number);
 	sprintf(TEXTURE_shared_dir,  "u:\\urbanchaos\\%s\\shared\\",textures);
 #endif
@@ -839,6 +842,18 @@ static void TEXTURE_load_page(SLONG page)
 		sprintf(name_res32, "%stex%03d.tga",   TEXTURE_people_dir2, page-64*18);
 		sprintf(name_res64, "%stex%03dhi.tga", TEXTURE_people_dir2, page-64*18);
 		sprintf(name_res128,"%stex%03dto.tga", TEXTURE_people_dir2, page-64*18);
+	}
+	else
+	if (page < 64 * 22)
+	{
+		//
+		// 64*21 + 0..29 are people3 (loaded by name), 30..63: textures of extra looks
+		// (server\textures\shared\looks\texNNN, made by uc_mixamo_character.py).
+		//
+
+		sprintf(name_res32, "%stex%03d.tga",   TEXTURE_looks_dir, page-64*21);
+		sprintf(name_res64, "%stex%03dhi.tga", TEXTURE_looks_dir, page-64*21);
+		sprintf(name_res128,"%stex%03dto.tga", TEXTURE_looks_dir, page-64*21);
 	}
 	else
 	{

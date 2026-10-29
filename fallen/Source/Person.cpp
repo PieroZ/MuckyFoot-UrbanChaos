@@ -641,6 +641,22 @@ Thing	*alloc_person(UBYTE type, UBYTE random_number)
 
 					SLONG look = ENV_get_value_number("roper_look", 0, "Extra");
 
+					// A look from data\looks\ chosen by name ("postac <name>") - the numbers of
+					// those follow the files in the folder, the name stays right.
+					CBYTE *look_name = ENV_get_value_string("roper_look_name", "Extra");
+
+					if (look_name && look_name[0])
+					{
+						extern SLONG LOOK_find(CBYTE *name, SLONG looks);
+
+						SLONG by_name = LOOK_find(look_name, ROPER_looks);
+
+						if (by_name >= 0)
+						{
+							look = by_name;
+						}
+					}
+
 					if (look > 0 && look < ROPER_looks)
 					{
 						person_thing->Draw.Tweened->MeshID = look;

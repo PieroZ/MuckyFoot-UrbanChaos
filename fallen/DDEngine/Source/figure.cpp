@@ -1419,7 +1419,7 @@ float m_fObjectBoundingSphereRadius[MAX_NUMBER_D3D_PRIMS];
 // 16 people types, 32 types of civ, and 6 different Roper ones (five weapons + no weapon).
 // Oh - number eight is his magic hip-flask!
 #define NUM_ROPERS_THINGIES 8
-#define NUM_ROPER_LOOKS 4		// meshes of roper.all ([Extra] roper_look) that get their own compiled mesh
+#define NUM_ROPER_LOOKS 8		// looks of Roper (roper.all + data\\looks\\*.all) that get their own compiled mesh
 #define MAX_NUMBER_D3D_PEOPLE (32 + 16 + NUM_ROPERS_THINGIES * NUM_ROPER_LOOKS)
 TomsPrimObject D3DPeopleObj[MAX_NUMBER_D3D_PEOPLE];
 

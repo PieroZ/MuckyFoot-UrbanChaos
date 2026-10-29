@@ -3563,7 +3563,17 @@ found_unused_bat:;
 	if (anim_chunk[type].MultiObject[0] == 0)
 	{
 		extern	SLONG load_anim_prim_object(SLONG prim);
+		extern	void  AENG_create_dx_prim_points(void);
 		load_anim_prim_object(type);
+
+		//
+		// The renderer draws anim prims from a float copy of prim_points[]
+		// that is only made when the level loads. A prim loaded now (the
+		// security turrets / computers when one is put down from the
+		// console) isn't in it, so it would be invisible: remake the copy.
+		//
+
+		AENG_create_dx_prim_points();
 		//		ASSERT(0);
 
 	}

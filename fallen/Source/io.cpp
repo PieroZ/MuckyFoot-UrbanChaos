@@ -565,6 +565,7 @@ void load_needed_anim_prims()
 
 		load_anim_prim_object(9);
 		load_anim_prim_object(12);
+		load_anim_prim_object(6);	// Security turrets and computers (security.cpp) - before the renderer copies the prim points
 		//if (this_level_has_the_balrog)
 		{
 			load_anim_prim_object(1);
@@ -2647,6 +2648,14 @@ SLONG	load_insert_game_chunk(MFFileHandle	handle,struct GameKeyFrameChunk *p_chu
 		extra_anims     = APPEND_EXTRA_ANIMS;
 	}
 
+	if (p_chunk == &game_chunk[ANIM_TYPE_ROPER])
+	{
+		// Roper also gets [Extra] roper_anims and the animations of every data\looks\*.all:
+		// room for animation numbers up to GLOBAL_ANIM_MAX.
+		extra_keyframes = 8000;
+		extra_anims     = GLOBAL_ANIM_MAX + 50;
+	}
+
 	if(p_chunk->MaxKeyFrames)
 		p_chunk->AnimKeyFrames=(struct GameKeyFrame*)MemAlloc((p_chunk->MaxKeyFrames+extra_keyframes)*sizeof(struct GameKeyFrame));
 
@@ -3361,6 +3370,357 @@ extern	void	free_game_chunk(GameKeyFrameChunk *the_chunk);
 	}
 	return(0);
 	
+}
+
+//
+// Extra looks: mesh 0 of every data\looks\*.all is added to the chunk's meshes (no animations),
+// e.g. a Mixamo character made with uc_mixamo_character.py --new-all. LOOK_name[] = file names
+// (without .all) by mesh number, "" for the chunk's own meshes. Returns how many were added.
+//
+
+CBYTE	LOOK_name[10][32];
+
+SLONG	append_look_files(struct GameKeyFrameChunk *p_chunk, SLONG max_meshes)
+{
+	CBYTE				pattern[MAX_PATH];
+	WIN32_FIND_DATAA	fd;
+	HANDLE				find;
+	SLONG				added = 0;
+	SLONG				i;
+
+	for (i = 0; i < 10; i++)
+	{
+		if (!p_chunk->MultiObject[i])
+		{
+			LOOK_name[i][0] = 0;
+		}
+	}
+
+	sprintf(pattern, "%sdata\\looks\\*.all", DATA_DIR);
+
+	find = FindFirstFileA(pattern, &fd);
+
+	if (find == INVALID_HANDLE_VALUE)
+	{
+		return 0;
+	}
+
+	do
+	{
+		SLONG			start_ob = 0;
+		SLONG			save_type = 0;
+		SLONG			count = 1;
+		CBYTE			fname[MAX_PATH];
+		MFFileHandle	handle;
+
+		while (start_ob < 10 && p_chunk->MultiObject[start_ob])
+		{
+			start_ob++;
+		}
+
+		if (start_ob >= max_meshes || start_ob >= 9)
+		{
+			break;
+		}
+
+		sprintf(fname, "%sdata\\looks\\%s", DATA_DIR, fd.cFileName);
+
+		handle = FileOpen(fname);
+
+		if (handle == FILE_OPEN_ERROR)
+		{
+			continue;
+		}
+
+		FileRead(handle, (UBYTE*)&save_type, sizeof(save_type));
+
+		if (save_type > 2)
+		{
+			FileRead(handle, (UBYTE*)&count, sizeof(count));
+		}
+		else
+		{
+			FileSeek(handle, SEEK_MODE_BEGINNING, 0);	// one mesh without a count: read from the start
+		}
+
+		if (count > 0)
+		{
+			p_chunk->MultiObject[start_ob] = load_insert_a_multi_prim(handle);
+
+			if (start_ob + 1 < 10)
+			{
+				p_chunk->MultiObject[start_ob + 1] = 0;
+			}
+
+			strncpy(LOOK_name[start_ob], fd.cFileName, 31);
+			LOOK_name[start_ob][31] = 0;
+
+			CBYTE *dot = strrchr(LOOK_name[start_ob], '.');
+
+			if (dot)
+			{
+				*dot = 0;
+			}
+
+			added++;
+		}
+
+		FileClose(handle);
+	}
+	while (FindNextFileA(find, &fd));
+
+	FindClose(find);
+
+	return added;
+}
+
+//
+// The mesh number of a look by its name ("roper" = 0), or -1.
+//
+
+SLONG	LOOK_find(CBYTE *name, SLONG looks)
+{
+	SLONG i;
+
+	if (!stricmp(name, "roper"))
+	{
+		return 0;
+	}
+
+	for (i = 1; i < looks && i < 10; i++)
+	{
+		if (LOOK_name[i][0] && !stricmp(LOOK_name[i], name))
+		{
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+//
+// A look's own animations. The animations of data\looks\<name>.all are appended to Roper's
+// chunk (LOOK_anim_start[look] = where its animation 0 went, LOOK_anim_count = how many), and
+// data\looks\<name>.txt says which of the game's animations they replace while the player
+// has that look (written by uc_look_anims.py):
+//
+//		walk  = 17		# a name below or the game's animation number = animation of <name>.all
+//
+// Everything not in the list stays as it is (Darci's animations, which Roper plays).
+//
+
+SLONG	LOOK_anim_start[10];
+SLONG	LOOK_anim_count[10];
+
+#define LOOK_MAX_MAP 96
+
+static	UWORD	LOOK_map_game[10][LOOK_MAX_MAP];
+static	UWORD	LOOK_map_anim[10][LOOK_MAX_MAP];
+static	SLONG	LOOK_maps[10];
+
+static	struct GameKeyFrame *LOOK_saved_row[GLOBAL_ANIM_MAX];
+static	SLONG	LOOK_saved = 0;
+SLONG	LOOK_applied = 0;
+
+static const struct {const CBYTE *name; SLONG anim;} LOOK_anim_names[] =
+{
+	// animate.h
+	{"walk",				20},	// ANIM_WALK
+	{"yomp",				198},	// ANIM_YOMP - the normal run
+	{"run",					119},	// ANIM_RUN - sprint
+	{"ak_jog",				266},	// ANIM_AK_JOG - running with the rifle / shotgun
+	{"pistol_jog",			267},	// ANIM_PISTOL_JOG
+	{"yomp_start",			238},	// ANIM_YOMP_START
+	{"yomp_start_ak",		321},	// ANIM_YOMP_START_AK
+	{"yomp_start_pistol",	368},	// ANIM_YOMP_START_PISTOL
+	{"stand_ready",			3},		// ANIM_STAND_READY
+	{"stand_hip",			2},		// ANIM_STAND_HIP
+	{"breathe",				124},	// ANIM_BREATHE
+	{"idle_scratch1",		77},	// ANIM_IDLE_SCRATCH1
+	{"idle_scratch2",		78},	// ANIM_IDLE_SCRATCH2
+	{"sneak",				86},	// ANIM_SNEAK
+	{"idle_croutch",		222},	// ANIM_IDLE_CROUTCH
+	{"ak_aim",				253},	// ANIM_AK_AIM
+	{"ak_fire",				254},	// ANIM_AK_FIRE
+};
+
+static void LOOK_read_map(SLONG look)
+{
+	CBYTE	fname[MAX_PATH];
+	CBYTE	line[160];
+	FILE	*fh;
+
+	LOOK_maps[look] = 0;
+
+	sprintf(fname, "%sdata\\looks\\%s.txt", DATA_DIR, LOOK_name[look]);
+
+	fh = fopen(fname, "r");
+
+	if (!fh)
+	{
+		return;
+	}
+
+	while (fgets(line, sizeof(line), fh) && LOOK_maps[look] < LOOK_MAX_MAP)
+	{
+		CBYTE	key[64];
+		SLONG	value;
+		SLONG	game = -1;
+		SLONG	i;
+		CBYTE	*hash = strchr(line, '#');
+
+		if (hash)
+		{
+			*hash = 0;
+		}
+
+		if (sscanf(line, " %63[^= \t] = %d", key, &value) != 2)
+		{
+			continue;
+		}
+
+		if (key[0] >= '0' && key[0] <= '9')
+		{
+			game = atoi(key);
+		}
+		else
+		{
+			for (i = 0; i < (SLONG)(sizeof(LOOK_anim_names) / sizeof(LOOK_anim_names[0])); i++)
+			{
+				if (!stricmp(key, LOOK_anim_names[i].name))
+				{
+					game = LOOK_anim_names[i].anim;
+					break;
+				}
+			}
+		}
+
+		if (game < 0 || game >= GLOBAL_ANIM_MAX || value < 0 || value >= LOOK_anim_count[look])
+		{
+			DebugText("%s: \"%s = %d\" ignored\n", fname, key, value);
+			continue;
+		}
+
+		LOOK_map_game[look][LOOK_maps[look]] = (UWORD)game;
+		LOOK_map_anim[look][LOOK_maps[look]] = (UWORD)value;
+		LOOK_maps[look]++;
+	}
+
+	fclose(fh);
+}
+
+//
+// The animations of every look file go into the chunk from first_anim on. Returns where
+// the next free animation number is.
+//
+
+SLONG	LOOK_append_anims(struct GameKeyFrameChunk *p_chunk, SLONG looks, SLONG first_anim)
+{
+	SLONG	look;
+	SLONG	start;
+	CBYTE	name[64];
+
+	for (look = 0; look < 10; look++)
+	{
+		LOOK_anim_start[look] = 0;
+		LOOK_anim_count[look] = 0;
+		LOOK_maps[look]       = 0;
+	}
+
+	for (look = 1; look < looks && look < 10; look++)
+	{
+		if (!LOOK_name[look][0])
+		{
+			continue;
+		}
+
+		start = MAX(first_anim, p_chunk->MaxAnimFrames);
+
+		if (start >= GLOBAL_ANIM_MAX - 1)
+		{
+			break;
+		}
+
+		sprintf(name, "looks\\%s.all", LOOK_name[look]);
+
+		if (append_anim_system(p_chunk, name, start, 0))
+		{
+			LOOK_anim_start[look] = start;
+			LOOK_anim_count[look] = MIN(p_chunk->MaxAnimFrames, GLOBAL_ANIM_MAX) - start;
+
+			if (LOOK_anim_count[look] < 0)
+			{
+				LOOK_anim_count[look] = 0;
+			}
+
+			LOOK_read_map(look);
+		}
+	}
+
+	return MAX(first_anim, p_chunk->MaxAnimFrames);
+}
+
+//
+// After setup_global_anim_array(): the looks' animations get their numbers in Roper's row
+// (so set_anim() can play them, "animka"), and the row is kept to go back to.
+//
+
+void	LOOK_setup_anim_row(void)
+{
+	SLONG	look;
+	SLONG	i;
+	SLONG	a;
+
+	for (look = 1; look < 10; look++)
+	{
+		for (i = 0; i < LOOK_anim_count[look]; i++)
+		{
+			a = LOOK_anim_start[look] + i;
+
+			if (a < GLOBAL_ANIM_MAX && a < game_chunk[ANIM_TYPE_ROPER].MaxAnimFrames)
+			{
+				global_anim_array[ANIM_TYPE_ROPER][a] = game_chunk[ANIM_TYPE_ROPER].AnimList[a];
+			}
+		}
+	}
+
+	memcpy(LOOK_saved_row, global_anim_array[ANIM_TYPE_ROPER], sizeof(LOOK_saved_row));
+	LOOK_saved   = 1;
+	LOOK_applied = 0;
+}
+
+//
+// Roper's animations for this look: the game's own ones, with those the look's .txt lists
+// replaced by the look's. Every Roper (the player as Roper) plays them.
+//
+
+void	LOOK_apply_anims(SLONG look)
+{
+	SLONG	i;
+
+	if (LOOK_saved)
+	{
+		memcpy(global_anim_array[ANIM_TYPE_ROPER], LOOK_saved_row, sizeof(LOOK_saved_row));
+	}
+
+	LOOK_applied = 0;
+
+	if (look <= 0 || look >= 10 || !LOOK_saved)
+	{
+		return;
+	}
+
+	for (i = 0; i < LOOK_maps[look]; i++)
+	{
+		SLONG a = LOOK_anim_start[look] + LOOK_map_anim[look][i];
+
+		if (a < game_chunk[ANIM_TYPE_ROPER].MaxAnimFrames && game_chunk[ANIM_TYPE_ROPER].AnimList[a])
+		{
+			global_anim_array[ANIM_TYPE_ROPER][LOOK_map_game[look][i]] = game_chunk[ANIM_TYPE_ROPER].AnimList[a];
+		}
+	}
+
+	LOOK_applied = look;
 }
 
 #endif

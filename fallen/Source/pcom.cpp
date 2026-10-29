@@ -3178,6 +3178,40 @@ void PCOM_set_person_move_draw_gun(Thing *p_person)
 	p_person->Genus.Person->pcom_move_substate = PCOM_MOVE_SUBSTATE_GUNOUT;
 	p_person->Genus.Person->pcom_move_counter  = 0;
 }
+//
+// For security.cpp: draws a gun to shoot with (shotgun / AK47 / pistol - never a
+// grenade, unlike PCOM_set_person_move_draw_gun), and whether the person is busy
+// with a move animation (drawing, shooting...).
+//
+
+void PCOM_set_person_move_draw_firearm(Thing *p_person)
+{
+	Thing *p_special;
+
+	if ((p_special = person_has_special(p_person, SPECIAL_SHOTGUN)) && p_special->Genus.Special->ammo)
+	{
+		set_person_draw_item(p_person, SPECIAL_SHOTGUN);
+	}
+	else
+	if ((p_special = person_has_special(p_person, SPECIAL_AK47)) && p_special->Genus.Special->ammo)
+	{
+		set_person_draw_item(p_person, SPECIAL_AK47);
+	}
+	else
+	{
+		set_person_draw_gun(p_person);
+	}
+
+	p_person->Genus.Person->pcom_move_state    = PCOM_MOVE_STATE_ANIMATION;
+	p_person->Genus.Person->pcom_move_substate = PCOM_MOVE_SUBSTATE_GUNOUT;
+	p_person->Genus.Person->pcom_move_counter  = 0;
+}
+
+SLONG PCOM_person_move_busy(Thing *p_person)
+{
+	return p_person->Genus.Person->pcom_move_state == PCOM_MOVE_STATE_ANIMATION;
+}
+
 void PCOM_set_person_move_draw_h2h(Thing *p_person,SLONG special)
 {
 	Thing *p_special;
@@ -14478,6 +14512,18 @@ void PCOM_process_person(Thing *p_person)
 	}
 	else
 	{
+		//
+		// A turret on the player's side is after this person (security.cpp):
+		// he shoots back at it or runs away from it instead of his usual AI.
+		//
+
+		extern SLONG SEC_person_ai(Thing *p_person);
+
+		if (SEC_person_ai(p_person))
+		{
+			return;
+		}
+
 		//
 		// Is it time to change what we are doing?
 		//
