@@ -915,7 +915,7 @@ static void DRIVEBY_fire(Thing *p_person, Thing *p_car, SLONG has_target, DRIVEB
 		{
 			if (VEH_puncture_tyre(p_target, target->wheel))
 			{
-				DRIVEBY_message("Opona przestrzelona!", 1500);
+				DRIVEBY_message("Shot-out tire!", 1500);
 			}
 
 			VEH_reduce_health(p_target, p_person, DRIVEBY_TYRE_DAMAGE);
